@@ -490,7 +490,7 @@ public class WinHPCInfrastructure extends DefaultInfrastructureManager {
         sb.append(this.javaOptions);
         result.setPaProperties(sb.toString());
         result.setCredentialsValueAndNullOthers(this.credBase64);
-        result.setRmURL(super.rmUrl);
+        result.setRmURL(getRmUrl());
         result.setSourceName(this.nodeSource.getName());
         result.setNodeName("WINHPC-" + result.getSourceName() + "-" + ProActiveCounter.getUniqID());
         return result;

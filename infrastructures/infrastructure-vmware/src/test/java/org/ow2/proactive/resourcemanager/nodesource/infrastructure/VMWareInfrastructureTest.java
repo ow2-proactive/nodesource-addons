@@ -43,6 +43,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -67,11 +68,14 @@ public class VMWareInfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         vmwareInfrastructure = new VMWareInfrastructure();
-
+        vmwareInfrastructure.setRmDbManager(dbManager);
     }
 
     @Test
@@ -167,7 +171,7 @@ public class VMWareInfrastructureTest {
 
         vmwareInfrastructure.connectorIaasController = connectorIaasController;
 
-        vmwareInfrastructure.rmUrl = "http://test.activeeon.com";
+        vmwareInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "username",
@@ -230,7 +234,7 @@ public class VMWareInfrastructureTest {
 
         vmwareInfrastructure.connectorIaasController = connectorIaasController;
 
-        vmwareInfrastructure.rmUrl = "http://test.activeeon.com";
+        vmwareInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "username",

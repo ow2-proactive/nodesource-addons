@@ -371,6 +371,20 @@ public class AzureInfrastructure extends InfrastructureManager {
     }
 
     @Override
+    public void notifyDownNode(String nodeName, String nodeUrl, Node node) throws RMException {
+        removeNode(node);
+    }
+
+    @Override
+    protected void initializeRuntimeVariables() {
+        // TODO if we want this infrastructure to be recoverable after a
+        // crash, in this method we need to initialize and put the fields
+        // that this class uses in the runtimeVariables map provided by the
+        // super class. Afterwards, when such fields change, we need to call
+        // the persistInfrastructureVariables method.
+    }
+
+    @Override
     public String getDescription() {
         return "Handles nodes from Microsoft Azure.";
     }
@@ -412,19 +426,19 @@ public class AzureInfrastructure extends InfrastructureManager {
 
     private String generateStartNodeCommand(String instanceId) {
         try {
-            String communicationProtocol = rmUrl.split(":")[0];
+            String communicationProtocol = getRmUrl().split(":")[0];
             return START_NODE_CMD.replace(COMMUNICATION_PROTOCOL_PATTERN, communicationProtocol)
                                  .replace(RM_HOSTNAME_PATTERN, rmHostname)
                                  .replace(INSTANCE_ID_PATTERN, instanceId)
                                  .replace(ADDITIONAL_PROPERTIES_PATTERN, additionalProperties)
-                                 .replace(RM_URL_PATTERN, rmUrl)
+                                 .replace(RM_URL_PATTERN, getRmUrl())
                                  .replace(NODESOURCE_NAME_PATTERN, nodeSource.getName())
                                  .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
         } catch (Exception e) {
             LOGGER.error("Exception when generating the command, fallback on default value", e);
             return START_NODE_FALLBACK_CMD.replace(INSTANCE_ID_PATTERN, instanceId)
                                           .replace(ADDITIONAL_PROPERTIES_PATTERN, additionalProperties)
-                                          .replace(RM_URL_PATTERN, rmUrl)
+                                          .replace(RM_URL_PATTERN, getRmUrl())
                                           .replace(NODESOURCE_NAME_PATTERN, nodeSource.getName())
                                           .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
         }

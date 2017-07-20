@@ -44,6 +44,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -68,11 +69,14 @@ public class OpenstackInfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         openstackInfrastructure = new OpenstackInfrastructure();
-
+        openstackInfrastructure.setRmDbManager(dbManager);
     }
 
     @Test
@@ -159,7 +163,7 @@ public class OpenstackInfrastructureTest {
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
-        openstackInfrastructure.rmUrl = "http://test.activeeon.com";
+        openstackInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "username",
