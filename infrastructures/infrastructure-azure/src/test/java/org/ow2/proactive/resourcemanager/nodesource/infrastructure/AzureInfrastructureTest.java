@@ -45,6 +45,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -69,11 +70,14 @@ public class AzureInfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         azureInfrastructure = new AzureInfrastructure();
-
+        azureInfrastructure.setRmDbManager(dbManager);
     }
 
     @Test
@@ -219,7 +223,7 @@ public class AzureInfrastructureTest {
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
-        azureInfrastructure.rmUrl = "http://test.activeeon.com";
+        azureInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createAzureInfrastructure("node_source_name",
                                                                "clientId",

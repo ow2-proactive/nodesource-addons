@@ -43,6 +43,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -67,11 +68,14 @@ public class AWSEC2InfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         awsec2Infrastructure = new AWSEC2Infrastructure();
-
+        awsec2Infrastructure.setRmDbManager(dbManager);
     }
 
     @Test
@@ -163,7 +167,7 @@ public class AWSEC2InfrastructureTest {
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
         awsec2Infrastructure.nodeSource = nodeSource;
-        awsec2Infrastructure.rmUrl = "http://test.activeeon.com";
+        awsec2Infrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "aws_key",

@@ -276,6 +276,20 @@ public class AWSEC2Infrastructure extends InfrastructureManager {
     }
 
     @Override
+    public void notifyDownNode(String nodeName, String nodeUrl, Node node) throws RMException {
+        removeNode(node);
+    }
+
+    @Override
+    protected void initializeRuntimeVariables() {
+        // TODO if we want this infrastructure to be recoverable after a
+        // crash, in this method we need to initialize and put the fields
+        // that this class uses in the runtimeVariables map provided by the
+        // super class. Afterwards, when such fields change, we need to call
+        // the persistInfrastructureVariables method.
+    }
+
+    @Override
     public String getDescription() {
         return "Handles nodes from the Amazon Elastic Compute Cloud Service.";
     }
@@ -309,7 +323,7 @@ public class AWSEC2Infrastructure extends InfrastructureManager {
 
     private String generateDefaultStartNodeCommand(String instanceId) {
         try {
-            String rmUrlToUse = rmUrl;
+            String rmUrlToUse = getRmUrl();
 
             String protocol = rmUrlToUse.substring(0, rmUrlToUse.indexOf(':')).trim();
             return "java -jar node.jar -Dproactive.communication.protocol=" + protocol +
@@ -319,7 +333,7 @@ public class AWSEC2Infrastructure extends InfrastructureManager {
         } catch (Exception e) {
             logger.error("Exception when generating the command, fallback on default value", e);
             return "java -jar node.jar -D" + INSTANCE_ID_NODE_PROPERTY + "=" + instanceId + " " + additionalProperties +
-                   " -r " + rmUrl + " -s " + nodeSource.getName() + " -w " + numberOfNodesPerInstance;
+                   " -r " + getRmUrl() + " -s " + nodeSource.getName() + " -w " + numberOfNodesPerInstance;
         }
     }
 
