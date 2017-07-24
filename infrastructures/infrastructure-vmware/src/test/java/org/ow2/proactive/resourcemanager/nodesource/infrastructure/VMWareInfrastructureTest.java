@@ -76,6 +76,7 @@ public class VMWareInfrastructureTest {
         MockitoAnnotations.initMocks(this);
         vmwareInfrastructure = new VMWareInfrastructure();
         vmwareInfrastructure.setRmDbManager(dbManager);
+        vmwareInfrastructure.initializeRuntimeVariables();
     }
 
     @Test

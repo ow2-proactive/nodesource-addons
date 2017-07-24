@@ -76,6 +76,7 @@ public class AWSEC2InfrastructureTest {
         MockitoAnnotations.initMocks(this);
         awsec2Infrastructure = new AWSEC2Infrastructure();
         awsec2Infrastructure.setRmDbManager(dbManager);
+        awsec2Infrastructure.initializeRuntimeVariables();
     }
 
     @Test
