@@ -42,7 +42,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 
-public class OpenstackInfrastructure extends InfrastructureManager {
+public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
 
@@ -85,17 +85,6 @@ public class OpenstackInfrastructure extends InfrastructureManager {
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
-
-    protected ConnectorIaasController connectorIaasController = null;
-
-    protected final Map<String, Set<String>> nodesPerInstances;
-
-    /**
-     * Default constructor
-     */
-    public OpenstackInfrastructure() {
-        nodesPerInstances = Maps.newConcurrentMap();
-    }
 
     @Override
     public void configure(Object... parameters) {
@@ -213,16 +202,7 @@ public class OpenstackInfrastructure extends InfrastructureManager {
             logger.warn(e);
         }
 
-        synchronized (this) {
-            nodesPerInstances.get(instanceId).remove(node.getNodeInformation().getName());
-            logger.info("Removed node : " + node.getNodeInformation().getName());
-
-            if (nodesPerInstances.get(instanceId).isEmpty()) {
-                connectorIaasController.terminateInstance(getInfrastructureId(), instanceId);
-                nodesPerInstances.remove(instanceId);
-                logger.info("Removed instance : " + instanceId);
-            }
-        }
+        removeNodeAndTerminateInstanceIfNeeded(instanceId, node.getNodeInformation().getName(), getInfrastructureId());
     }
 
     @Override
@@ -230,26 +210,7 @@ public class OpenstackInfrastructure extends InfrastructureManager {
 
         String instanceId = getInstanceIdProperty(node);
 
-        synchronized (this) {
-            if (!nodesPerInstances.containsKey(instanceId)) {
-                nodesPerInstances.put(instanceId, new HashSet<String>());
-            }
-            nodesPerInstances.get(instanceId).add(node.getNodeInformation().getName());
-        }
-    }
-
-    @Override
-    public void notifyDownNode(String nodeName, String nodeUrl, Node node) throws RMException {
-        removeNode(node);
-    }
-
-    @Override
-    protected void initializeRuntimeVariables() {
-        // TODO if we want this infrastructure to be recoverable after a
-        // crash, in this method we need to initialize and put the fields
-        // that this class uses in the runtimeVariables map provided by the
-        // super class. Afterwards, when such fields change, we need to call
-        // the persistInfrastructureVariables method.
+        addNewNodeForInstance(instanceId, node.getNodeInformation().getName());
     }
 
     @Override

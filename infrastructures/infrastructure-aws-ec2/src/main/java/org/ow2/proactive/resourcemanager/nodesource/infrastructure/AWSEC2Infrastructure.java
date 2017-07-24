@@ -43,7 +43,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 
-public class AWSEC2Infrastructure extends InfrastructureManager {
+public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     public static final String INSTANCE_ID_NODE_PROPERTY = "instanceId";
 
@@ -92,17 +92,6 @@ public class AWSEC2Infrastructure extends InfrastructureManager {
 
     @Configurable(description = "Subnet and VPC")
     protected String subnetId = null;
-
-    protected ConnectorIaasController connectorIaasController = null;
-
-    protected final Map<String, Set<String>> nodesPerInstances;
-
-    /**
-     * Default constructor
-     */
-    public AWSEC2Infrastructure() {
-        nodesPerInstances = Maps.newConcurrentMap();
-    }
 
     @Override
     public void configure(Object... parameters) {
@@ -250,16 +239,7 @@ public class AWSEC2Infrastructure extends InfrastructureManager {
             logger.warn(e);
         }
 
-        synchronized (this) {
-            nodesPerInstances.get(instanceId).remove(node.getNodeInformation().getName());
-            logger.info("Removed node : " + node.getNodeInformation().getName());
-
-            if (nodesPerInstances.get(instanceId).isEmpty()) {
-                connectorIaasController.terminateInstance(getInfrastructureId(), instanceId);
-                nodesPerInstances.remove(instanceId);
-                logger.info("Removed instance : " + instanceId);
-            }
-        }
+        removeNodeAndTerminateInstanceIfNeeded(instanceId, node.getNodeInformation().getName(), getInfrastructureId());
     }
 
     @Override
@@ -267,26 +247,7 @@ public class AWSEC2Infrastructure extends InfrastructureManager {
 
         String instanceId = getInstanceIdProperty(node);
 
-        synchronized (this) {
-            if (!nodesPerInstances.containsKey(instanceId)) {
-                nodesPerInstances.put(instanceId, new HashSet<String>());
-            }
-            nodesPerInstances.get(instanceId).add(node.getNodeInformation().getName());
-        }
-    }
-
-    @Override
-    public void notifyDownNode(String nodeName, String nodeUrl, Node node) throws RMException {
-        removeNode(node);
-    }
-
-    @Override
-    protected void initializeRuntimeVariables() {
-        // TODO if we want this infrastructure to be recoverable after a
-        // crash, in this method we need to initialize and put the fields
-        // that this class uses in the runtimeVariables map provided by the
-        // super class. Afterwards, when such fields change, we need to call
-        // the persistInfrastructureVariables method.
+        addNewNodeForInstance(instanceId, node.getNodeInformation().getName());
     }
 
     @Override
