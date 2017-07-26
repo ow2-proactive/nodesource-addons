@@ -28,8 +28,6 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -39,7 +37,6 @@ import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 
 public class AzureInfrastructure extends AbstractAddonInfrastructure {
@@ -281,16 +278,19 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        connectorIaasController.createAzureInfrastructure(getInfrastructureId(),
-                                                          clientId,
-                                                          secret,
-                                                          domain,
-                                                          subscriptionId,
-                                                          authenticationEndpoint,
-                                                          managementEndpoint,
-                                                          resourceManagerEndpoint,
-                                                          graphEndpoint,
-                                                          false);
+        // we do not create the infrastructure if it has been created already
+        if (compareAndSetInfrastructureCreatedFlag(false, true)) {
+            connectorIaasController.createAzureInfrastructure(getInfrastructureId(),
+                                                              clientId,
+                                                              secret,
+                                                              domain,
+                                                              subscriptionId,
+                                                              authenticationEndpoint,
+                                                              managementEndpoint,
+                                                              resourceManagerEndpoint,
+                                                              graphEndpoint,
+                                                              false);
+        }
 
         String instanceTag = getInfrastructureId();
         Set<String> instancesIds;

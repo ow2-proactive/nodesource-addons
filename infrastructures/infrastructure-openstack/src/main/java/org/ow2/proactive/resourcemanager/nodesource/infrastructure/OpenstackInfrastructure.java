@@ -165,7 +165,10 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, true);
+        // we do not create the infrastructure if it has been created already
+        if (compareAndSetInfrastructureCreatedFlag(false, true)) {
+            connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, true);
+        }
 
         for (int i = 1; i <= numberOfInstances; i++) {
 

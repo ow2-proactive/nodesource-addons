@@ -191,7 +191,10 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, false);
+        // we do not create the infrastructure if it has been created already
+        if (compareAndSetInfrastructureCreatedFlag(false, true)) {
+            connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, false);
+        }
 
         String instanceTag = getInfrastructureId();
         Set<String> instancesIds;

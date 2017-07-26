@@ -62,6 +62,8 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      */
     protected Map<String, Set<String>> nodesPerInstances;
 
+    private static final String INFRASTRUCTURE_CREATED_FLAG_KEY = "infrastructureCreatedFlag";
+
     /**
      * Default constructor
      */
@@ -75,8 +77,14 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     }
 
     @Override
+    public void shutDown() {
+        compareAndSetInfrastructureCreatedFlag(true, false);
+    }
+
+    @Override
     protected void initializeRuntimeVariables() {
         runtimeVariables.put(NODES_PER_INSTANCES_KEY, nodesPerInstances);
+        runtimeVariables.put(INFRASTRUCTURE_CREATED_FLAG_KEY, false);
     }
 
     /**
@@ -138,4 +146,29 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
             }
         });
     }
+
+    /**
+     * Manage the infrastructure created flag that says whether the
+     * infrastructure has already been instantiated. Typically check this flag
+     * whenever you would like to create the infrastructure, and set this flag
+     * to false whenever the infrastructure is shut down properly.
+     * @param expected the value that you expect the infrastructureCreatedFlag has
+     * @param updated the value that you want the infrastructureCreatedFlag to have after the check
+     * @return whether the comparison went as expected, so whether the infrastructureCreatedFlag was updated
+     */
+    protected boolean compareAndSetInfrastructureCreatedFlag(final boolean expected, final boolean updated) {
+        return setRuntimeVariable(new RuntimeVariablesHandler<Boolean>() {
+            @Override
+            public Boolean handle() {
+                boolean infraCreated = (boolean) runtimeVariables.get(INFRASTRUCTURE_CREATED_FLAG_KEY);
+                if (infraCreated == expected) {
+                    runtimeVariables.put(INFRASTRUCTURE_CREATED_FLAG_KEY, updated);
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
+    }
+
 }
