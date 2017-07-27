@@ -320,7 +320,7 @@ public class AzureInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        azureInfrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        azureInfrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
 
         azureInfrastructure.removeNode(node);
 
@@ -328,7 +328,7 @@ public class AzureInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(azureInfrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
 
     }
 
@@ -371,8 +371,8 @@ public class AzureInfrastructureTest {
 
         azureInfrastructure.notifyAcquiredNode(node);
 
-        assertThat(azureInfrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(azureInfrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(azureInfrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
     }
 }

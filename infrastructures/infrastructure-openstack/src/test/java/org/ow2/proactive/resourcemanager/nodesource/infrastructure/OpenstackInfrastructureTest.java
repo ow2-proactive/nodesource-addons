@@ -237,7 +237,7 @@ public class OpenstackInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        openstackInfrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        openstackInfrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
 
         openstackInfrastructure.removeNode(node);
 
@@ -245,7 +245,7 @@ public class OpenstackInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(openstackInfrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
 
     }
 
@@ -277,9 +277,9 @@ public class OpenstackInfrastructureTest {
 
         openstackInfrastructure.notifyAcquiredNode(node);
 
-        assertThat(openstackInfrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(openstackInfrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(openstackInfrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
 
     }
 

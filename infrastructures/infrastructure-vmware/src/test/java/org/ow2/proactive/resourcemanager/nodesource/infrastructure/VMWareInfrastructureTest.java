@@ -319,7 +319,7 @@ public class VMWareInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        vmwareInfrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        vmwareInfrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
 
         vmwareInfrastructure.removeNode(node);
 
@@ -327,7 +327,7 @@ public class VMWareInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(vmwareInfrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
 
     }
 
@@ -362,9 +362,9 @@ public class VMWareInfrastructureTest {
 
         vmwareInfrastructure.notifyAcquiredNode(node);
 
-        assertThat(vmwareInfrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(vmwareInfrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(vmwareInfrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
 
     }
 

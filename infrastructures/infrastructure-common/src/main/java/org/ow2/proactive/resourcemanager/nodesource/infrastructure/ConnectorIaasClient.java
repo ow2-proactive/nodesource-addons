@@ -96,6 +96,9 @@ public class ConnectorIaasClient {
 
         if (instancesIds.isEmpty()) {
             instancesIds = createInstances(infrastructureId, instanceJson);
+        } else {
+            logger.info("Existing instances have been found when trying to create instances. Reusing instance ids: " +
+                        instancesIds);
         }
 
         return instancesIds;

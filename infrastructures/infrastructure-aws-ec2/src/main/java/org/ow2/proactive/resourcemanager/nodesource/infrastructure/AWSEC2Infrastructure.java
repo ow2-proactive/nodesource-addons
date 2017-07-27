@@ -298,16 +298,13 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    private String getInstanceIdProperty(Node node) throws RMException {
+    @Override
+    protected String getInstanceIdProperty(Node node) throws RMException {
         try {
             return node.getProperty(INSTANCE_ID_NODE_PROPERTY);
         } catch (ProActiveException e) {
             throw new RMException(e);
         }
-    }
-
-    private String getInfrastructureId() {
-        return nodeSource.getName().trim().replace(" ", "_").toLowerCase();
     }
 
 }

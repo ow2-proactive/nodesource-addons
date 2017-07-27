@@ -248,7 +248,7 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        awsec2Infrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        awsec2Infrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
 
         awsec2Infrastructure.removeNode(node);
 
@@ -256,7 +256,7 @@ public class AWSEC2InfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(awsec2Infrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
 
     }
 
@@ -291,9 +291,9 @@ public class AWSEC2InfrastructureTest {
 
         awsec2Infrastructure.notifyAcquiredNode(node);
 
-        assertThat(awsec2Infrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(awsec2Infrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(awsec2Infrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
 
     }
 
