@@ -25,9 +25,12 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
+import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManagerProperties.RM_AZURE_DESTROY_INSTANCES_ON_SHUTDOWN;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -278,41 +281,80 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        // we do not create the infrastructure if it has been created already
-        if (compareAndSetInfrastructureCreatedFlag(false, true)) {
-            connectorIaasController.createAzureInfrastructure(getInfrastructureId(),
-                                                              clientId,
-                                                              secret,
-                                                              domain,
-                                                              subscriptionId,
-                                                              authenticationEndpoint,
-                                                              managementEndpoint,
-                                                              resourceManagerEndpoint,
-                                                              graphEndpoint,
-                                                              false);
-        }
+        // this is going to terminate the infrastructure and to restart it,
+        // by reinitializing the rest paths. Even in case of RM recovery, it
+        // is safer to proceed this way since we don't know if the connector
+        // IAAS was standalone or running as part of the scheduler. We must
+        // make sure that the REST paths are set up.
+        connectorIaasController.createAzureInfrastructure(getInfrastructureId(),
+                                                          clientId,
+                                                          secret,
+                                                          domain,
+                                                          subscriptionId,
+                                                          authenticationEndpoint,
+                                                          managementEndpoint,
+                                                          resourceManagerEndpoint,
+                                                          graphEndpoint,
+                                                          RM_AZURE_DESTROY_INSTANCES_ON_SHUTDOWN.getValueAsBoolean());
 
         String instanceTag = getInfrastructureId();
         Set<String> instancesIds;
-        instancesIds = connectorIaasController.createAzureInstances(getInfrastructureId(),
-                                                                    instanceTag,
-                                                                    image,
-                                                                    numberOfInstances,
-                                                                    vmUsername,
-                                                                    vmPassword,
-                                                                    vmPublicKey,
-                                                                    vmSizeType,
-                                                                    resourceGroup,
-                                                                    region,
-                                                                    privateNetworkCIDR,
-                                                                    staticPublicIP);
+        boolean instanceIdSaved = false;
 
-        LOGGER.info("Instances ids created : " + instancesIds);
+        if (compareAndSetAlreadyCreatedFlag(false, true)) {
+            // it is a fresh deployment: create or retrieve all instances
+            instancesIds = connectorIaasController.createAzureInstances(getInfrastructureId(),
+                                                                        instanceTag,
+                                                                        image,
+                                                                        numberOfInstances,
+                                                                        vmUsername,
+                                                                        vmPassword,
+                                                                        vmPublicKey,
+                                                                        vmSizeType,
+                                                                        resourceGroup,
+                                                                        region,
+                                                                        privateNetworkCIDR,
+                                                                        staticPublicIP);
+            LOGGER.info("Instances ids created or retrieved : " + instancesIds);
+        } else {
+            // if the infrastructure was already created, then wee need to
+            // look at the free instances, if any (the ones on which no node
+            // run. In the current implementation, this can only happen when
+            // nodes are down. Indeed if they are all removed on purpose, the
+            // instance should be shut down). Note that in this case, if the
+            // free instances map is empty, no script will be run at all.
+            Map<String, Integer> freeInstancesMap = getFreeInstancesMapCopy();
+            instancesIds = freeInstancesMap.keySet();
+            LOGGER.info("Instances ids previously saved which require script re-execution: " + instancesIds);
+            instanceIdSaved = true;
+        }
 
+        // execute script on instances to deploy or redeploy nodes on them
         for (String instanceId : instancesIds) {
-
             String fullScript = generateScriptFromInstanceId(instanceId);
-            connectorIaasController.executeScript(getInfrastructureId(), instanceId, Lists.newArrayList(fullScript));
+            try {
+                connectorIaasController.executeScript(getInfrastructureId(),
+                                                      instanceId,
+                                                      Lists.newArrayList(fullScript));
+            } catch (Exception e) {
+                // if we cannot execute the script although the infrastructure
+                // was already deployed, then it means that the Azure
+                // instances are probably dead, so we will attempt a
+                // redeployment from scratch
+                if (instanceIdSaved) {
+                    LOGGER.info("Saved instance: " + instanceId + " does not exist anymore. Recreating all instances.");
+                    clearFreeInstancesMap();
+                    compareAndSetAlreadyCreatedFlag(true, false);
+                    acquireNode();
+                    break;
+                } else {
+                    LOGGER.info("Script execution failed and cannot be handled, abandoning instance " + instanceId);
+                }
+            } finally {
+                // in all cases, we must remove the instance from the free
+                // instance map as we tried everything to deploy nodes on it
+                removeFreeInstanceFromMap(instanceId);
+            }
         }
 
     }
@@ -334,7 +376,10 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             LOGGER.warn("Unable to remove the node '" + node.getNodeInformation().getName() + "' with error: " + e);
         }
 
-        removeNodeAndTerminateInstanceIfNeeded(instanceId, node.getNodeInformation().getName(), getInfrastructureId());
+        unregisterNodeAndRemoveInstanceIfNeeded(instanceId,
+                                                node.getNodeInformation().getName(),
+                                                getInfrastructureId(),
+                                                true);
     }
 
     @Override

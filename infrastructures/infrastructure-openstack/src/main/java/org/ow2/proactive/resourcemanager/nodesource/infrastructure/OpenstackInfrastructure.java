@@ -27,10 +27,7 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
@@ -39,7 +36,6 @@ import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 
 public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
@@ -165,10 +161,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        // we do not create the infrastructure if it has been created already
-        if (compareAndSetInfrastructureCreatedFlag(false, true)) {
-            connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, true);
-        }
+        connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, true);
 
         for (int i = 1; i <= numberOfInstances; i++) {
 
@@ -205,7 +198,10 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
             logger.warn(e);
         }
 
-        removeNodeAndTerminateInstanceIfNeeded(instanceId, node.getNodeInformation().getName(), getInfrastructureId());
+        unregisterNodeAndRemoveInstanceIfNeeded(instanceId,
+                                                node.getNodeInformation().getName(),
+                                                getInfrastructureId(),
+                                                true);
     }
 
     @Override

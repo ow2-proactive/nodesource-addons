@@ -144,7 +144,7 @@ public class OpenstackInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNode() {
+    public void testAcquireNode() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("node source name");
         openstackInfrastructure.nodeSource = nodeSource;
@@ -204,7 +204,7 @@ public class OpenstackInfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() {
+    public void testAcquireAllNodes() throws ScriptNotExecutedException {
         testAcquireNode();
     }
 
@@ -237,7 +237,7 @@ public class OpenstackInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        openstackInfrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
+        openstackInfrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         openstackInfrastructure.removeNode(node);
 
@@ -245,7 +245,7 @@ public class OpenstackInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 

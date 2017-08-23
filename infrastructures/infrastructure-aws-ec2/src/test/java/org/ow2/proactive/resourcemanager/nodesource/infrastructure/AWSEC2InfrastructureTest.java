@@ -146,7 +146,7 @@ public class AWSEC2InfrastructureTest {
     }
 
     @Test
-    public void testAcquireNode() {
+    public void testAcquireNode() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         awsec2Infrastructure.nodeSource = nodeSource;
@@ -213,7 +213,7 @@ public class AWSEC2InfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() {
+    public void testAcquireAllNodes() throws ScriptNotExecutedException {
         testAcquireNode();
     }
 
@@ -248,7 +248,7 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        awsec2Infrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
+        awsec2Infrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         awsec2Infrastructure.removeNode(node);
 
@@ -256,7 +256,7 @@ public class AWSEC2InfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 

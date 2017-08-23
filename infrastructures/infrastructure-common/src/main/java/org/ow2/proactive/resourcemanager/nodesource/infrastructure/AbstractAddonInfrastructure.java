@@ -49,8 +49,8 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     private static final Logger logger = Logger.getLogger(AbstractAddonInfrastructure.class);
 
     /**
-     * Key to retrieve the nodesPerInstance map within the
-     * {@link InfrastructureManager#runtimeVariables} map of the
+     * Key to retrieve the {@link AbstractAddonInfrastructure#nodesPerInstance}
+     * map within the {@link InfrastructureManager#runtimeVariables} map of the
      * infrastructure, which holds the variables that are saved in database.
      */
     private static final String NODES_PER_INSTANCES_KEY = "nodesPerInstance";
@@ -61,8 +61,16 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      */
     private static final String INFRASTRUCTURE_CREATED_FLAG_KEY = "infrastructureCreatedFlag";
 
+    /**
+     * Key to retrieve the 
+     * {@link AbstractAddonInfrastructure#nbRemovedNodesPerInstance} map.
+     */
     private static final String NB_REMOVED_NODES_PER_INSTANCE_KEY = "nbRemovedNodesPerInstance";
 
+    /**
+     * Key to retrieve the {@link AbstractAddonInfrastructure#freeInstancesMap}
+     * map.
+     */
     private static final String FREE_INSTANCES_MAP_KEY = "freeInstancesMap";
 
     /**
@@ -107,13 +115,19 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     @Override
     public void notifyDownNode(String nodeName, String nodeUrl, Node node) throws RMException {
         // if the node object is null, it means that we are in a recovery of
-        // the resource manager, where the node cannot be found anymore, there
-        // is hardly something that we can do, apart from making sure that
-        // this node url is taken into account in the removed nodes.
+        // the resource manager, where the node object cannot be found anymore
+        String instanceId = null;
         if (node != null) {
-            String instanceId = getInstanceIdProperty(node);
-            removeNode(node);
-            incrementRemovedNodes(node.getNodeInformation().getName(), instanceId);
+            instanceId = getInstanceIdProperty(node);
+        } else {
+            instanceId = tryToFindInstanceIdOfNode(nodeName);
+        }
+        if (instanceId != null) {
+            // do not request instance termination if all nodes are removed 
+            // from this instance. Indeed we expect an eventual redeployment 
+            // of the nodes in this case
+            unregisterNodeAndRemoveInstanceIfNeeded(instanceId, nodeName, getInfrastructureId(), false);
+            incrementRemovedNodesAndSetInstanceFreeIfNeeded(nodeName, instanceId);
         } else {
             logger.warn("The information of down node " + nodeName + " cannot be retrieved. Not handling down node");
         }
@@ -124,7 +138,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
         String nodeName = node.getNodeInformation().getName();
         try {
             String instanceId = getInstanceIdProperty(node);
-            decrementRemovedNodes(nodeName, instanceId);
+            decrementNbRemovedNodesAndRegisterNode(nodeName, instanceId);
         } catch (RMException e) {
             logger.warn("An exception occurred during the reconnection of down node " + nodeName, e);
         }
@@ -132,7 +146,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
 
     @Override
     public void shutDown() {
-        compareAndSetInfrastructureCreatedFlag(true, false);
+        compareAndSetAlreadyCreatedFlag(true, false);
     }
 
     @Override
@@ -154,6 +168,20 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
 
     protected String getInfrastructureId() {
         return nodeSource.getName().trim().replace(" ", "_").toLowerCase();
+    }
+
+    /**
+     * @return the nodes per instance map that is read from the runtime
+     * variables.
+     */
+    protected Map<String, Set<String>> getNodesPerInstancesMap() {
+        return getRuntimeVariable(new RuntimeVariablesHandler<Map<String, Set<String>>>() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Map<String, Set<String>> handle() {
+                return (Map<String, Set<String>>) runtimeVariables.get(NODES_PER_INSTANCES_KEY);
+            }
+        });
     }
 
     /**
@@ -193,6 +221,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
                     nodesPerInstance.put(instanceId, new HashSet<String>());
                 }
                 nodesPerInstance.get(instanceId).add(nodeName);
+                logger.info("Node registered: " + nodeName);
                 // finally write to the runtime variable map
                 runtimeVariables.put(NODES_PER_INSTANCES_KEY, nodesPerInstance);
                 return null;
@@ -203,15 +232,17 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     /**
      * This method removes a node name entry for the given instance, and call
      * the instance termination mechanism if there no more nodes attached to
-     * this instance. It does all that within a write lock acquired, that is
-     * exposed by the super class. At the end of this method, the
-     * nodesPerInstance map is saved in database.
+     * this instance and if the terminate instance flag is set. It does all
+     * that within a write lock acquired, that is exposed by the super class.
+     * At the end of the method, the nodesPerInstance map is saved in database.
      * @param instanceId the identifier of the instance
      * @param nodeName the name of the new node that belongs to this instance
      * @param infrastructureId the identifier of the infrastructure
+     * @param terminateInstanceIfEmpty whether the instance termination will 
+     *                                 be requested to the cloud provider
      */
-    protected void removeNodeAndTerminateInstanceIfNeeded(final String instanceId, final String nodeName,
-            final String infrastructureId) {
+    protected void unregisterNodeAndRemoveInstanceIfNeeded(final String instanceId, final String nodeName,
+            final String infrastructureId, final boolean terminateInstanceIfEmpty) {
         setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
             @Override
             @SuppressWarnings("unchecked")
@@ -222,7 +253,10 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
                 nodesPerInstance.get(instanceId).remove(nodeName);
                 logger.info("Removed node : " + nodeName);
                 if (nodesPerInstance.get(instanceId).isEmpty()) {
-                    connectorIaasController.terminateInstance(infrastructureId, instanceId);
+                    if (terminateInstanceIfEmpty) {
+                        connectorIaasController.terminateInstance(infrastructureId, instanceId);
+                        logger.info("Instance terminated: " + instanceId);
+                    }
                     nodesPerInstance.remove(instanceId);
                     logger.info("Removed instance : " + instanceId);
                 }
@@ -244,7 +278,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @return whether the comparison went as expected, so it is like whether
      * the infrastructureCreatedFlag was updated
      */
-    protected boolean compareAndSetInfrastructureCreatedFlag(final boolean expected, final boolean updated) {
+    protected boolean compareAndSetAlreadyCreatedFlag(final boolean expected, final boolean updated) {
         return setRuntimeVariable(new RuntimeVariablesHandler<Boolean>() {
             @Override
             public Boolean handle() {
@@ -260,12 +294,58 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     }
 
     /**
+     * @return a copy of the map holding the identifier of the Azure instances
+     * that are free, meaning that no nodes are running on these.
+     */
+    protected Map<String, Integer> getFreeInstancesMapCopy() {
+        return getRuntimeVariable(new RuntimeVariablesHandler<Map<String, Integer>>() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Map<String, Integer> handle() {
+                freeInstancesMap = ((Map<String, Integer>) runtimeVariables.get(FREE_INSTANCES_MAP_KEY));
+                return new HashMap<>(freeInstancesMap);
+            }
+        });
+    }
+
+    /**
+     * Remove all Azure instance identifiers from the free instances data
+     * structure, and save it to the resource manager database.
+     */
+    protected void clearFreeInstancesMap() {
+        setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Void handle() {
+                ((Map<String, Integer>) runtimeVariables.get(FREE_INSTANCES_MAP_KEY)).clear();
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Remove an instance from the free instances map. This method should only 
+     * be called when we are sure that the instance runs some nodes.
+     * @param instanceId the identifier of the instance to remove from the map
+     */
+    protected void removeFreeInstanceFromMap(final String instanceId) {
+        setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Void handle() {
+                ((Map<String, Integer>) runtimeVariables.get(FREE_INSTANCES_MAP_KEY)).remove(instanceId);
+                return null;
+            }
+        });
+    }
+
+    /**
      * Take into account a node in the tracked removed nodes and mark the
      * given instance as free if all the nodes are marked as removed for this
      * instance. This method executes in write lock acquired and persist in
      * database the changed runtime variables at the end.
      */
-    private void incrementRemovedNodes(final String nodeName, final String instanceId) {
+    private void incrementRemovedNodesAndSetInstanceFreeIfNeeded(final String nodeName, final String instanceId) {
         setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
             @Override
             @SuppressWarnings("unchecked")
@@ -312,7 +392,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * nodesPerInstance map. This method executes in write lock acquired and
      * persist in database the changed runtime variables at the end.
      */
-    private void decrementRemovedNodes(final String nodeName, final String instanceId) {
+    private void decrementNbRemovedNodesAndRegisterNode(final String nodeName, final String instanceId) {
         setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
             @Override
             @SuppressWarnings("unchecked")
@@ -323,7 +403,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
 
                 // if the instance is not there it means all the nodes have 
                 // been down and the instance has been removed (see
-                // removeNodeAndTerminateInstanceIfNeeded)
+                // unregisterNodeAndRemoveInstanceIfNeeded)
                 if (nodesPerInstance.containsKey(instanceId)) {
                     if (nbRemovedNodesPerInstance.containsKey(instanceId)) {
                         int updatedNbRemovedNodes = nbRemovedNodesPerInstance.get(instanceId) - 1;
@@ -340,6 +420,41 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
                                 " does not exist any more. Instance may be redeployed shortly.");
                 }
                 return null;
+            }
+        });
+    }
+
+    /**
+     * Attempt to retrieve the instance identifier for a given node name. It
+     * looks into the {@link AbstractAddonInfrastructure#nodesPerInstance} map
+     * @param nodeName
+     * @return the instance id under which the node is registered, or
+     * {@code null} if the node could not be found
+     */
+    private String tryToFindInstanceIdOfNode(final String nodeName) {
+        return getRuntimeVariable(new RuntimeVariablesHandler<String>() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public String handle() {
+                // first read from the runtime variables map
+                nodesPerInstance = (Map<String, Set<String>>) runtimeVariables.get(NODES_PER_INSTANCES_KEY);
+                // we do not have the map key for this value, need to go
+                // through the map entries to find the key of this node
+                // break as soon as possible because we are holding a lock
+                String instanceIdOfNode = null;
+                for (Map.Entry<String, Set<String>> entry : nodesPerInstance.entrySet()) {
+                    Set<String> instanceNodeNameSet = entry.getValue();
+                    for (String instanceNodeName : instanceNodeNameSet) {
+                        if (instanceNodeName.equals(nodeName)) {
+                            instanceIdOfNode = entry.getKey();
+                            break;
+                        }
+                    }
+                    if (instanceIdOfNode != null) {
+                        break;
+                    }
+                }
+                return instanceIdOfNode;
             }
         });
     }

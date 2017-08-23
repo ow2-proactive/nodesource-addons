@@ -149,7 +149,7 @@ public class VMWareInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNode() {
+    public void testAcquireNode() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         vmwareInfrastructure.nodeSource = nodeSource;
@@ -212,7 +212,7 @@ public class VMWareInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNodeWithOptions() {
+    public void testAcquireNodeWithOptions() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         vmwareInfrastructure.nodeSource = nodeSource;
@@ -284,7 +284,7 @@ public class VMWareInfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() {
+    public void testAcquireAllNodes() throws ScriptNotExecutedException {
         testAcquireNode();
     }
 
@@ -319,7 +319,7 @@ public class VMWareInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        vmwareInfrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
+        vmwareInfrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         vmwareInfrastructure.removeNode(node);
 
@@ -327,7 +327,7 @@ public class VMWareInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 

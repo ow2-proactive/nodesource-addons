@@ -183,10 +183,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        // we do not create the infrastructure if it has been created already
-        if (compareAndSetInfrastructureCreatedFlag(false, true)) {
-            connectorIaasController.createInfrastructure(getInfrastructureId(), aws_key, aws_secret_key, null, false);
-        }
+        connectorIaasController.createInfrastructure(getInfrastructureId(), aws_key, aws_secret_key, null, false);
 
         String instanceTag = getInfrastructureId();
 
@@ -217,7 +214,11 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             List<String> scripts = Lists.newArrayList(this.downloadCommand,
                                                       "nohup " + generateDefaultStartNodeCommand(instanceId) + "  &");
 
-            connectorIaasController.executeScript(getInfrastructureId(), instanceId, scripts);
+            try {
+                connectorIaasController.executeScript(getInfrastructureId(), instanceId, scripts);
+            } catch (ScriptNotExecutedException e) {
+                logger.info("Script not executed for instance " + instanceId);
+            }
         }
 
     }
@@ -239,7 +240,10 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             logger.warn(e);
         }
 
-        removeNodeAndTerminateInstanceIfNeeded(instanceId, node.getNodeInformation().getName(), getInfrastructureId());
+        unregisterNodeAndRemoveInstanceIfNeeded(instanceId,
+                                                node.getNodeInformation().getName(),
+                                                getInfrastructureId(),
+                                                true);
     }
 
     @Override

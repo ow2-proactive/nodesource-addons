@@ -27,8 +27,6 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -38,7 +36,6 @@ import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 
 public class VMWareInfrastructure extends AbstractAddonInfrastructure {
@@ -191,10 +188,7 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        // we do not create the infrastructure if it has been created already
-        if (compareAndSetInfrastructureCreatedFlag(false, true)) {
-            connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, false);
-        }
+        connectorIaasController.createInfrastructure(getInfrastructureId(), username, password, endpoint, false);
 
         String instanceTag = getInfrastructureId();
         Set<String> instancesIds;
@@ -226,11 +220,15 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
             String fullScript = "-c '" + this.downloadCommand + ";nohup " +
                                 generateDefaultStartNodeCommand(instanceId) + "  &'";
 
-            connectorIaasController.executeScriptWithCredentials(getInfrastructureId(),
-                                                                 instanceId,
-                                                                 Lists.newArrayList(fullScript),
-                                                                 vmUsername,
-                                                                 vmPassword);
+            try {
+                connectorIaasController.executeScriptWithCredentials(getInfrastructureId(),
+                                                                     instanceId,
+                                                                     Lists.newArrayList(fullScript),
+                                                                     vmUsername,
+                                                                     vmPassword);
+            } catch (ScriptNotExecutedException e) {
+                logger.info("Script not executed for instance " + instanceId);
+            }
         }
 
     }
@@ -252,7 +250,10 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
             logger.warn(e);
         }
 
-        removeNodeAndTerminateInstanceIfNeeded(instanceId, node.getNodeInformation().getName(), getInfrastructureId());
+        unregisterNodeAndRemoveInstanceIfNeeded(instanceId,
+                                                node.getNodeInformation().getName(),
+                                                getInfrastructureId(),
+                                                true);
     }
 
     @Override

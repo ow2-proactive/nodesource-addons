@@ -193,7 +193,8 @@ public class AzureInfrastructureTest {
     }
 
     @Test
-    public void testAcquiringTwoNodesByRegisteringInfrastructureCreatingInstancesAndInjectingScriptOnThem() {
+    public void testAcquiringTwoNodesByRegisteringInfrastructureCreatingInstancesAndInjectingScriptOnThem()
+            throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         azureInfrastructure.nodeSource = nodeSource;
@@ -320,7 +321,7 @@ public class AzureInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        azureInfrastructure.getNodesPerInstancesMapCopy().put("123", Sets.newHashSet("nodename"));
+        azureInfrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         azureInfrastructure.removeNode(node);
 
@@ -328,7 +329,7 @@ public class AzureInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().isEmpty(), is(true));
+        assertThat(azureInfrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 
