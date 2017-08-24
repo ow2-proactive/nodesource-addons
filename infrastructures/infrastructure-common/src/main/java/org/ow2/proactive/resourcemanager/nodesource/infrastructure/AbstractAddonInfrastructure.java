@@ -68,10 +68,10 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     private static final String NB_REMOVED_NODES_PER_INSTANCE_KEY = "nbRemovedNodesPerInstance";
 
     /**
-     * Key to retrieve the {@link AbstractAddonInfrastructure#freeInstancesMap}
+     * Key to retrieve the {@link AbstractAddonInfrastructure#instancesWithoutNodesMap}
      * map.
      */
-    private static final String FREE_INSTANCES_MAP_KEY = "freeInstancesMap";
+    private static final String INSTANCES_WITHOUT_NODES_MAP_KEY = "instancesWithoutNodesMap";
 
     /**
      * The controller is transient as it is not supposed to be serialized or
@@ -97,11 +97,12 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * Typically, once all nodes of an instance are counted in the
      * {@link AbstractAddonInfrastructure#nbRemovedNodesPerInstance} map, the
      * instance entry is removed in this map and the same entry is created in
-     * the {@link AbstractAddonInfrastructure#freeInstancesMap} map.
+     * the {@link AbstractAddonInfrastructure#instancesWithoutNodesMap} map.
+     * The map holds (instance ids --> number of nodes that should run on it)
      * Infrastructure implementations then should check this map when they
      * want to acquire a node.
      */
-    private Map<String, Integer> freeInstancesMap;
+    private Map<String, Integer> instancesWithoutNodesMap;
 
     /**
      * Default constructor
@@ -109,7 +110,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     protected AbstractAddonInfrastructure() {
         nodesPerInstance = new HashMap<>();
         nbRemovedNodesPerInstance = new HashMap<>();
-        freeInstancesMap = new HashMap<>();
+        instancesWithoutNodesMap = new HashMap<>();
     }
 
     @Override
@@ -127,7 +128,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
             // from this instance. Indeed we expect an eventual redeployment 
             // of the nodes in this case
             unregisterNodeAndRemoveInstanceIfNeeded(instanceId, nodeName, getInfrastructureId(), false);
-            incrementRemovedNodesAndSetInstanceFreeIfNeeded(nodeName, instanceId);
+            incrementRemovedNodesAndSetInstanceWithoutNodesIfNeeded(nodeName, instanceId);
         } else {
             logger.warn("The information of down node " + nodeName + " cannot be retrieved. Not handling down node");
         }
@@ -146,14 +147,14 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
 
     @Override
     public void shutDown() {
-        compareAndSetAlreadyCreatedFlag(true, false);
+        expectInstancesAlreadyCreated(true, false);
     }
 
     @Override
     protected void initializeRuntimeVariables() {
         runtimeVariables.put(NODES_PER_INSTANCES_KEY, nodesPerInstance);
         runtimeVariables.put(NB_REMOVED_NODES_PER_INSTANCE_KEY, nbRemovedNodesPerInstance);
-        runtimeVariables.put(FREE_INSTANCES_MAP_KEY, freeInstancesMap);
+        runtimeVariables.put(INSTANCES_WITHOUT_NODES_MAP_KEY, instancesWithoutNodesMap);
         runtimeVariables.put(INFRASTRUCTURE_CREATED_FLAG_KEY, false);
     }
 
@@ -278,7 +279,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @return whether the comparison went as expected, so it is like whether
      * the infrastructureCreatedFlag was updated
      */
-    protected boolean compareAndSetAlreadyCreatedFlag(final boolean expected, final boolean updated) {
+    protected boolean expectInstancesAlreadyCreated(final boolean expected, final boolean updated) {
         return setRuntimeVariable(new RuntimeVariablesHandler<Boolean>() {
             @Override
             public Boolean handle() {
@@ -297,13 +298,13 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @return a copy of the map holding the identifier of the Azure instances
      * that are free, meaning that no nodes are running on these.
      */
-    protected Map<String, Integer> getFreeInstancesMapCopy() {
+    protected Map<String, Integer> getInstancesWithoutNodesMapCopy() {
         return getRuntimeVariable(new RuntimeVariablesHandler<Map<String, Integer>>() {
             @Override
             @SuppressWarnings("unchecked")
             public Map<String, Integer> handle() {
-                freeInstancesMap = ((Map<String, Integer>) runtimeVariables.get(FREE_INSTANCES_MAP_KEY));
-                return new HashMap<>(freeInstancesMap);
+                instancesWithoutNodesMap = ((Map<String, Integer>) runtimeVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY));
+                return new HashMap<>(instancesWithoutNodesMap);
             }
         });
     }
@@ -312,12 +313,12 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * Remove all Azure instance identifiers from the free instances data
      * structure, and save it to the resource manager database.
      */
-    protected void clearFreeInstancesMap() {
+    protected void clearInstancesWithoutNodesMap() {
         setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
             @Override
             @SuppressWarnings("unchecked")
             public Void handle() {
-                ((Map<String, Integer>) runtimeVariables.get(FREE_INSTANCES_MAP_KEY)).clear();
+                ((Map<String, Integer>) runtimeVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY)).clear();
                 return null;
             }
         });
@@ -328,12 +329,12 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * be called when we are sure that the instance runs some nodes.
      * @param instanceId the identifier of the instance to remove from the map
      */
-    protected void removeFreeInstanceFromMap(final String instanceId) {
+    protected void removeFromInstancesWithoutNodesMap(final String instanceId) {
         setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
             @Override
             @SuppressWarnings("unchecked")
             public Void handle() {
-                ((Map<String, Integer>) runtimeVariables.get(FREE_INSTANCES_MAP_KEY)).remove(instanceId);
+                ((Map<String, Integer>) runtimeVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY)).remove(instanceId);
                 return null;
             }
         });
@@ -345,7 +346,8 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * instance. This method executes in write lock acquired and persist in
      * database the changed runtime variables at the end.
      */
-    private void incrementRemovedNodesAndSetInstanceFreeIfNeeded(final String nodeName, final String instanceId) {
+    private void incrementRemovedNodesAndSetInstanceWithoutNodesIfNeeded(final String nodeName,
+            final String instanceId) {
         setRuntimeVariable(new RuntimeVariablesHandler<Void>() {
             @Override
             @SuppressWarnings("unchecked")
@@ -353,7 +355,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
                 // first read from the runtime variables map
                 nodesPerInstance = (Map<String, Set<String>>) runtimeVariables.get(NODES_PER_INSTANCES_KEY);
                 nbRemovedNodesPerInstance = (Map<String, Integer>) runtimeVariables.get(NB_REMOVED_NODES_PER_INSTANCE_KEY);
-                freeInstancesMap = (Map<String, Integer>) runtimeVariables.get(FREE_INSTANCES_MAP_KEY);
+                instancesWithoutNodesMap = (Map<String, Integer>) runtimeVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY);
 
                 // make modifications to the internal data structures
                 if (!nbRemovedNodesPerInstance.containsKey(instanceId)) {
@@ -374,14 +376,14 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
                     // for this instance. And this will be taken into account
                     // in the next deployment round (this depends on the node
                     // source policy)
-                    freeInstancesMap.put(instanceId, nbNodesForInstance);
+                    instancesWithoutNodesMap.put(instanceId, nbNodesForInstance);
                 }
                 logDataStructureContent("Node " + nodeName + " added to the removed nodes set");
 
                 // finally write to the runtime variable map
                 runtimeVariables.put(NODES_PER_INSTANCES_KEY, nodesPerInstance);
                 runtimeVariables.put(NB_REMOVED_NODES_PER_INSTANCE_KEY, nbRemovedNodesPerInstance);
-                runtimeVariables.put(FREE_INSTANCES_MAP_KEY, freeInstancesMap);
+                runtimeVariables.put(INSTANCES_WITHOUT_NODES_MAP_KEY, instancesWithoutNodesMap);
                 return null;
             }
         });
@@ -462,7 +464,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     private void logDataStructureContent(String action) {
         logger.info(action + " - node sets are now: nodes per instance=" + nodesPerInstance +
                     ", number of removed nodes per instance=" + nbRemovedNodesPerInstance + ", free instances map=" +
-                    freeInstancesMap);
+                    instancesWithoutNodesMap);
     }
 
 }

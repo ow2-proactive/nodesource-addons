@@ -34,14 +34,8 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
  */
 public class ScriptNotExecutedException extends Exception {
 
-    private Exception e;
-
     public ScriptNotExecutedException(Exception e) {
-        this.e = e;
-    }
-
-    public Exception getUnderlyingException() {
-        return e;
+        super(e);
     }
 
 }

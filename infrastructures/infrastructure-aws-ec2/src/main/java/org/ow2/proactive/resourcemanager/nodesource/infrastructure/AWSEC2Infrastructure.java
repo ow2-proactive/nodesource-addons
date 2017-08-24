@@ -217,7 +217,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             try {
                 connectorIaasController.executeScript(getInfrastructureId(), instanceId, scripts);
             } catch (ScriptNotExecutedException e) {
-                logger.info("Script not executed for instance " + instanceId);
+                logger.error("Script not executed for instance " + instanceId, e);
             }
         }
 

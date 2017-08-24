@@ -299,9 +299,9 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
         String instanceTag = getInfrastructureId();
         Set<String> instancesIds;
-        boolean instanceIdSaved = false;
+        boolean existPersistedInstanceIds = false;
 
-        if (compareAndSetAlreadyCreatedFlag(false, true)) {
+        if (expectInstancesAlreadyCreated(false, true)) {
             // it is a fresh deployment: create or retrieve all instances
             instancesIds = connectorIaasController.createAzureInstances(getInfrastructureId(),
                                                                         instanceTag,
@@ -323,40 +323,52 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             // nodes are down. Indeed if they are all removed on purpose, the
             // instance should be shut down). Note that in this case, if the
             // free instances map is empty, no script will be run at all.
-            Map<String, Integer> freeInstancesMap = getFreeInstancesMapCopy();
+            Map<String, Integer> freeInstancesMap = getInstancesWithoutNodesMapCopy();
             instancesIds = freeInstancesMap.keySet();
             LOGGER.info("Instances ids previously saved which require script re-execution: " + instancesIds);
-            instanceIdSaved = true;
+            existPersistedInstanceIds = true;
         }
 
         // execute script on instances to deploy or redeploy nodes on them
-        for (String instanceId : instancesIds) {
-            String fullScript = generateScriptFromInstanceId(instanceId);
+        for (String currentInstanceId : instancesIds) {
+            String fullScript = generateScriptFromInstanceId(currentInstanceId);
             try {
                 connectorIaasController.executeScript(getInfrastructureId(),
-                                                      instanceId,
+                                                      currentInstanceId,
                                                       Lists.newArrayList(fullScript));
             } catch (Exception e) {
-                // if we cannot execute the script although the infrastructure
-                // was already deployed, then it means that the Azure
-                // instances are probably dead, so we will attempt a
-                // redeployment from scratch
-                if (instanceIdSaved) {
-                    LOGGER.info("Saved instance: " + instanceId + " does not exist anymore. Recreating all instances.");
-                    clearFreeInstancesMap();
-                    compareAndSetAlreadyCreatedFlag(true, false);
-                    acquireNode();
+                boolean acquireNodeTriggered = handleScriptNotExecutedException(existPersistedInstanceIds,
+                                                                                currentInstanceId);
+                if (acquireNodeTriggered) {
+                    // in this case we re-attempted a deployment, so we need
+                    // to stop looping
                     break;
-                } else {
-                    LOGGER.info("Script execution failed and cannot be handled, abandoning instance " + instanceId);
                 }
             } finally {
                 // in all cases, we must remove the instance from the free
                 // instance map as we tried everything to deploy nodes on it
-                removeFreeInstanceFromMap(instanceId);
+                removeFromInstancesWithoutNodesMap(currentInstanceId);
             }
         }
 
+    }
+
+    private boolean handleScriptNotExecutedException(boolean existPersistedInstanceIds, String currentInstanceId) {
+        boolean acquireNodeTriggered = false;
+        // if we cannot execute the script although the infrastructure
+        // was already deployed, then it means that the Azure
+        // instances are probably dead, so we will attempt a
+        // redeployment from scratch
+        if (existPersistedInstanceIds) {
+            LOGGER.info("Saved instance: " + currentInstanceId + " does not exist anymore. Recreating all instances.");
+            clearInstancesWithoutNodesMap();
+            expectInstancesAlreadyCreated(true, false);
+            acquireNode();
+            acquireNodeTriggered = true;
+        } else {
+            LOGGER.info("Script execution failed and cannot be handled, abandoning instance " + currentInstanceId);
+        }
+        return acquireNodeTriggered;
     }
 
     @Override
