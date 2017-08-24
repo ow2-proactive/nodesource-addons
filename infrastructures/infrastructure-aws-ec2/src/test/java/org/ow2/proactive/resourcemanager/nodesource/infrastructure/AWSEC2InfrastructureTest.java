@@ -43,6 +43,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -67,11 +68,15 @@ public class AWSEC2InfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         awsec2Infrastructure = new AWSEC2Infrastructure();
-
+        awsec2Infrastructure.setRmDbManager(dbManager);
+        awsec2Infrastructure.initializeRuntimeVariables();
     }
 
     @Test
@@ -141,7 +146,7 @@ public class AWSEC2InfrastructureTest {
     }
 
     @Test
-    public void testAcquireNode() {
+    public void testAcquireNode() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         awsec2Infrastructure.nodeSource = nodeSource;
@@ -163,7 +168,7 @@ public class AWSEC2InfrastructureTest {
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
         awsec2Infrastructure.nodeSource = nodeSource;
-        awsec2Infrastructure.rmUrl = "http://test.activeeon.com";
+        awsec2Infrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "aws_key",
@@ -208,7 +213,7 @@ public class AWSEC2InfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() {
+    public void testAcquireAllNodes() throws ScriptNotExecutedException {
         testAcquireNode();
     }
 
@@ -243,7 +248,7 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        awsec2Infrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        awsec2Infrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         awsec2Infrastructure.removeNode(node);
 
@@ -251,7 +256,7 @@ public class AWSEC2InfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(awsec2Infrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 
@@ -286,9 +291,9 @@ public class AWSEC2InfrastructureTest {
 
         awsec2Infrastructure.notifyAcquiredNode(node);
 
-        assertThat(awsec2Infrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(awsec2Infrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(awsec2Infrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
 
     }
 

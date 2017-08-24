@@ -27,10 +27,7 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
@@ -39,10 +36,9 @@ import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 
-public class OpenstackInfrastructure extends InfrastructureManager {
+public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
 
@@ -85,17 +81,6 @@ public class OpenstackInfrastructure extends InfrastructureManager {
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
-
-    protected ConnectorIaasController connectorIaasController = null;
-
-    protected final Map<String, Set<String>> nodesPerInstances;
-
-    /**
-     * Default constructor
-     */
-    public OpenstackInfrastructure() {
-        nodesPerInstances = Maps.newConcurrentMap();
-    }
 
     @Override
     public void configure(Object... parameters) {
@@ -213,16 +198,10 @@ public class OpenstackInfrastructure extends InfrastructureManager {
             logger.warn(e);
         }
 
-        synchronized (this) {
-            nodesPerInstances.get(instanceId).remove(node.getNodeInformation().getName());
-            logger.info("Removed node : " + node.getNodeInformation().getName());
-
-            if (nodesPerInstances.get(instanceId).isEmpty()) {
-                connectorIaasController.terminateInstance(getInfrastructureId(), instanceId);
-                nodesPerInstances.remove(instanceId);
-                logger.info("Removed instance : " + instanceId);
-            }
-        }
+        unregisterNodeAndRemoveInstanceIfNeeded(instanceId,
+                                                node.getNodeInformation().getName(),
+                                                getInfrastructureId(),
+                                                true);
     }
 
     @Override
@@ -230,12 +209,7 @@ public class OpenstackInfrastructure extends InfrastructureManager {
 
         String instanceId = getInstanceIdProperty(node);
 
-        synchronized (this) {
-            if (!nodesPerInstances.containsKey(instanceId)) {
-                nodesPerInstances.put(instanceId, new HashSet<String>());
-            }
-            nodesPerInstances.get(instanceId).add(node.getNodeInformation().getName());
-        }
+        addNewNodeForInstance(instanceId, node.getNodeInformation().getName());
     }
 
     @Override
@@ -272,7 +246,7 @@ public class OpenstackInfrastructure extends InfrastructureManager {
 
     private String generateDefaultStartNodeCommand(String instanceId) {
         try {
-            String rmUrlToUse = rmUrl;
+            String rmUrlToUse = getRmUrl();
 
             String protocol = rmUrlToUse.substring(0, rmUrlToUse.indexOf(':')).trim();
             return "java -jar node.jar -Dproactive.communication.protocol=" + protocol +
@@ -282,21 +256,18 @@ public class OpenstackInfrastructure extends InfrastructureManager {
         } catch (Exception e) {
             logger.error("Exception when generating the command, fallback on default value", e);
             return "java -jar node.jar -D" + INSTANCE_TAG_NODE_PROPERTY + "=" + instanceId + " " +
-                   additionalProperties + " -r " + rmUrl + " -s " + nodeSource.getName() + " -w " +
+                   additionalProperties + " -r " + getRmUrl() + " -s " + nodeSource.getName() + " -w " +
                    numberOfNodesPerInstance;
         }
     }
 
-    private String getInstanceIdProperty(Node node) throws RMException {
+    @Override
+    protected String getInstanceIdProperty(Node node) throws RMException {
         try {
             return node.getProperty(INSTANCE_TAG_NODE_PROPERTY);
         } catch (ProActiveException e) {
             throw new RMException(e);
         }
-    }
-
-    private String getInfrastructureId() {
-        return nodeSource.getName().trim().replace(" ", "_").toLowerCase();
     }
 
 }

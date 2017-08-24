@@ -44,6 +44,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -68,11 +69,15 @@ public class OpenstackInfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         openstackInfrastructure = new OpenstackInfrastructure();
-
+        openstackInfrastructure.setRmDbManager(dbManager);
+        openstackInfrastructure.initializeRuntimeVariables();
     }
 
     @Test
@@ -139,7 +144,7 @@ public class OpenstackInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNode() {
+    public void testAcquireNode() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("node source name");
         openstackInfrastructure.nodeSource = nodeSource;
@@ -159,7 +164,7 @@ public class OpenstackInfrastructureTest {
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
-        openstackInfrastructure.rmUrl = "http://test.activeeon.com";
+        openstackInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "username",
@@ -199,7 +204,7 @@ public class OpenstackInfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() {
+    public void testAcquireAllNodes() throws ScriptNotExecutedException {
         testAcquireNode();
     }
 
@@ -232,7 +237,7 @@ public class OpenstackInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        openstackInfrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        openstackInfrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         openstackInfrastructure.removeNode(node);
 
@@ -240,7 +245,7 @@ public class OpenstackInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(openstackInfrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 
@@ -272,9 +277,9 @@ public class OpenstackInfrastructureTest {
 
         openstackInfrastructure.notifyAcquiredNode(node);
 
-        assertThat(openstackInfrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(openstackInfrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(openstackInfrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(openstackInfrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
 
     }
 

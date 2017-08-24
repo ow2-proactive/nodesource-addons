@@ -43,6 +43,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -67,11 +68,15 @@ public class VMWareInfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         vmwareInfrastructure = new VMWareInfrastructure();
-
+        vmwareInfrastructure.setRmDbManager(dbManager);
+        vmwareInfrastructure.initializeRuntimeVariables();
     }
 
     @Test
@@ -144,7 +149,7 @@ public class VMWareInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNode() {
+    public void testAcquireNode() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         vmwareInfrastructure.nodeSource = nodeSource;
@@ -167,7 +172,7 @@ public class VMWareInfrastructureTest {
 
         vmwareInfrastructure.connectorIaasController = connectorIaasController;
 
-        vmwareInfrastructure.rmUrl = "http://test.activeeon.com";
+        vmwareInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "username",
@@ -207,7 +212,7 @@ public class VMWareInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNodeWithOptions() {
+    public void testAcquireNodeWithOptions() throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         vmwareInfrastructure.nodeSource = nodeSource;
@@ -230,7 +235,7 @@ public class VMWareInfrastructureTest {
 
         vmwareInfrastructure.connectorIaasController = connectorIaasController;
 
-        vmwareInfrastructure.rmUrl = "http://test.activeeon.com";
+        vmwareInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createInfrastructure("node_source_name",
                                                           "username",
@@ -279,7 +284,7 @@ public class VMWareInfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() {
+    public void testAcquireAllNodes() throws ScriptNotExecutedException {
         testAcquireNode();
     }
 
@@ -314,7 +319,7 @@ public class VMWareInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        vmwareInfrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        vmwareInfrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         vmwareInfrastructure.removeNode(node);
 
@@ -322,7 +327,7 @@ public class VMWareInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(vmwareInfrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 
@@ -357,9 +362,9 @@ public class VMWareInfrastructureTest {
 
         vmwareInfrastructure.notifyAcquiredNode(node);
 
-        assertThat(vmwareInfrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(vmwareInfrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(vmwareInfrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(vmwareInfrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
 
     }
 

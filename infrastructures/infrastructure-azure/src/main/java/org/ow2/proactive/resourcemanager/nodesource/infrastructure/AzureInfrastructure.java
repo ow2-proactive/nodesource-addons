@@ -25,10 +25,11 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
+import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManagerProperties.RM_AZURE_DESTROY_INSTANCES_ON_SHUTDOWN;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -39,10 +40,9 @@ import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 
-public class AzureInfrastructure extends InfrastructureManager {
+public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private static final Logger LOGGER = Logger.getLogger(AzureInfrastructure.class);
 
@@ -204,17 +204,6 @@ public class AzureInfrastructure extends InfrastructureManager {
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
-    protected ConnectorIaasController connectorIaasController = null;
-
-    protected final Map<String, Set<String>> nodesPerInstances;
-
-    /**
-     * Default constructor
-     */
-    public AzureInfrastructure() {
-        nodesPerInstances = Maps.newConcurrentMap();
-    }
-
     @Override
     public void configure(Object... parameters) {
 
@@ -292,6 +281,11 @@ public class AzureInfrastructure extends InfrastructureManager {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
+        // this is going to terminate the infrastructure and to restart it,
+        // by reinitializing the rest paths. Even in case of RM recovery, it
+        // is safer to proceed this way since we don't know if the connector
+        // IAAS was standalone or running as part of the scheduler. We must
+        // make sure that the REST paths are set up.
         connectorIaasController.createAzureInfrastructure(getInfrastructureId(),
                                                           clientId,
                                                           secret,
@@ -301,29 +295,66 @@ public class AzureInfrastructure extends InfrastructureManager {
                                                           managementEndpoint,
                                                           resourceManagerEndpoint,
                                                           graphEndpoint,
-                                                          false);
+                                                          RM_AZURE_DESTROY_INSTANCES_ON_SHUTDOWN.getValueAsBoolean());
 
         String instanceTag = getInfrastructureId();
         Set<String> instancesIds;
-        instancesIds = connectorIaasController.createAzureInstances(getInfrastructureId(),
-                                                                    instanceTag,
-                                                                    image,
-                                                                    numberOfInstances,
-                                                                    vmUsername,
-                                                                    vmPassword,
-                                                                    vmPublicKey,
-                                                                    vmSizeType,
-                                                                    resourceGroup,
-                                                                    region,
-                                                                    privateNetworkCIDR,
-                                                                    staticPublicIP);
+        boolean instanceIdSaved = false;
 
-        LOGGER.info("Instances ids created : " + instancesIds);
+        if (compareAndSetAlreadyCreatedFlag(false, true)) {
+            // it is a fresh deployment: create or retrieve all instances
+            instancesIds = connectorIaasController.createAzureInstances(getInfrastructureId(),
+                                                                        instanceTag,
+                                                                        image,
+                                                                        numberOfInstances,
+                                                                        vmUsername,
+                                                                        vmPassword,
+                                                                        vmPublicKey,
+                                                                        vmSizeType,
+                                                                        resourceGroup,
+                                                                        region,
+                                                                        privateNetworkCIDR,
+                                                                        staticPublicIP);
+            LOGGER.info("Instances ids created or retrieved : " + instancesIds);
+        } else {
+            // if the infrastructure was already created, then wee need to
+            // look at the free instances, if any (the ones on which no node
+            // run. In the current implementation, this can only happen when
+            // nodes are down. Indeed if they are all removed on purpose, the
+            // instance should be shut down). Note that in this case, if the
+            // free instances map is empty, no script will be run at all.
+            Map<String, Integer> freeInstancesMap = getFreeInstancesMapCopy();
+            instancesIds = freeInstancesMap.keySet();
+            LOGGER.info("Instances ids previously saved which require script re-execution: " + instancesIds);
+            instanceIdSaved = true;
+        }
 
+        // execute script on instances to deploy or redeploy nodes on them
         for (String instanceId : instancesIds) {
-
             String fullScript = generateScriptFromInstanceId(instanceId);
-            connectorIaasController.executeScript(getInfrastructureId(), instanceId, Lists.newArrayList(fullScript));
+            try {
+                connectorIaasController.executeScript(getInfrastructureId(),
+                                                      instanceId,
+                                                      Lists.newArrayList(fullScript));
+            } catch (Exception e) {
+                // if we cannot execute the script although the infrastructure
+                // was already deployed, then it means that the Azure
+                // instances are probably dead, so we will attempt a
+                // redeployment from scratch
+                if (instanceIdSaved) {
+                    LOGGER.info("Saved instance: " + instanceId + " does not exist anymore. Recreating all instances.");
+                    clearFreeInstancesMap();
+                    compareAndSetAlreadyCreatedFlag(true, false);
+                    acquireNode();
+                    break;
+                } else {
+                    LOGGER.info("Script execution failed and cannot be handled, abandoning instance " + instanceId);
+                }
+            } finally {
+                // in all cases, we must remove the instance from the free
+                // instance map as we tried everything to deploy nodes on it
+                removeFreeInstanceFromMap(instanceId);
+            }
         }
 
     }
@@ -345,16 +376,10 @@ public class AzureInfrastructure extends InfrastructureManager {
             LOGGER.warn("Unable to remove the node '" + node.getNodeInformation().getName() + "' with error: " + e);
         }
 
-        synchronized (this) {
-            nodesPerInstances.get(instanceId).remove(node.getNodeInformation().getName());
-            LOGGER.info("Removed node : " + node.getNodeInformation().getName());
-
-            if (nodesPerInstances.get(instanceId).isEmpty()) {
-                connectorIaasController.terminateInstance(getInfrastructureId(), instanceId);
-                nodesPerInstances.remove(instanceId);
-                LOGGER.info("Removed instance : " + instanceId);
-            }
-        }
+        unregisterNodeAndRemoveInstanceIfNeeded(instanceId,
+                                                node.getNodeInformation().getName(),
+                                                getInfrastructureId(),
+                                                true);
     }
 
     @Override
@@ -362,12 +387,7 @@ public class AzureInfrastructure extends InfrastructureManager {
 
         String instanceId = getInstanceIdProperty(node);
 
-        synchronized (this) {
-            if (!nodesPerInstances.containsKey(instanceId)) {
-                nodesPerInstances.put(instanceId, new HashSet<String>());
-            }
-            nodesPerInstances.get(instanceId).add(node.getNodeInformation().getName());
-        }
+        addNewNodeForInstance(instanceId, node.getNodeInformation().getName());
     }
 
     @Override
@@ -412,34 +432,31 @@ public class AzureInfrastructure extends InfrastructureManager {
 
     private String generateStartNodeCommand(String instanceId) {
         try {
-            String communicationProtocol = rmUrl.split(":")[0];
+            String communicationProtocol = getRmUrl().split(":")[0];
             return START_NODE_CMD.replace(COMMUNICATION_PROTOCOL_PATTERN, communicationProtocol)
                                  .replace(RM_HOSTNAME_PATTERN, rmHostname)
                                  .replace(INSTANCE_ID_PATTERN, instanceId)
                                  .replace(ADDITIONAL_PROPERTIES_PATTERN, additionalProperties)
-                                 .replace(RM_URL_PATTERN, rmUrl)
+                                 .replace(RM_URL_PATTERN, getRmUrl())
                                  .replace(NODESOURCE_NAME_PATTERN, nodeSource.getName())
                                  .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
         } catch (Exception e) {
             LOGGER.error("Exception when generating the command, fallback on default value", e);
             return START_NODE_FALLBACK_CMD.replace(INSTANCE_ID_PATTERN, instanceId)
                                           .replace(ADDITIONAL_PROPERTIES_PATTERN, additionalProperties)
-                                          .replace(RM_URL_PATTERN, rmUrl)
+                                          .replace(RM_URL_PATTERN, getRmUrl())
                                           .replace(NODESOURCE_NAME_PATTERN, nodeSource.getName())
                                           .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
         }
     }
 
-    private String getInstanceIdProperty(Node node) throws RMException {
+    @Override
+    protected String getInstanceIdProperty(Node node) throws RMException {
         try {
             return node.getProperty(INSTANCE_ID_NODE_PROPERTY);
         } catch (ProActiveException e) {
             throw new RMException(e);
         }
-    }
-
-    private String getInfrastructureId() {
-        return nodeSource.getName().trim().replace(" ", "_").toLowerCase();
     }
 
 }

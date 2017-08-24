@@ -45,6 +45,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.python.google.common.collect.Sets;
@@ -69,11 +70,15 @@ public class AzureInfrastructureTest {
     @Mock
     private NodeInformation nodeInformation;
 
+    @Mock
+    private RMDBManager dbManager;
+
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
         azureInfrastructure = new AzureInfrastructure();
-
+        azureInfrastructure.setRmDbManager(dbManager);
+        azureInfrastructure.initializeRuntimeVariables();
     }
 
     @Test
@@ -188,7 +193,8 @@ public class AzureInfrastructureTest {
     }
 
     @Test
-    public void testAcquiringTwoNodesByRegisteringInfrastructureCreatingInstancesAndInjectingScriptOnThem() {
+    public void testAcquiringTwoNodesByRegisteringInfrastructureCreatingInstancesAndInjectingScriptOnThem()
+            throws ScriptNotExecutedException {
 
         when(nodeSource.getName()).thenReturn("Node source Name");
         azureInfrastructure.nodeSource = nodeSource;
@@ -219,7 +225,7 @@ public class AzureInfrastructureTest {
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
-        azureInfrastructure.rmUrl = "http://test.activeeon.com";
+        azureInfrastructure.setRmUrl("http://test.activeeon.com");
 
         when(connectorIaasController.createAzureInfrastructure("node_source_name",
                                                                "clientId",
@@ -315,7 +321,7 @@ public class AzureInfrastructureTest {
 
         when(nodeInformation.getName()).thenReturn("nodename");
 
-        azureInfrastructure.nodesPerInstances.put("123", Sets.newHashSet("nodename"));
+        azureInfrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
 
         azureInfrastructure.removeNode(node);
 
@@ -323,7 +329,7 @@ public class AzureInfrastructureTest {
 
         verify(connectorIaasController).terminateInstance("node_source_name", "123");
 
-        assertThat(azureInfrastructure.nodesPerInstances.isEmpty(), is(true));
+        assertThat(azureInfrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
     }
 
@@ -366,8 +372,8 @@ public class AzureInfrastructureTest {
 
         azureInfrastructure.notifyAcquiredNode(node);
 
-        assertThat(azureInfrastructure.nodesPerInstances.get("123").isEmpty(), is(false));
-        assertThat(azureInfrastructure.nodesPerInstances.get("123").size(), is(1));
-        assertThat(azureInfrastructure.nodesPerInstances.get("123").contains("nodename"), is(true));
+        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().get("123").isEmpty(), is(false));
+        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
+        assertThat(azureInfrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
     }
 }

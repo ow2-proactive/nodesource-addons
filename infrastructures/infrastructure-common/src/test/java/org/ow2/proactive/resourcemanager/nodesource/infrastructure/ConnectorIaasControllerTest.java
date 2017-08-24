@@ -241,7 +241,7 @@ public class ConnectorIaasControllerTest {
     }
 
     @Test
-    public void testExecuteScript() {
+    public void testExecuteScript() throws ScriptNotExecutedException {
 
         List<String> scripts = Lists.newArrayList();
         scripts.add("ls -lrt");
@@ -261,7 +261,7 @@ public class ConnectorIaasControllerTest {
     }
 
     @Test
-    public void testExecuteScriptWithCredentials() {
+    public void testExecuteScriptWithCredentials() throws ScriptNotExecutedException {
 
         List<String> scripts = Lists.newArrayList();
         scripts.add("ls -lrt");

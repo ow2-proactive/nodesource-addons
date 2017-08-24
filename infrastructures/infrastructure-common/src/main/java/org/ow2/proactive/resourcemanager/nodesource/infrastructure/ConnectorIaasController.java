@@ -165,13 +165,14 @@ public class ConnectorIaasController {
         return createInstance(infrastructureId, instanceTag, instanceJson);
     }
 
-    public void executeScript(String infrastructureId, String instanceId, List<String> scripts) {
+    public void executeScript(String infrastructureId, String instanceId, List<String> scripts)
+            throws ScriptNotExecutedException {
         executeScriptWithCredentials(infrastructureId, instanceId, scripts, null, null);
 
     }
 
     public void executeScriptWithCredentials(String infrastructureId, String instanceId, List<String> scripts,
-            String username, String password) {
+            String username, String password) throws ScriptNotExecutedException {
 
         String instanceScriptJson = ConnectorIaasJSONTransformer.getScriptInstanceJSONWithCredentials(scripts,
                                                                                                       username,
@@ -188,6 +189,7 @@ public class ConnectorIaasController {
 
         } catch (Exception e) {
             logger.error("Error while executing script :\n" + instanceScriptJson, e);
+            throw new ScriptNotExecutedException(e);
         }
     }
 
