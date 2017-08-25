@@ -336,7 +336,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                 connectorIaasController.executeScript(getInfrastructureId(),
                                                       currentInstanceId,
                                                       Lists.newArrayList(fullScript));
-            } catch (Exception e) {
+            } catch (ScriptNotExecutedException e) {
                 boolean acquireNodeTriggered = handleScriptNotExecutedException(existPersistedInstanceIds,
                                                                                 currentInstanceId);
                 if (acquireNodeTriggered) {
