@@ -135,6 +135,26 @@ public class ConnectorIaasController {
         return createInstance(infrastructureId, instanceTag, instanceJson);
     }
 
+    public Set<String> createAzureScaleSet(String infrastructureId, String instanceTag, String image,
+            int numberOfInstances, String username, String password, String publicKey, String vmSizeType,
+            String resourceGroup, String region, String privateNetworkCIDR, boolean staticPublicIP,
+            String costumScriptURL) {
+
+        String instanceJson = ConnectorIaasJSONTransformer.getAzureInstanceJSON(instanceTag,
+                                                                                image,
+                                                                                "" + numberOfInstances,
+                                                                                username,
+                                                                                password,
+                                                                                publicKey,
+                                                                                vmSizeType,
+                                                                                resourceGroup,
+                                                                                region,
+                                                                                privateNetworkCIDR,
+                                                                                staticPublicIP);
+
+        return createInstance(infrastructureId, instanceTag, instanceJson);
+    }
+
     public Set<String> createInstancesWithOptions(String infrastructureId, String instanceTag, String image,
             int numberOfInstances, int cores, int ram, String spotPrice, String securityGroupNames, String subnetId,
             String macAddresses) {
