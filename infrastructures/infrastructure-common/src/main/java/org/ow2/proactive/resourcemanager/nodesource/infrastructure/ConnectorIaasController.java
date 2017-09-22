@@ -130,7 +130,29 @@ public class ConnectorIaasController {
                                                                                 resourceGroup,
                                                                                 region,
                                                                                 privateNetworkCIDR,
-                                                                                staticPublicIP);
+                                                                                staticPublicIP,
+                                                                                null);
+
+        return createInstance(infrastructureId, instanceTag, instanceJson);
+    }
+
+    public Set<String> createAzureScaleSet(String infrastructureId, String instanceTag, String image,
+            int numberOfInstances, String username, String password, String publicKey, String vmSizeType,
+            String resourceGroup, String region, String privateNetworkCIDR, boolean staticPublicIP,
+            String customScriptURL) {
+
+        String instanceJson = ConnectorIaasJSONTransformer.getAzureInstanceJSON(instanceTag,
+                                                                                image,
+                                                                                "" + numberOfInstances,
+                                                                                username,
+                                                                                password,
+                                                                                publicKey,
+                                                                                vmSizeType,
+                                                                                resourceGroup,
+                                                                                region,
+                                                                                privateNetworkCIDR,
+                                                                                staticPublicIP,
+                                                                                customScriptURL);
 
         return createInstance(infrastructureId, instanceTag, instanceJson);
     }
