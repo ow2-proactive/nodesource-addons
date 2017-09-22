@@ -30,9 +30,6 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.anyList;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -101,8 +98,7 @@ public class AzureInfrastructureTest {
         assertThat(azureScaleSetInfrastructure.privateNetworkCIDR, is(nullValue()));
         assertThat(azureScaleSetInfrastructure.staticPublicIP, is(true));
         assertThat(azureScaleSetInfrastructure.additionalProperties, is("-Dproactive.useIPaddress=true"));
-        assertThat(azureScaleSetInfrastructure.costumScriptURL,
-                is("http://8080/costumScript.sh"));
+        assertThat(azureScaleSetInfrastructure.customScriptURL, is("http://8080/customScript.sh"));
     }
 
     @Test
@@ -112,28 +108,28 @@ public class AzureInfrastructureTest {
 
         try {
             azureScaleSetInfrastructure.configure("clientId",
-                                          "secret",
-                                          "domain",
-                                          "subscriptionId",
-                                          "authenticationEndpoint",
-                                          "managementEndpoint",
-                                          "resourceManagerEndpoint",
-                                          "graphEndpoint",
-                                          "test.activeeon.com",
-                                          "http://localhost:8088/connector-iaas",
-                                          "image",
-                                          "Standard_D1_v2",
-                                          "vmUsername",
-                                          "vmPassword",
-                                          "vmPublicKey",
-                                          "resourceGroup",
-                                          "region",
-                                          "2",
-                                          "3",
-                                          "http://8080/costumScript.sh",
-                                          "192.168.1.0/24",
-                                          true,
-                                          "-Dnew=value");
+                                                  "secret",
+                                                  "domain",
+                                                  "subscriptionId",
+                                                  "authenticationEndpoint",
+                                                  "managementEndpoint",
+                                                  "resourceManagerEndpoint",
+                                                  "graphEndpoint",
+                                                  "test.activeeon.com",
+                                                  "http://localhost:8088/connector-iaas",
+                                                  "image",
+                                                  "Standard_D1_v2",
+                                                  "vmUsername",
+                                                  "vmPassword",
+                                                  "vmPublicKey",
+                                                  "resourceGroup",
+                                                  "region",
+                                                  "2",
+                                                  "3",
+                                                  "http://8080/customScript.sh",
+                                                  "192.168.1.0/24",
+                                                  true,
+                                                  "-Dnew=value");
             Assert.assertTrue(Boolean.TRUE);
         } catch (IllegalArgumentException e) {
             fail("NPE not thrown");
@@ -156,28 +152,28 @@ public class AzureInfrastructureTest {
         azureScaleSetInfrastructure.nodeSource = nodeSource;
 
         azureScaleSetInfrastructure.configure("clientId",
-                                      "secret",
-                                      "domain",
-                                      "subscriptionId",
-                                      "authenticationEndpoint",
-                                      "managementEndpoint",
-                                      "resourceManagerEndpoint",
-                                      "graphEndpoint",
-                                      "test.activeeon.com",
-                                      "http://localhost:8088/connector-iaas",
-                                      null,
-                                      "Standard_D1_v2",
-                                      "vmUsername",
-                                      "vmPassword",
-                                      "vmPublicKey",
-                                      "resourceGroup",
-                                      "region",
-                                      "2",
-                                      "3",
-                                      "http://8080/costumScript.sh",
-                                      "192.168.1.0/24",
-                                      true,
-                                      "-Dnew=value");
+                                              "secret",
+                                              "domain",
+                                              "subscriptionId",
+                                              "authenticationEndpoint",
+                                              "managementEndpoint",
+                                              "resourceManagerEndpoint",
+                                              "graphEndpoint",
+                                              "test.activeeon.com",
+                                              "http://localhost:8088/connector-iaas",
+                                              null,
+                                              "Standard_D1_v2",
+                                              "vmUsername",
+                                              "vmPassword",
+                                              "vmPublicKey",
+                                              "resourceGroup",
+                                              "region",
+                                              "2",
+                                              "3",
+                                              "http://8080/customScript.sh",
+                                              "192.168.1.0/24",
+                                              true,
+                                              "-Dnew=value");
     }
 
     @Test
@@ -186,28 +182,28 @@ public class AzureInfrastructureTest {
         azureScaleSetInfrastructure.nodeSource = nodeSource;
 
         azureScaleSetInfrastructure.configure("clientId",
-                                      "secret",
-                                      "domain",
-                                      "subscriptionId",
-                                      "authenticationEndpoint",
-                                      "managementEndpoint",
-                                      "resourceManagerEndpoint",
-                                      "graphEndpoint",
-                                      "test.activeeon.com",
-                                      "http://localhost:8088/connector-iaas",
-                                      "image",
-                                      "Standard_D1_v2",
-                                      "vmUsername",
-                                      "vmPassword",
-                                      "vmPublicKey",
-                                      "resourceGroup",
-                                      "region",
-                                      "2",
-                                      "3",
-                                      "http://8080/costumScript.sh",
-                                      "192.168.1.0/24",
-                                      true,
-                                      "-Dnew=value");
+                                              "secret",
+                                              "domain",
+                                              "subscriptionId",
+                                              "authenticationEndpoint",
+                                              "managementEndpoint",
+                                              "resourceManagerEndpoint",
+                                              "graphEndpoint",
+                                              "test.activeeon.com",
+                                              "http://localhost:8088/connector-iaas",
+                                              "image",
+                                              "Standard_D1_v2",
+                                              "vmUsername",
+                                              "vmPassword",
+                                              "vmPublicKey",
+                                              "resourceGroup",
+                                              "region",
+                                              "2",
+                                              "3",
+                                              "http://8080/customScript.sh",
+                                              "192.168.1.0/24",
+                                              true,
+                                              "-Dnew=value");
 
         azureScaleSetInfrastructure.connectorIaasController = connectorIaasController;
 
