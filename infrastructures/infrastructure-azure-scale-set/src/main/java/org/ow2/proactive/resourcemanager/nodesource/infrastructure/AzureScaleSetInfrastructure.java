@@ -92,7 +92,7 @@ public class AzureScaleSetInfrastructure extends InfrastructureManager {
 
     private final static int NUMBER_OF_NODES_PER_INSTANCE_INDEX = 18;
 
-    private final static int COSTUM_SCRIPT_URL_INDEX = 19;
+    private final static int CUSTOM_SCRIPT_URL_INDEX = 19;
 
     private final static int PRIVATE_NETWORK_CIDR_INDEX = 20;
 
@@ -154,7 +154,7 @@ public class AzureScaleSetInfrastructure extends InfrastructureManager {
     @Configurable(description = "The virtual machine Username")
     protected String vmUsername = null;
 
-    @Configurable(description = "The virtual machine Password")
+    @Configurable(description = "The virtual machine Password (must be 12 char minimum long, with at least 1 digit, 1 lower, 1 upper and 1 special char)")
     protected String vmPassword = null;
 
     @Configurable(description = "A public key to allow SSH connection to the VM")
@@ -173,7 +173,7 @@ public class AzureScaleSetInfrastructure extends InfrastructureManager {
     protected int numberOfNodesPerInstance = 1;
 
     @Configurable(description = "Command used to download the worker jar")
-    protected String costumScriptURL = "http://8080/costumScript.sh";
+    protected String customScriptURL = "http://8080/customScript.sh";
 
     @Configurable(description = "Optional network CIDR to attach with new VM(s) (by default: '10.0.0.0/24')")
     protected String privateNetworkCIDR = null;
@@ -220,7 +220,7 @@ public class AzureScaleSetInfrastructure extends InfrastructureManager {
         this.region = getParameter(parameters, REGION_INDEX);
         this.numberOfInstances = Integer.parseInt(getParameter(parameters, NUMBER_OF_INSTANCES_INDEX));
         this.numberOfNodesPerInstance = Integer.parseInt(getParameter(parameters, NUMBER_OF_NODES_PER_INSTANCE_INDEX));
-        this.costumScriptURL = getParameter(parameters, COSTUM_SCRIPT_URL_INDEX);
+        this.customScriptURL = getParameter(parameters, CUSTOM_SCRIPT_URL_INDEX);
         this.privateNetworkCIDR = getParameter(parameters, PRIVATE_NETWORK_CIDR_INDEX);
         this.staticPublicIP = Boolean.parseBoolean(getParameter(parameters, STATIC_PUBLIC_IP_INDEX));
         this.additionalProperties = getParameter(parameters, ADDITIONAL_PROPERTIES_INDEX);
@@ -253,7 +253,7 @@ public class AzureScaleSetInfrastructure extends InfrastructureManager {
                                             "The number of instances to create must be specified");
         throwIllegalArgumentExceptionIfNull(parameters[NUMBER_OF_NODES_PER_INSTANCE_INDEX],
                                             "The number of nodes per instance to deploy must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[COSTUM_SCRIPT_URL_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[CUSTOM_SCRIPT_URL_INDEX],
                                             "The download node.jar command must be specified");
 
         if (parameters[ADDITIONAL_PROPERTIES_INDEX] == null) {
@@ -297,7 +297,7 @@ public class AzureScaleSetInfrastructure extends InfrastructureManager {
                                                                    region,
                                                                    privateNetworkCIDR,
                                                                    staticPublicIP,
-                                                                   costumScriptURL);
+                                                                   customScriptURL);
 
         LOGGER.info("Instances ids created : " + instancesIds);
 
