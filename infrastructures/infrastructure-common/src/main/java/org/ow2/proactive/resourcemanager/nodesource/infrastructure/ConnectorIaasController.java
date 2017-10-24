@@ -31,6 +31,8 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
+import com.google.common.collect.Lists;
+
 
 public class ConnectorIaasController {
 
@@ -100,6 +102,25 @@ public class ConnectorIaasController {
         return infrastructureId;
     }
 
+    public String createMaasInfrastructure(String infrastructureId, String apiToken, String endpoint,
+            boolean ignoreCertificateCheck, boolean destroyOnShutdown) {
+
+        String infrastructureJson = ConnectorIaasJSONTransformer.getMaasInfrastructureJSON(infrastructureId,
+                                                                                           infrastructureType,
+                                                                                           apiToken,
+                                                                                           endpoint,
+                                                                                           ignoreCertificateCheck,
+                                                                                           destroyOnShutdown);
+
+        logger.info("Creating MAAS infrastructure : " + infrastructureJson);
+
+        connectorIaasClient.createInfrastructure(infrastructureId, infrastructureJson);
+
+        logger.info("MAAS infrastructure created");
+
+        return infrastructureId;
+    }
+
     public Set<String> createInstances(String infrastructureId, String instanceTag, String image, int numberOfInstances,
             int cores, int ram) {
 
@@ -131,6 +152,20 @@ public class ConnectorIaasController {
                                                                                 region,
                                                                                 privateNetworkCIDR,
                                                                                 staticPublicIP);
+
+        return createInstance(infrastructureId, instanceTag, instanceJson);
+    }
+
+    public Set<String> createMaasInstances(String infrastructureId, String instanceTag, String image,
+            int numberOfInstances, String systemId, String minCpu, String minMem, List<String> scripts) {
+
+        String instanceJson = ConnectorIaasJSONTransformer.getMaasInstanceJSON(instanceTag,
+                                                                               image,
+                                                                               "" + numberOfInstances,
+                                                                               systemId,
+                                                                               minCpu,
+                                                                               minMem,
+                                                                               scripts);
 
         return createInstance(infrastructureId, instanceTag, instanceJson);
     }

@@ -33,6 +33,8 @@ import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import com.google.common.collect.Lists;
+
 
 public class ConnectorIaasJSONTransformer {
 
@@ -80,6 +82,18 @@ public class ConnectorIaasJSONTransformer {
         if (graphEndpoint != null && !graphEndpoint.isEmpty()) {
             infrastructure.put("graphEndpoint", graphEndpoint);
         }
+        infrastructure.put("toBeRemovedOnShutdown", toBeRemovedOnShutdown);
+
+        return infrastructure.toString();
+    }
+
+    public static String getMaasInfrastructureJSON(String infrastructureId, String type, String apiToken,
+            String endpoint, boolean ignoreCertificateCheck, boolean toBeRemovedOnShutdown) {
+        JSONObject credentials = new JSONObject().put("password", apiToken).put("allowSelfSignedSSLCertificate",
+                                                                                ignoreCertificateCheck);
+        JSONObject infrastructure = new JSONObject().put("id", infrastructureId).put("type", type).put("credentials",
+                                                                                                       credentials);
+        infrastructure.put("endpoint", endpoint);
         infrastructure.put("toBeRemovedOnShutdown", toBeRemovedOnShutdown);
 
         return infrastructure.toString();
@@ -162,6 +176,31 @@ public class ConnectorIaasJSONTransformer {
         if (options.length() > 0) {
             instance.put("options", options);
         }
+        return instance.toString();
+    }
+
+    public static String getMaasInstanceJSON(String instanceTag, String image, String number, String systemId,
+            String minCpu, String minMem, List<String> scripts) {
+        JSONObject hardware = new JSONObject();
+        if (minMem != null && !minMem.isEmpty()) {
+            hardware.put("minRam", minMem);
+        }
+        if (minCpu != null && !minCpu.isEmpty()) {
+            hardware.put("minCores", minCpu);
+        }
+        JSONObject script = new JSONObject();
+        script.put("scripts", new JSONArray(scripts));
+        JSONObject instance = new JSONObject().put("tag", instanceTag).put("image", image).put("number", number);
+        if (systemId != null && !systemId.isEmpty()) {
+            instance.put("id", systemId);
+        }
+        if (hardware.length() > 0) {
+            instance.put("hardware", hardware);
+        }
+        if (script.length() > 0) {
+            instance.put("initScript", script);
+        }
+
         return instance.toString();
     }
 

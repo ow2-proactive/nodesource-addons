@@ -1,0 +1,46 @@
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+shadowJar {
+
+}
+
+sourceCompatibility = JavaVersion.VERSION_1_7
+targetCompatibility = JavaVersion.VERSION_1_7
+
+
+dependencies {
+    compile project(':infrastructures:infrastructure-common')
+    compile "org.ow2.proactive:rm-server:${rmVersion}"
+    compile "org.objectweb.proactive:programming-core:${programmingVersion}"
+
+    testCompile files("${System.properties['java.home']}/../lib/tools.jar")
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.hamcrest:hamcrest-junit:2.0.0.0'
+    testCompile 'org.mockito:mockito-core:1.10.19'
+
+}
+
+configurations {
+    shadowJar
+
+    runtime.extendsFrom = [compile]
+    runtime.exclude module: 'rm-server'
+    runtime.exclude module: 'programming-core'
+    runtime.exclude module: 'guava'
+    runtime.exclude module: 'log4j'
+
+    testRuntime.extendsFrom = [testCompile]
+}
+
+
+jar {
+    manifest {
+        attributes("Implementation-Title": "ProActive",
+                "Implementation-Version": version,
+                "Specification-Version": version,
+                "Implementation-Vendor": "Activeeon - OASIS - INRIA Sophia Antipolis",
+                "Implementation-URL": "http://proactive.inria.fr"
+        )
+    }
+}
