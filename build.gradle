@@ -28,7 +28,7 @@ buildscript {
 }
 
 apply from: "$rootDir/gradle/ext/coding-format.gradle"
-apply plugin: ‘org.sonarqube’
+apply plugin: 'org.sonarqube'
 
 allprojects {
     apply plugin: 'maven'
