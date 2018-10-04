@@ -34,7 +34,6 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
@@ -124,7 +123,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         this.image = parameters[parameterIndex++].toString().trim();
         this.vmUsername = parameters[parameterIndex++].toString().trim();
         this.vmKeyPairName = parameters[parameterIndex++].toString().trim();
-        this.vmPrivateKey = parameters[parameterIndex++].toString().getBytes(StandardCharsets.UTF_8);
+        this.vmPrivateKey = (byte[]) parameters[parameterIndex++];
         this.numberOfInstances = Integer.parseInt(parameters[parameterIndex++].toString().trim());
         this.numberOfNodesPerInstance = Integer.parseInt(parameters[parameterIndex++].toString().trim());
         this.downloadCommand = parameters[parameterIndex++].toString().trim();
@@ -329,7 +328,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         } else {
             // or use the private key provided by the user
             logger.info("Using AWS key pair provided by the user");
-            keyPairInfo = new SimpleImmutableEntry<>(vmKeyPairName, new String(vmPrivateKey, StandardCharsets.UTF_8));
+            keyPairInfo = new SimpleImmutableEntry<>(vmKeyPairName,
+                                                     new String(vmPrivateKey, StandardCharsets.ISO_8859_1));
         }
         persistKeyPairInfo(keyPairInfo);
 
