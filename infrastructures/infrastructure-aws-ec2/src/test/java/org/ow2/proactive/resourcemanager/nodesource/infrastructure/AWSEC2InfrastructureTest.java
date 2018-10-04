@@ -54,6 +54,8 @@ import org.python.google.common.collect.Sets;
 
 public class AWSEC2InfrastructureTest {
 
+    private static final byte[] PRIVATE_KEY = new byte[] { 0, 1, 2, 3, 4 };
+
     private AWSEC2Infrastructure awsec2Infrastructure;
 
     @Mock
@@ -126,7 +128,7 @@ public class AWSEC2InfrastructureTest {
                                        "aws-image",
                                        "admin",
                                        "keyname",
-                                       "privatekey",
+                                       PRIVATE_KEY,
                                        "2",
                                        "3",
                                        "wget -nv test.activeeon.com/rest/node.jar",
@@ -171,7 +173,7 @@ public class AWSEC2InfrastructureTest {
                                        "aws-image",
                                        "admin",
                                        "keyname",
-                                       "privatekey",
+                                       PRIVATE_KEY,
                                        "2",
                                        "3",
                                        "wget -nv test.activeeon.com/rest/node.jar",
@@ -255,7 +257,7 @@ public class AWSEC2InfrastructureTest {
                                        "aws-image",
                                        "admin",
                                        "keyname",
-                                       "privatekey",
+                                       PRIVATE_KEY,
                                        "2",
                                        "3",
                                        "wget -nv test.activeeon.com/rest/node.jar",
@@ -301,7 +303,7 @@ public class AWSEC2InfrastructureTest {
                                        "aws-image",
                                        "admin",
                                        "keyname",
-                                       "privatekey",
+                                       PRIVATE_KEY,
                                        "2",
                                        "3",
                                        "wget -nv test.activeeon.com/rest/node.jar",
