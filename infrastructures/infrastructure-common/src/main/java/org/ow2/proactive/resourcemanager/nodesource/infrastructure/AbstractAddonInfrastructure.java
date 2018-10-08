@@ -240,18 +240,23 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
             // first read from the runtime variables map
             nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
             // make modifications to the nodesPerInstance map
-            nodesPerInstance.get(instanceId).remove(nodeName);
-            logger.info("Removed node : " + nodeName);
-            if (nodesPerInstance.get(instanceId).isEmpty()) {
-                if (terminateInstanceIfEmpty) {
-                    connectorIaasController.terminateInstance(infrastructureId, instanceId);
-                    logger.info("Instance terminated: " + instanceId);
+            if (nodesPerInstance.get(instanceId) != null) {
+                nodesPerInstance.get(instanceId).remove(nodeName);
+                logger.info("Removed node : " + nodeName);
+                if (nodesPerInstance.get(instanceId).isEmpty()) {
+                    if (terminateInstanceIfEmpty) {
+                        connectorIaasController.terminateInstance(infrastructureId, instanceId);
+                        logger.info("Instance terminated: " + instanceId);
+                    }
+                    nodesPerInstance.remove(instanceId);
+                    logger.info("Removed instance : " + instanceId);
                 }
-                nodesPerInstance.remove(instanceId);
-                logger.info("Removed instance : " + instanceId);
+                // finally write to the runtime variable map
+                persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
+            } else {
+                logger.error("Cannot remove node " + nodeName + " because instance " + instanceId +
+                             " is not registered");
             }
-            // finally write to the runtime variable map
-            persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
             return null;
         });
     }
