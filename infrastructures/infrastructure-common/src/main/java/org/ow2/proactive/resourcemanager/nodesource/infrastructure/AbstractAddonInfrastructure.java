@@ -177,14 +177,9 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @return the nodes per instance map that is read from the runtime
      * variables.
      */
+    @SuppressWarnings("unchecked")
     protected Map<String, Set<String>> getNodesPerInstancesMap() {
-        return getPersistedInfraVariable(new PersistedInfraVariablesHandler<Map<String, Set<String>>>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Map<String, Set<String>> handle() {
-                return (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-            }
-        });
+        return getPersistedInfraVariable(() -> (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY));
     }
 
     /**
@@ -193,14 +188,11 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * {@link java.lang.String} type, we are sure that the elements of the
      * original list cannot be affected.
      */
+    @SuppressWarnings("unchecked")
     protected Map<String, Set<String>> getNodesPerInstancesMapCopy() {
-        return getPersistedInfraVariable(new PersistedInfraVariablesHandler<Map<String, Set<String>>>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Map<String, Set<String>> handle() {
-                nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-                return new HashMap<>(nodesPerInstance);
-            }
+        return getPersistedInfraVariable(() -> {
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            return new HashMap<>(nodesPerInstance);
         });
     }
 
@@ -212,23 +204,20 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @param instanceId the identifier of the instance
      * @param nodeName the name of the new node that belongs to this instance
      */
+    @SuppressWarnings("unchecked")
     protected void addNewNodeForInstance(final String instanceId, final String nodeName) {
-        setPersistedInfraVariable(new PersistedInfraVariablesHandler<Void>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Void handle() {
-                // first read from the runtime variables map
-                nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-                // make modifications to the nodesPerInstance map
-                if (!nodesPerInstance.containsKey(instanceId)) {
-                    nodesPerInstance.put(instanceId, new HashSet<String>());
-                }
-                nodesPerInstance.get(instanceId).add(nodeName);
-                logger.info("Node registered: " + nodeName);
-                // finally write to the runtime variable map
-                persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
-                return null;
+        setPersistedInfraVariable(() -> {
+            // first read from the runtime variables map
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            // make modifications to the nodesPerInstance map
+            if (!nodesPerInstance.containsKey(instanceId)) {
+                nodesPerInstance.put(instanceId, new HashSet<String>());
             }
+            nodesPerInstance.get(instanceId).add(nodeName);
+            logger.info("Node registered: " + nodeName);
+            // finally write to the runtime variable map
+            persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
+            return null;
         });
     }
 
@@ -244,29 +233,26 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @param terminateInstanceIfEmpty whether the instance termination will 
      *                                 be requested to the cloud provider
      */
+    @SuppressWarnings("unchecked")
     protected void unregisterNodeAndRemoveInstanceIfNeeded(final String instanceId, final String nodeName,
             final String infrastructureId, final boolean terminateInstanceIfEmpty) {
-        setPersistedInfraVariable(new PersistedInfraVariablesHandler<Void>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Void handle() {
-                // first read from the runtime variables map
-                nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-                // make modifications to the nodesPerInstance map
-                nodesPerInstance.get(instanceId).remove(nodeName);
-                logger.info("Removed node : " + nodeName);
-                if (nodesPerInstance.get(instanceId).isEmpty()) {
-                    if (terminateInstanceIfEmpty) {
-                        connectorIaasController.terminateInstance(infrastructureId, instanceId);
-                        logger.info("Instance terminated: " + instanceId);
-                    }
-                    nodesPerInstance.remove(instanceId);
-                    logger.info("Removed instance : " + instanceId);
+        setPersistedInfraVariable(() -> {
+            // first read from the runtime variables map
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            // make modifications to the nodesPerInstance map
+            nodesPerInstance.get(instanceId).remove(nodeName);
+            logger.info("Removed node : " + nodeName);
+            if (nodesPerInstance.get(instanceId).isEmpty()) {
+                if (terminateInstanceIfEmpty) {
+                    connectorIaasController.terminateInstance(infrastructureId, instanceId);
+                    logger.info("Instance terminated: " + instanceId);
                 }
-                // finally write to the runtime variable map
-                persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
-                return null;
+                nodesPerInstance.remove(instanceId);
+                logger.info("Removed instance : " + instanceId);
             }
+            // finally write to the runtime variable map
+            persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
+            return null;
         });
     }
 
@@ -282,16 +268,13 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * the infrastructureCreatedFlag was updated
      */
     protected boolean expectInstancesAlreadyCreated(final boolean expected, final boolean updated) {
-        return setPersistedInfraVariable(new PersistedInfraVariablesHandler<Boolean>() {
-            @Override
-            public Boolean handle() {
-                boolean infraCreated = (boolean) persistedInfraVariables.get(INFRASTRUCTURE_CREATED_FLAG_KEY);
-                if (infraCreated == expected) {
-                    persistedInfraVariables.put(INFRASTRUCTURE_CREATED_FLAG_KEY, updated);
-                    return true;
-                } else {
-                    return false;
-                }
+        return setPersistedInfraVariable(() -> {
+            boolean infraCreated = (boolean) persistedInfraVariables.get(INFRASTRUCTURE_CREATED_FLAG_KEY);
+            if (infraCreated == expected) {
+                persistedInfraVariables.put(INFRASTRUCTURE_CREATED_FLAG_KEY, updated);
+                return true;
+            } else {
+                return false;
             }
         });
     }
@@ -300,14 +283,11 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @return a copy of the map holding the identifier of the Azure instances
      * that are free, meaning that no nodes are running on these.
      */
+    @SuppressWarnings("unchecked")
     protected Map<String, Integer> getInstancesWithoutNodesMapCopy() {
-        return getPersistedInfraVariable(new PersistedInfraVariablesHandler<Map<String, Integer>>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Map<String, Integer> handle() {
-                instancesWithoutNodesMap = ((Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY));
-                return new HashMap<>(instancesWithoutNodesMap);
-            }
+        return getPersistedInfraVariable(() -> {
+            instancesWithoutNodesMap = ((Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY));
+            return new HashMap<>(instancesWithoutNodesMap);
         });
     }
 
@@ -315,14 +295,11 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * Remove all Azure instance identifiers from the free instances data
      * structure, and save it to the resource manager database.
      */
+    @SuppressWarnings("unchecked")
     protected void clearInstancesWithoutNodesMap() {
-        setPersistedInfraVariable(new PersistedInfraVariablesHandler<Void>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Void handle() {
-                ((Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY)).clear();
-                return null;
-            }
+        setPersistedInfraVariable(() -> {
+            ((Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY)).clear();
+            return null;
         });
     }
 
@@ -331,14 +308,11 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * be called when we are sure that the instance runs some nodes.
      * @param instanceId the identifier of the instance to remove from the map
      */
+    @SuppressWarnings("unchecked")
     protected void removeFromInstancesWithoutNodesMap(final String instanceId) {
-        setPersistedInfraVariable(new PersistedInfraVariablesHandler<Void>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Void handle() {
-                ((Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY)).remove(instanceId);
-                return null;
-            }
+        setPersistedInfraVariable(() -> {
+            ((Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY)).remove(instanceId);
+            return null;
         });
     }
 
@@ -368,47 +342,43 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * instance. This method executes in write lock acquired and persist in
      * database the changed runtime variables at the end.
      */
+    @SuppressWarnings("unchecked")
     private void incrementRemovedNodesAndSetInstanceWithoutNodesIfNeeded(final String nodeName,
             final String instanceId) {
-        setPersistedInfraVariable(new PersistedInfraVariablesHandler<Void>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Void handle() {
-                // first read from the runtime variables map
-                nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-                nbRemovedNodesPerInstance = (Map<String, Integer>) persistedInfraVariables.get(NB_REMOVED_NODES_PER_INSTANCE_KEY);
-                instancesWithoutNodesMap = (Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY);
+        setPersistedInfraVariable(() -> {
+            // first read from the runtime variables map
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            nbRemovedNodesPerInstance = (Map<String, Integer>) persistedInfraVariables.get(NB_REMOVED_NODES_PER_INSTANCE_KEY);
+            instancesWithoutNodesMap = (Map<String, Integer>) persistedInfraVariables.get(INSTANCES_WITHOUT_NODES_MAP_KEY);
 
-                // make modifications to the internal data structures
-                if (!nbRemovedNodesPerInstance.containsKey(instanceId)) {
-                    nbRemovedNodesPerInstance.put(instanceId, 1);
-                } else {
-                    int updatedNbRemovedNodes = nbRemovedNodesPerInstance.get(instanceId) + 1;
-                    nbRemovedNodesPerInstance.put(instanceId, updatedNbRemovedNodes);
-                }
-                // after the remove, if the instance pointed to by instanceId
-                // has no node left, then the nodesPerInstance map should not
-                // contain this instanceId entry anymore
-                if (!nodesPerInstance.containsKey(instanceId)) {
-                    // we remove the instance from the tracked number of
-                    // removed nodes per instance...
-                    int nbNodesForInstance = nbRemovedNodesPerInstance.remove(instanceId);
-                    // ...and we add the instance to the set of free instances,
-                    // with the (total) number of nodes that should be deployed
-                    // for this instance. And this will be taken into account
-                    // in the next deployment round (this depends on the node
-                    // source policy)
-                    instancesWithoutNodesMap.put(instanceId, nbNodesForInstance);
-                }
-                logDataStructureContent("Node " + nodeName + " added to the removed nodes set");
-
-                // finally write to the runtime variable map
-                persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
-                persistedInfraVariables.put(NB_REMOVED_NODES_PER_INSTANCE_KEY,
-                                            Maps.newHashMap(nbRemovedNodesPerInstance));
-                persistedInfraVariables.put(INSTANCES_WITHOUT_NODES_MAP_KEY, Maps.newHashMap(instancesWithoutNodesMap));
-                return null;
+            // make modifications to the internal data structures
+            if (!nbRemovedNodesPerInstance.containsKey(instanceId)) {
+                nbRemovedNodesPerInstance.put(instanceId, 1);
+            } else {
+                int updatedNbRemovedNodes = nbRemovedNodesPerInstance.get(instanceId) + 1;
+                nbRemovedNodesPerInstance.put(instanceId, updatedNbRemovedNodes);
             }
+            // after the remove, if the instance pointed to by instanceId
+            // has no node left, then the nodesPerInstance map should not
+            // contain this instanceId entry anymore
+            if (!nodesPerInstance.containsKey(instanceId)) {
+                // we remove the instance from the tracked number of
+                // removed nodes per instance...
+                int nbNodesForInstance = nbRemovedNodesPerInstance.remove(instanceId);
+                // ...and we add the instance to the set of free instances,
+                // with the (total) number of nodes that should be deployed
+                // for this instance. And this will be taken into account
+                // in the next deployment round (this depends on the node
+                // source policy)
+                instancesWithoutNodesMap.put(instanceId, nbNodesForInstance);
+            }
+            logDataStructureContent("Node " + nodeName + " added to the removed nodes set");
+
+            // finally write to the runtime variable map
+            persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
+            persistedInfraVariables.put(NB_REMOVED_NODES_PER_INSTANCE_KEY, Maps.newHashMap(nbRemovedNodesPerInstance));
+            persistedInfraVariables.put(INSTANCES_WITHOUT_NODES_MAP_KEY, Maps.newHashMap(instancesWithoutNodesMap));
+            return null;
         });
     }
 
@@ -417,36 +387,33 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * nodesPerInstance map. This method executes in write lock acquired and
      * persist in database the changed runtime variables at the end.
      */
+    @SuppressWarnings("unchecked")
     private void decrementNbRemovedNodesAndRegisterNode(final String nodeName, final String instanceId) {
-        setPersistedInfraVariable(new PersistedInfraVariablesHandler<Void>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Void handle() {
-                // first read from the runtime variables map
-                nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-                nbRemovedNodesPerInstance = (Map<String, Integer>) persistedInfraVariables.get(NB_REMOVED_NODES_PER_INSTANCE_KEY);
+        setPersistedInfraVariable(() -> {
+            // first read from the runtime variables map
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            nbRemovedNodesPerInstance = (Map<String, Integer>) persistedInfraVariables.get(NB_REMOVED_NODES_PER_INSTANCE_KEY);
 
-                // if the instance is not there it means all the nodes have 
-                // been down and the instance has been removed (see
-                // unregisterNodeAndRemoveInstanceIfNeeded)
-                if (nodesPerInstance.containsKey(instanceId)) {
-                    if (nbRemovedNodesPerInstance.containsKey(instanceId)) {
-                        int updatedNbRemovedNodes = nbRemovedNodesPerInstance.get(instanceId) - 1;
-                        nbRemovedNodesPerInstance.put(instanceId, updatedNbRemovedNodes);
-                        nodesPerInstance.get(instanceId).add(nodeName);
-                        logDataStructureContent("Node " + nodeName + " removed from the removed nodes set");
+            // if the instance is not there it means all the nodes have
+            // been down and the instance has been removed (see
+            // unregisterNodeAndRemoveInstanceIfNeeded)
+            if (nodesPerInstance.containsKey(instanceId)) {
+                if (nbRemovedNodesPerInstance.containsKey(instanceId)) {
+                    int updatedNbRemovedNodes = nbRemovedNodesPerInstance.get(instanceId) - 1;
+                    nbRemovedNodesPerInstance.put(instanceId, updatedNbRemovedNodes);
+                    nodesPerInstance.get(instanceId).add(nodeName);
+                    logDataStructureContent("Node " + nodeName + " removed from the removed nodes set");
 
-                        // finally write to the runtime variable map
-                        persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
-                        persistedInfraVariables.put(NB_REMOVED_NODES_PER_INSTANCE_KEY,
-                                                    Maps.newHashMap(nbRemovedNodesPerInstance));
-                    }
-                } else {
-                    logger.warn("Down node " + nodeName + " is trying to reconnect, but the instance " + instanceId +
-                                " does not exist any more. Instance may be redeployed shortly.");
+                    // finally write to the runtime variable map
+                    persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
+                    persistedInfraVariables.put(NB_REMOVED_NODES_PER_INSTANCE_KEY,
+                                                Maps.newHashMap(nbRemovedNodesPerInstance));
                 }
-                return null;
+            } else {
+                logger.warn("Down node " + nodeName + " is trying to reconnect, but the instance " + instanceId +
+                            " does not exist any more. Instance may be redeployed shortly.");
             }
+            return null;
         });
     }
 
@@ -457,31 +424,29 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @return the instance id under which the node is registered, or
      * {@code null} if the node could not be found
      */
+    @SuppressWarnings("unchecked")
+
     private String tryToFindInstanceIdOfNode(final String nodeName) {
-        return getPersistedInfraVariable(new PersistedInfraVariablesHandler<String>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public String handle() {
-                // first read from the runtime variables map
-                nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-                // we do not have the map key for this value, need to go
-                // through the map entries to find the key of this node
-                // break as soon as possible because we are holding a lock
-                String instanceIdOfNode = null;
-                for (Map.Entry<String, Set<String>> entry : nodesPerInstance.entrySet()) {
-                    Set<String> instanceNodeNameSet = entry.getValue();
-                    for (String instanceNodeName : instanceNodeNameSet) {
-                        if (instanceNodeName.equals(nodeName)) {
-                            instanceIdOfNode = entry.getKey();
-                            break;
-                        }
-                    }
-                    if (instanceIdOfNode != null) {
+        return getPersistedInfraVariable(() -> {
+            // first read from the runtime variables map
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            // we do not have the map key for this value, need to go
+            // through the map entries to find the key of this node
+            // break as soon as possible because we are holding a lock
+            String instanceIdOfNode = null;
+            for (Map.Entry<String, Set<String>> entry : nodesPerInstance.entrySet()) {
+                Set<String> instanceNodeNameSet = entry.getValue();
+                for (String instanceNodeName : instanceNodeNameSet) {
+                    if (instanceNodeName.equals(nodeName)) {
+                        instanceIdOfNode = entry.getKey();
                         break;
                     }
                 }
-                return instanceIdOfNode;
+                if (instanceIdOfNode != null) {
+                    break;
+                }
             }
+            return instanceIdOfNode;
         });
     }
 

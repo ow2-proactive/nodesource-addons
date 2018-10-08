@@ -438,26 +438,12 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     }
 
     private void persistKeyPairInfo(final SimpleImmutableEntry<String, String> keyPair) {
-        setPersistedInfraVariable(new PersistedInfraVariablesHandler<Void>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Void handle() {
-                // first read from the runtime variables map
-                persistedInfraVariables.put(KEY_PAIR_KEY, keyPair);
-                return null;
-            }
-        });
+        setPersistedInfraVariable(() -> persistedInfraVariables.put(KEY_PAIR_KEY, keyPair));
     }
 
+    @SuppressWarnings("unchecked")
     private SimpleImmutableEntry<String, String> getPersistedKeyPairInfo() {
-        return getPersistedInfraVariable(new PersistedInfraVariablesHandler<SimpleImmutableEntry<String, String>>() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public SimpleImmutableEntry<String, String> handle() {
-                // first read from the runtime variables map
-                return (SimpleImmutableEntry<String, String>) persistedInfraVariables.get(KEY_PAIR_KEY);
-            }
-        });
+        return getPersistedInfraVariable(() -> (SimpleImmutableEntry<String, String>) persistedInfraVariables.get(KEY_PAIR_KEY));
     }
 
 }
