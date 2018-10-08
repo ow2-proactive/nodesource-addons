@@ -34,6 +34,8 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
@@ -109,6 +111,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
      */
     private static final String KEY_PAIR_KEY = "keyPair";
 
+    private ExecutorService instanceScriptExecutor;
+
     @Override
     public void configure(Object... parameters) {
 
@@ -135,6 +139,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         this.subnetId = parameters[parameterIndex].toString().trim();
 
         connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
+        instanceScriptExecutor = Executors.newFixedThreadPool(Math.min(numberOfInstances,
+                                                                       Runtime.getRuntime().availableProcessors() - 1));
 
     }
 
@@ -285,26 +291,21 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             List<String> scripts = Lists.newArrayList(this.downloadCommand,
                                                       "nohup " + generateDefaultStartNodeCommand(currentInstanceId) +
                                                                             "  &");
-            try {
-                connectorIaasController.executeScriptWithKeyAuthentication(getInfrastructureId(),
-                                                                           currentInstanceId,
-                                                                           scripts,
-                                                                           vmUsername,
-                                                                           getPersistedKeyPairInfo().getValue());
-            } catch (ScriptNotExecutedException exception) {
-                boolean acquireNodeTriggered = handleScriptNotExecutedException(existPersistedInstanceIds,
-                                                                                currentInstanceId,
-                                                                                exception);
-                if (acquireNodeTriggered) {
-                    // in this case we re-attempted a deployment, so we need
-                    // to stop looping
-                    break;
+            boolean currentExistPersistedInstancesIds = existPersistedInstanceIds;
+            instanceScriptExecutor.submit(() -> {
+                try {
+                    connectorIaasController.executeScriptWithKeyAuthentication(getInfrastructureId(),
+                                                                               currentInstanceId,
+                                                                               scripts,
+                                                                               vmUsername,
+                                                                               getPersistedKeyPairInfo().getValue());
+                } catch (ScriptNotExecutedException e) {
+                    handleScriptNotExecutedException(currentExistPersistedInstancesIds, currentInstanceId, e);
                 }
-            } finally {
-                // in all cases, we must remove the instance from the free
-                // instance map as we tried everything to deploy nodes on it
-                removeFromInstancesWithoutNodesMap(currentInstanceId);
-            }
+            });
+            // in all cases, we must remove the instance from the free
+            // instance map as we tried everything to deploy nodes on it
+            removeFromInstancesWithoutNodesMap(currentInstanceId);
         }
 
     }
