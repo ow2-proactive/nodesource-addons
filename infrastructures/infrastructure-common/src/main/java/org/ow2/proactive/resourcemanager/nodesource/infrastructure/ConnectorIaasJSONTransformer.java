@@ -49,9 +49,7 @@ public class ConnectorIaasJSONTransformer {
                                                     .put("credentials", credentials)
                                                     .put("toBeRemovedOnShutdown", toBeRemovedOnShutdown);
 
-        if (endpoint != null && !endpoint.isEmpty()) {
-            infrastructure = infrastructure.put("endpoint", endpoint);
-        }
+        infrastructure = infrastructure.put("endpoint", endpoint);
 
         return infrastructure.toString();
     }
@@ -75,9 +73,7 @@ public class ConnectorIaasJSONTransformer {
                                                     .put("identityVersion", identityVersion)
                                                     .put("toBeRemovedOnShutdown", toBeRemovedOnShutdown);
 
-        if (endpoint != null && !endpoint.isEmpty()) {
-            infrastructure = infrastructure.put("endpoint", endpoint);
-        }
+        infrastructure = infrastructure.put("endpoint", endpoint);
 
         return infrastructure.toString();
     }

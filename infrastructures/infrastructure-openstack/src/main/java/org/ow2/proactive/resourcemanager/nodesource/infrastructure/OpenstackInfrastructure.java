@@ -74,7 +74,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     protected String image = null;
 
     @Configurable(description = "Flavor type of OpenStack")
-    protected String flavor = "3";
+    protected String flavor = null;
 
     @Configurable(description = "Public key name for Openstack instance")
     protected String publicKeyName = null;

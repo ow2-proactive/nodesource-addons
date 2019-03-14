@@ -85,7 +85,7 @@ public class OpenstackInfrastructureTest {
         assertThat(openstackInfrastructure.username, is(nullValue()));
         assertThat(openstackInfrastructure.password, is(nullValue()));
         assertThat(openstackInfrastructure.endpoint, is(nullValue()));
-        assertThat(openstackInfrastructure.flavor, is("3"));
+        assertThat(openstackInfrastructure.flavor, is(nullValue()));
         assertThat(openstackInfrastructure.publicKeyName, is(nullValue()));
         assertThat(openstackInfrastructure.rmHostname, is(not(nullValue())));
         assertThat(openstackInfrastructure.connectorIaasURL,

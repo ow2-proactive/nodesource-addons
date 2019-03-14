@@ -222,7 +222,7 @@ public class ConnectorIaasController {
                                                                                                   image,
                                                                                                   String.valueOf(numberOfInstances),
                                                                                                   publicKeyName,
-                                                                                                  String.valueOf(hardwareType),
+                                                                                                  hardwareType,
                                                                                                   scripts);
 
         return createInstance(infrastructureId, instanceTag, instanceJson);
