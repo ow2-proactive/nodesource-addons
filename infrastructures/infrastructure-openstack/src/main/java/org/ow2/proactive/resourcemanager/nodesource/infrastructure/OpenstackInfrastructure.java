@@ -46,52 +46,52 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     private static final Logger logger = Logger.getLogger(OpenstackInfrastructure.class);
 
-    @Configurable(description = "The Openstack_Username")
+    @Configurable(description = "Openstack username")
     protected String username = null;
 
-    @Configurable(description = "The Openstack_Password")
+    @Configurable(description = "Openstack password")
     protected String password = null;
 
-    @Configurable(description = "The Openstack_Domain")
+    @Configurable(description = "Openstack user domain")
     protected String domain = null;
 
-    @Configurable(description = "The Openstack_EndPoint")
+    @Configurable(description = "Openstack identity endPoint")
     protected String endpoint = null;
 
-    @Configurable(description = "Resource manager hostname or ip address")
+    @Configurable(description = "Resource Manager hostname or ip address")
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "The Openstack_ScopePrefix")
+    @Configurable(description = "Openstack scope prefix")
     protected String scopePrefix = null;
 
-    @Configurable(description = "The Openstack_ScopeValue")
+    @Configurable(description = "Openstack scope value")
     protected String scopeValue = null;
 
-    @Configurable(description = "The Openstack_Region")
+    @Configurable(description = "Openstack region")
     protected String region = null;
 
-    @Configurable(description = "The Openstack_IdentityVersion")
+    @Configurable(description = "Openstack identity version")
     protected String identityVersion = null;
 
     @Configurable(description = "Connector-iaas URL")
     protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
 
-    @Configurable(description = "Image")
+    @Configurable(description = "Openstack image")
     protected String image = null;
 
     @Configurable(description = "Flavor type of OpenStack")
     protected String flavor = "3";
 
-    @Configurable(description = "Public key name for the instance")
+    @Configurable(description = "Public key name for Openstack instance")
     protected String publicKeyName = null;
 
-    @Configurable(description = "Total instance to create")
+    @Configurable(description = "Total instances to create")
     protected int numberOfInstances = 1;
 
     @Configurable(description = "Total nodes to create per instance")
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "Command used to download the worker jar")
+    @Configurable(description = "Command used to download the node jar")
     protected String downloadCommand = generateDefaultDownloadCommand();
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
@@ -126,78 +126,70 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     }
 
     private void validate(Object[] parameters) {
-        if (parameters == null || parameters.length < 17) {
+
+        if (parameters == null || parameters.length < 15) {
             throw new IllegalArgumentException("Invalid parameters for Openstack Infrastructure creation");
         }
 
         if (parameters[0] == null) {
-            throw new IllegalArgumentException("Openstack key must be specified");
+            throw new IllegalArgumentException("Openstack username must be specified");
         }
 
         if (parameters[1] == null) {
-            throw new IllegalArgumentException("Openstack secret key must be specified");
+            throw new IllegalArgumentException("Openstack password must be specified");
         }
 
         if (parameters[2] == null) {
             throw new IllegalArgumentException("Openstack user domain must be specified");
         }
 
-        /*
-         * if (parameters[3] == null) {
-         * throw new IllegalArgumentException("Openstack scope prefix must be specified");
-         * }
-         * 
-         * if (parameters[4] == null) {
-         * throw new IllegalArgumentException("Openstack scope value must be specified");
-         * }
-         */
+        if (parameters[3] == null) {
+            throw new IllegalArgumentException("Openstack endpoint must be specified");
+        }
 
-        if (parameters[5] == null) {
+        if (parameters[4] == null) {
+            throw new IllegalArgumentException("RM host (hostname or IP address) must be specified");
+        }
+
+        if (parameters[7] == null) {
             throw new IllegalArgumentException("Openstack region must be specified");
         }
 
-        /*
-         * if (parameters[6] == null) {
-         * throw new IllegalArgumentException("Openstack identity version must be specified");
-         * }
-         */
-
-        if (parameters[7] == null) {
-            throw new IllegalArgumentException("The Resource manager hostname must be specified");
-        }
-
         if (parameters[8] == null) {
-            throw new IllegalArgumentException("The connector-iaas URL must be specified");
+            throw new IllegalArgumentException("Openstack identity version must be specified");
         }
 
         if (parameters[9] == null) {
-            throw new IllegalArgumentException("The image id must be specified");
+            throw new IllegalArgumentException("The connector-iaas URL must be specified");
         }
 
         if (parameters[10] == null) {
-            throw new IllegalArgumentException("The number of instances to create must be specified");
+            throw new IllegalArgumentException("Openstack image id must be specified");
         }
 
         if (parameters[11] == null) {
-            throw new IllegalArgumentException("The number of nodes per instance to deploy must be specified");
+            throw new IllegalArgumentException("Openstack flavor must be specified");
         }
 
         if (parameters[12] == null) {
-            throw new IllegalArgumentException("The download node.jar command must be specified");
+            throw new IllegalArgumentException("Openstack public key name must be specified");
         }
 
         if (parameters[13] == null) {
-            parameters[13] = "";
+            throw new IllegalArgumentException("The number of instances to create must be specified");
         }
 
         if (parameters[14] == null) {
-            throw new IllegalArgumentException("The amount of minimum RAM required must be specified");
+            throw new IllegalArgumentException("The number of nodes per instance to deploy must be specified");
         }
 
         if (parameters[15] == null) {
-            throw new IllegalArgumentException("The minimum number of cores required must be specified");
+            throw new IllegalArgumentException("The command to download 'node.jar' must be specified");
         }
 
+        if (parameters[16] == null) {
+            throw new IllegalArgumentException("Additional properties to run ProActive node must be specified");
+        }
     }
 
     @Override
