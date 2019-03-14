@@ -58,9 +58,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Openstack identity endPoint")
     protected String endpoint = null;
 
-    @Configurable(description = "Resource Manager hostname or ip address")
-    protected String rmHostname = generateDefaultRMHostname();
-
     @Configurable(description = "Openstack scope prefix")
     protected String scopePrefix = null;
 
@@ -72,9 +69,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     @Configurable(description = "Openstack identity version")
     protected String identityVersion = null;
-
-    @Configurable(description = "Connector-iaas URL")
-    protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
 
     @Configurable(description = "Openstack image")
     protected String image = null;
@@ -90,6 +84,12 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     @Configurable(description = "Total nodes to create per instance")
     protected int numberOfNodesPerInstance = 1;
+
+    @Configurable(description = "Connector-iaas URL")
+    protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
+
+    @Configurable(description = "Resource Manager hostname or ip address")
+    protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Command used to download the node jar")
     protected String downloadCommand = generateDefaultDownloadCommand();
@@ -107,17 +107,17 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.password = parameters[1].toString().trim();
         this.domain = parameters[2].toString().trim();
         this.endpoint = parameters[3].toString().trim();
-        this.rmHostname = parameters[4].toString().trim();
-        this.scopePrefix = parameters[5].toString().trim();
-        this.scopeValue = parameters[6].toString().trim();
-        this.region = parameters[7].toString().trim();
-        this.identityVersion = parameters[8].toString().trim();
-        this.connectorIaasURL = parameters[9].toString().trim();
-        this.image = parameters[10].toString().trim();
-        this.flavor = parameters[11].toString().trim();
-        this.publicKeyName = parameters[12].toString().trim();
-        this.numberOfInstances = Integer.parseInt(parameters[13].toString().trim());
-        this.numberOfNodesPerInstance = Integer.parseInt(parameters[14].toString().trim());
+        this.scopePrefix = parameters[4].toString().trim();
+        this.scopeValue = parameters[5].toString().trim();
+        this.region = parameters[6].toString().trim();
+        this.identityVersion = parameters[7].toString().trim();
+        this.image = parameters[8].toString().trim();
+        this.flavor = parameters[9].toString().trim();
+        this.publicKeyName = parameters[10].toString().trim();
+        this.numberOfInstances = Integer.parseInt(parameters[11].toString().trim());
+        this.numberOfNodesPerInstance = Integer.parseInt(parameters[12].toString().trim());
+        this.connectorIaasURL = parameters[13].toString().trim();
+        this.rmHostname = parameters[14].toString().trim();
         this.downloadCommand = parameters[15].toString().trim();
         this.additionalProperties = parameters[16].toString().trim();
 
@@ -147,40 +147,36 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
             throw new IllegalArgumentException("Openstack endpoint must be specified");
         }
 
-        if (parameters[4] == null) {
-            throw new IllegalArgumentException("RM host (hostname or IP address) must be specified");
-        }
-
-        if (parameters[7] == null) {
+        if (parameters[6] == null) {
             throw new IllegalArgumentException("Openstack region must be specified");
         }
 
         if (parameters[8] == null) {
-            throw new IllegalArgumentException("Openstack identity version must be specified");
-        }
-
-        if (parameters[9] == null) {
-            throw new IllegalArgumentException("The connector-iaas URL must be specified");
-        }
-
-        if (parameters[10] == null) {
             throw new IllegalArgumentException("Openstack image id must be specified");
         }
 
-        if (parameters[11] == null) {
+        if (parameters[9] == null) {
             throw new IllegalArgumentException("Openstack flavor must be specified");
         }
 
-        if (parameters[12] == null) {
+        if (parameters[10] == null) {
             throw new IllegalArgumentException("Openstack public key name must be specified");
         }
 
-        if (parameters[13] == null) {
+        if (parameters[11] == null) {
             throw new IllegalArgumentException("The number of instances to create must be specified");
         }
 
-        if (parameters[14] == null) {
+        if (parameters[12] == null) {
             throw new IllegalArgumentException("The number of nodes per instance to deploy must be specified");
+        }
+
+        if (parameters[13] == null) {
+            throw new IllegalArgumentException("The connector-iaas URL must be specified");
+        }
+
+        if (parameters[14] == null) {
+            throw new IllegalArgumentException("RM host (hostname or IP address) must be specified");
         }
 
         if (parameters[15] == null) {
