@@ -436,8 +436,7 @@ public class VMWareInfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(vmwareInfrastructure.getDescription(),
-                   is("Handles nodes from the Amazon Elastic Compute Cloud Service."));
+        assertThat(vmwareInfrastructure.getDescription(), is("Handles nodes of VMware Cloud."));
     }
 
 }

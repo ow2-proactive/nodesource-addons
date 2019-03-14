@@ -266,7 +266,7 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "Handles nodes from the Amazon Elastic Compute Cloud Service.";
+        return "Handles nodes of VMware Cloud.";
     }
 
     /**

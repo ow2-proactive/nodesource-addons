@@ -216,7 +216,7 @@ public class ConnectorIaasController {
     }
 
     public Set<String> createInstancesWithPublicKeyNameAndInitScript(String infrastructureId, String instanceTag,
-            String image, int numberOfInstances, int hardwareType, String publicKeyName, List<String> scripts) {
+            String image, int numberOfInstances, String hardwareType, String publicKeyName, List<String> scripts) {
 
         String instanceJson = ConnectorIaasJSONTransformer.getInstanceJSONWithPublicKeyAndScripts(instanceTag,
                                                                                                   image,

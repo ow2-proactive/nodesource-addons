@@ -62,7 +62,7 @@ public class ConnectorIaasJSONTransformer {
         JSONObject credentials = new JSONObject();
         credentials.put("username", username);
         credentials.put("password", password);
-        credentials.put("domain", password);
+        credentials.put("domain", domain);
         JSONObject scope = new JSONObject();
         scope.put("prefix", scopePrefix);
         scope.put("value", scopeValue);

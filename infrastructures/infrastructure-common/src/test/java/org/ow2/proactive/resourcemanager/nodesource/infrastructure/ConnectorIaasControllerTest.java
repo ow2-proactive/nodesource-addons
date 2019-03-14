@@ -185,7 +185,7 @@ public class ConnectorIaasControllerTest {
                                                                                                          "node_source_name",
                                                                                                          "image",
                                                                                                          1,
-                                                                                                         3,
+                                                                                                         "3",
                                                                                                          "publicKeyName",
                                                                                                          scripts);
 

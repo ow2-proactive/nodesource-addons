@@ -80,7 +80,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     protected String image = null;
 
     @Configurable(description = "Flavor type of OpenStack")
-    protected int flavor = 3;
+    protected String flavor = "3";
 
     @Configurable(description = "Public key name for the instance")
     protected String publicKeyName = null;
@@ -114,7 +114,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.identityVersion = parameters[8].toString().trim();
         this.connectorIaasURL = parameters[9].toString().trim();
         this.image = parameters[10].toString().trim();
-        this.flavor = Integer.parseInt(parameters[11].toString().trim());
+        this.flavor = parameters[11].toString().trim();
         this.publicKeyName = parameters[12].toString().trim();
         this.numberOfInstances = Integer.parseInt(parameters[13].toString().trim());
         this.numberOfNodesPerInstance = Integer.parseInt(parameters[14].toString().trim());
@@ -135,28 +135,32 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         }
 
         if (parameters[1] == null) {
-            throw new IllegalArgumentException("Openstack secret key  must be specified");
+            throw new IllegalArgumentException("Openstack secret key must be specified");
         }
 
         if (parameters[2] == null) {
-            throw new IllegalArgumentException("Openstack domain  must be specified");
+            throw new IllegalArgumentException("Openstack user domain must be specified");
         }
 
-        if (parameters[3] == null) {
-            throw new IllegalArgumentException("Openstack scope prefix must be specified");
-        }
-
-        if (parameters[4] == null) {
-            throw new IllegalArgumentException("Openstack scope value must be specified");
-        }
+        /*
+         * if (parameters[3] == null) {
+         * throw new IllegalArgumentException("Openstack scope prefix must be specified");
+         * }
+         * 
+         * if (parameters[4] == null) {
+         * throw new IllegalArgumentException("Openstack scope value must be specified");
+         * }
+         */
 
         if (parameters[5] == null) {
             throw new IllegalArgumentException("Openstack region must be specified");
         }
 
-        if (parameters[6] == null) {
-            throw new IllegalArgumentException("Openstack identity version must be specified");
-        }
+        /*
+         * if (parameters[6] == null) {
+         * throw new IllegalArgumentException("Openstack identity version must be specified");
+         * }
+         */
 
         if (parameters[7] == null) {
             throw new IllegalArgumentException("The Resource manager hostname must be specified");
@@ -263,7 +267,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "Handles nodes from the Amazon Elastic Compute Cloud Service.";
+        return "Handles nodes using Nova compute service of Openstack Cloud.";
     }
 
     /**

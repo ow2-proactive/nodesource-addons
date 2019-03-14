@@ -85,7 +85,7 @@ public class OpenstackInfrastructureTest {
         assertThat(openstackInfrastructure.username, is(nullValue()));
         assertThat(openstackInfrastructure.password, is(nullValue()));
         assertThat(openstackInfrastructure.endpoint, is(nullValue()));
-        assertThat(openstackInfrastructure.flavor, is(3));
+        assertThat(openstackInfrastructure.flavor, is("3"));
         assertThat(openstackInfrastructure.publicKeyName, is(nullValue()));
         assertThat(openstackInfrastructure.rmHostname, is(not(nullValue())));
         assertThat(openstackInfrastructure.connectorIaasURL,
@@ -191,7 +191,7 @@ public class OpenstackInfrastructureTest {
                                                                                    anyString(),
                                                                                    anyString(),
                                                                                    anyInt(),
-                                                                                   anyInt(),
+                                                                                   anyString(),
                                                                                    anyString(),
                                                                                    anyList())).thenReturn(Sets.newHashSet("123",
                                                                                                                           "456"));
@@ -201,21 +201,21 @@ public class OpenstackInfrastructureTest {
         verify(connectorIaasController, times(1)).waitForConnectorIaasToBeUP();
 
         verify(connectorIaasController).createOpenstackInfrastructure("node_source_name",
-                                                             "username",
-                                                             "password",
-                                                             "domain",
-                                                             "scopePrefix",
-                                                             "scopeValue",
-                                                             "region",
-                                                             "identity",
-                                                             "endpoint",
-                                                             true);
+                                                                      "username",
+                                                                      "password",
+                                                                      "domain",
+                                                                      "scopePrefix",
+                                                                      "scopeValue",
+                                                                      "region",
+                                                                      "identity",
+                                                                      "endpoint",
+                                                                      true);
 
         verify(connectorIaasController, times(2)).createInstancesWithPublicKeyNameAndInitScript(anyString(),
                                                                                                 anyString(),
                                                                                                 anyString(),
                                                                                                 anyInt(),
-                                                                                                anyInt(),
+                                                                                                anyString(),
                                                                                                 anyString(),
                                                                                                 anyList());
 
@@ -265,7 +265,7 @@ public class OpenstackInfrastructureTest {
                                                                                    anyString(),
                                                                                    anyString(),
                                                                                    anyInt(),
-                                                                                   anyInt(),
+                                                                                   anyString(),
                                                                                    anyString(),
                                                                                    anyList())).thenReturn(Sets.newHashSet("123",
                                                                                                                           "456"));
@@ -289,7 +289,7 @@ public class OpenstackInfrastructureTest {
                                                                                                 anyString(),
                                                                                                 anyString(),
                                                                                                 anyInt(),
-                                                                                                anyInt(),
+                                                                                                anyString(),
                                                                                                 anyString(),
                                                                                                 anyList());
 
@@ -384,7 +384,7 @@ public class OpenstackInfrastructureTest {
     @Test
     public void testGetDescription() {
         assertThat(openstackInfrastructure.getDescription(),
-                   is("Handles nodes from the Amazon Elastic Compute Cloud Service."));
+                   is("Handles nodes using Nova compute service of Openstack Cloud."));
     }
 
 }
