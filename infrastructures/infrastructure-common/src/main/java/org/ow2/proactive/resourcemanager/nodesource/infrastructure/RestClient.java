@@ -95,8 +95,6 @@ public class RestClient {
     }
 
     public void deleteInstance(String infrastructureId, String key, String value) {
-        System.out.println(connectorIaasURL + "/infrastructures/" + infrastructureId + "/instances");
-        System.out.println(key + ":" + value);
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
                                                  "/instances");
         Response response = target.queryParam(key, value).request(MediaType.APPLICATION_JSON_TYPE).delete();
