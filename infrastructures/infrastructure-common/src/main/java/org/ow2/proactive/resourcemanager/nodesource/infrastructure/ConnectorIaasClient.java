@@ -87,8 +87,8 @@ public class ConnectorIaasClient {
     }
 
     public String createInfrastructure(String infrastructureId, String infrastructureJson) {
-        terminateInfrastructure(infrastructureId);
-        return restClient.postToInfrastructuresWebResource(infrastructureJson);
+        terminateInfrastructure(infrastructureId, false);
+        return restClient.postInfrastructures(infrastructureJson);
     }
 
     public Set<String> createInstancesIfNotExist(String infrastructureId, String instanceTag, String instanceJson,
@@ -118,7 +118,7 @@ public class ConnectorIaasClient {
     }
 
     private Set<String> createInstances(String infrastructureId, String instanceJson) {
-        String response = restClient.postToInstancesWebResource(infrastructureId, instanceJson);
+        String response = restClient.postInstances(infrastructureId, instanceJson);
 
         JSONArray instancesJSONObjects = new JSONArray(response);
 
@@ -134,7 +134,7 @@ public class ConnectorIaasClient {
     }
 
     public SimpleImmutableEntry<String, String> createAwsEc2KeyPair(String infrastructureId, String instanceJson) {
-        String response = restClient.postToKeyPairsWebResource(infrastructureId, instanceJson);
+        String response = restClient.postKeyPairs(infrastructureId, instanceJson);
 
         JSONObject keyPairInfoJson = new JSONObject(response);
 
@@ -147,26 +147,23 @@ public class ConnectorIaasClient {
         }
     }
 
+    public void terminateInfrastructure(String infrastructureId, boolean deleteInstances) {
+        restClient.deleteInfrastructure(infrastructureId, deleteInstances);
+    }
+
     public void terminateInstance(String infrastructureId, String instanceId) {
-        restClient.deleteToInstancesWebResource(infrastructureId, "instanceId", instanceId);
+        restClient.deleteInstance(infrastructureId, "instanceId", instanceId);
     }
 
     public void terminateInstanceByTag(String infrastructureId, String instanceTag) {
-        restClient.deleteToInstancesWebResource(infrastructureId, "instanceTag", instanceTag);
-    }
-
-    public void terminateInfrastructure(String infrastructureId) {
-        restClient.deleteInfrastructuresWebResource(infrastructureId);
+        restClient.deleteInstance(infrastructureId, "instanceTag", instanceTag);
     }
 
     public String runScriptOnInstance(String infrastructureId, String instanceId, String instanceScriptJson) {
         int count = 0;
         while (true) {
             try {
-                return restClient.postToScriptsWebResource(infrastructureId,
-                                                           "instanceId",
-                                                           instanceId,
-                                                           instanceScriptJson);
+                return restClient.postScript(infrastructureId, "instanceId", instanceId, instanceScriptJson);
             } catch (Exception e) {
                 if (++count == MAX_RETRIES_IN_CASE_OF_ERROR) {
                     logger.error(e);

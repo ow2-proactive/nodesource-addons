@@ -215,15 +215,15 @@ public class ConnectorIaasController {
         return createInstance(infrastructureId, instanceTag, instanceJson);
     }
 
-    public Set<String> createInstancesWithPublicKeyNameAndInitScript(String infrastructureId, String instanceTag,
-            String image, int numberOfInstances, String hardwareType, String publicKeyName, List<String> scripts) {
+    public Set<String> createOpenstackInstance(String infrastructureId, String instanceTag, String image,
+            int numberOfInstances, String hardwareType, String publicKeyName, List<String> scripts) {
 
-        String instanceJson = ConnectorIaasJSONTransformer.getInstanceJSONWithPublicKeyAndScripts(instanceTag,
-                                                                                                  image,
-                                                                                                  String.valueOf(numberOfInstances),
-                                                                                                  publicKeyName,
-                                                                                                  hardwareType,
-                                                                                                  scripts);
+        String instanceJson = ConnectorIaasJSONTransformer.getOpenstackInstanceJSON(instanceTag,
+                                                                                    image,
+                                                                                    String.valueOf(numberOfInstances),
+                                                                                    publicKeyName,
+                                                                                    hardwareType,
+                                                                                    scripts);
 
         return createInstance(infrastructureId, instanceTag, instanceJson);
     }
@@ -273,8 +273,18 @@ public class ConnectorIaasController {
         }
     }
 
+    public void terminateInfrastructure(String infrastructureId, boolean deleteInstances) {
+        connectorIaasClient.terminateInfrastructure(infrastructureId, deleteInstances);
+    }
+
     public void terminateInstance(String infrastructureId, String instanceId) {
+        logger.info("Deleting instance : " + instanceId + " in infrastructure " + infrastructureId);
         connectorIaasClient.terminateInstance(infrastructureId, instanceId);
+    }
+
+    public void terminateInstanceByTag(String infrastructureId, String instanceTag) {
+        logger.info("Deleting instance by tag: " + instanceTag + " in infrastructure " + infrastructureId);
+        connectorIaasClient.terminateInstanceByTag(infrastructureId, instanceTag);
     }
 
     private Set<String> createInstance(String infrastructureId, String instanceTag, String instanceJson) {

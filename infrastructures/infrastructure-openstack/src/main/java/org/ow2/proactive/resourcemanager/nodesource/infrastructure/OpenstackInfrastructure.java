@@ -28,14 +28,17 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 
 public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
@@ -45,6 +48,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     public static final String INFRASTRUCTURE_TYPE = "openstack-nova";
 
     private static final Logger logger = Logger.getLogger(OpenstackInfrastructure.class);
+
+    private transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
 
     @Configurable(description = "Openstack username")
     protected String username = null;
@@ -92,7 +97,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Command used to download the node jar")
-    protected String downloadCommand = generateDefaultDownloadCommand();
+    protected String downloadCommand = linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname);
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
@@ -159,10 +164,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
             throw new IllegalArgumentException("Openstack flavor must be specified");
         }
 
-        if (parameters[10] == null) {
-            throw new IllegalArgumentException("Openstack public key name must be specified");
-        }
-
         if (parameters[11] == null) {
             throw new IllegalArgumentException("The number of instances to create must be specified");
         }
@@ -208,16 +209,21 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
             String instanceTag = getInfrastructureId() + "_" + i;
 
-            List<String> scripts = Lists.newArrayList(this.downloadCommand,
-                                                      "nohup " + generateDefaultStartNodeCommand(instanceTag) + "  &");
+            List<String> scripts = linuxInitScriptGenerator.buildScript(instanceTag,
+                                                                        getRmUrl(),
+                                                                        rmHostname,
+                                                                        INSTANCE_TAG_NODE_PROPERTY,
+                                                                        additionalProperties,
+                                                                        nodeSource.getName(),
+                                                                        numberOfNodesPerInstance);
 
-            connectorIaasController.createInstancesWithPublicKeyNameAndInitScript(getInfrastructureId(),
-                                                                                  instanceTag,
-                                                                                  image,
-                                                                                  1,
-                                                                                  flavor,
-                                                                                  publicKeyName,
-                                                                                  scripts);
+            connectorIaasController.createOpenstackInstance(getInfrastructureId(),
+                                                            instanceTag,
+                                                            image,
+                                                            1,
+                                                            flavor,
+                                                            publicKeyName,
+                                                            scripts);
         }
 
     }
@@ -276,32 +282,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    private String generateDefaultDownloadCommand() {
-        if (System.getProperty("os.name").contains("Windows")) {
-            return "powershell -command \"& { (New-Object Net.WebClient).DownloadFile('" + this.rmHostname +
-                   ":8080/rest/node.jar" + "', 'node.jar') }\"";
-        } else {
-            return "wget -nv " + this.rmHostname + ":8080/rest/node.jar";
-        }
-    }
-
-    private String generateDefaultStartNodeCommand(String instanceId) {
-        try {
-            String rmUrlToUse = getRmUrl();
-
-            String protocol = rmUrlToUse.substring(0, rmUrlToUse.indexOf(':')).trim();
-            return "java -jar node.jar -Dproactive.communication.protocol=" + protocol +
-                   " -Dproactive.pamr.router.address=" + rmHostname + " -D" + INSTANCE_TAG_NODE_PROPERTY + "=" +
-                   instanceId + " " + additionalProperties + " -r " + rmUrlToUse + " -s " + nodeSource.getName() +
-                   " -w " + numberOfNodesPerInstance;
-        } catch (Exception e) {
-            logger.error("Exception when generating the command, fallback on default value", e);
-            return "java -jar node.jar -D" + INSTANCE_TAG_NODE_PROPERTY + "=" + instanceId + " " +
-                   additionalProperties + " -r " + getRmUrl() + " -s " + nodeSource.getName() + " -w " +
-                   numberOfNodesPerInstance;
-        }
-    }
-
     @Override
     protected String getInstanceIdProperty(Node node) throws RMException {
         try {
@@ -311,4 +291,38 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
+    @Override
+    public void shutDown() {
+        String infrastructureId = getInfrastructureId();
+        logger.info("Deleting infrastructure : " + infrastructureId + " and its underlying instances");
+        connectorIaasController.terminateInfrastructure(infrastructureId, true);
+    }
+
+    @Override
+    protected void unregisterNodeAndRemoveInstanceIfNeeded(final String instanceTag, final String nodeName,
+            final String infrastructureId, final boolean terminateInstanceIfEmpty) {
+        setPersistedInfraVariable(() -> {
+            // first read from the runtime variables map
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            // make modifications to the nodesPerInstance map
+            if (nodesPerInstance.get(instanceTag) != null) {
+                nodesPerInstance.get(instanceTag).remove(nodeName);
+                logger.info("Removed node : " + nodeName);
+                if (nodesPerInstance.get(instanceTag).isEmpty()) {
+                    if (terminateInstanceIfEmpty) {
+                        connectorIaasController.terminateInstanceByTag(infrastructureId, instanceTag);
+                        logger.info("Instance terminated: " + instanceTag);
+                    }
+                    nodesPerInstance.remove(instanceTag);
+                    logger.info("Removed instance : " + instanceTag);
+                }
+                // finally write to the runtime variable map
+                persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
+            } else {
+                logger.error("Cannot remove node " + nodeName + " because instance " + instanceTag +
+                             " is not registered");
+            }
+            return null;
+        });
+    }
 }

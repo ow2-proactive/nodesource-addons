@@ -236,10 +236,12 @@ public class ConnectorIaasJSONTransformer {
         return instance.toString();
     }
 
-    public static String getInstanceJSONWithPublicKeyAndScripts(String tag, String image, String number,
-            String publicKeyName, String type, List<String> scripts) {
+    public static String getOpenstackInstanceJSON(String tag, String image, String number, String publicKeyName,
+            String type, List<String> scripts) {
         JSONObject credentials = new JSONObject();
-        credentials.put("publicKeyName", publicKeyName);
+        if (publicKeyName != null && !publicKeyName.equals("")) {
+            credentials.put("publicKeyName", publicKeyName);
+        }
         JSONObject hardware = new JSONObject();
         hardware.put("type", type);
         JSONObject script = new JSONObject();

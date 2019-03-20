@@ -5,17 +5,21 @@ targetCompatibility = JavaVersion.VERSION_1_8
 
 
 dependencies {
+
     compile 'log4j:log4j:1.2.17'
+
     compile 'com.google.guava:guava:19.0'
+
     compile 'org.apache.httpcomponents:httpclient:4.5.2'
+    compile 'org.apache.commons:commons-configuration2:2.2'
+    compile 'commons-beanutils:commons-beanutils:1.9.3'
+
     compile 'org.jboss.resteasy:resteasy-jackson-provider:3.0.17.Final'
     compile 'org.jboss.resteasy:resteasy-multipart-provider:3.0.17.Final'
     compile 'org.json:json:20151123'
 
     compile "org.ow2.proactive:rm-server:${rmVersion}"
     compile "org.objectweb.proactive:programming-core:${programmingVersion}"
-    compile 'com.google.guava:guava:19.0'
-    compile 'log4j:log4j:1.2.17'
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.hamcrest:hamcrest-junit:2.0.0.0'

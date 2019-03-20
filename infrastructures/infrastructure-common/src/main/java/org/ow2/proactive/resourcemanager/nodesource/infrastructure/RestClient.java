@@ -60,40 +60,50 @@ public class RestClient {
         return checkAndGetResponse(response);
     }
 
-    public String postToInfrastructuresWebResource(String infrastructureJson) {
+    public String postInfrastructures(String infrastructureJson) {
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures");
         Response response = target.request().post(Entity.entity(infrastructureJson, MediaType.APPLICATION_JSON_TYPE));
         return checkAndGetResponse(response);
     }
 
-    public void deleteInfrastructuresWebResource(String infrastructureId) {
+    public void deleteInfrastructure(String infrastructureId, boolean deleteInstances) {
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId);
-        Response response = target.request(MediaType.APPLICATION_JSON_TYPE).delete();
+
+        Response response;
+
+        if (deleteInstances) {
+            response = target.queryParam("deleteInstances", "true").request(MediaType.APPLICATION_JSON_TYPE).delete();
+        } else {
+            response = target.request(MediaType.APPLICATION_JSON_TYPE).delete();
+        }
+
         checkAndGetResponse(response);
     }
 
-    public String postToKeyPairsWebResource(String infrastructureId, String instanceJson) {
+    public String postKeyPairs(String infrastructureId, String instanceJson) {
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
                                                  "/keypairs");
         Response response = target.request().post(Entity.entity(instanceJson, MediaType.APPLICATION_JSON_TYPE));
         return checkAndGetResponse(response);
     }
 
-    public String postToInstancesWebResource(String infrastructureId, String instanceJson) {
+    public String postInstances(String infrastructureId, String instanceJson) {
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
                                                  "/instances");
         Response response = target.request().post(Entity.entity(instanceJson, MediaType.APPLICATION_JSON_TYPE));
         return checkAndGetResponse(response);
     }
 
-    public void deleteToInstancesWebResource(String infrastructureId, String key, String value) {
+    public void deleteInstance(String infrastructureId, String key, String value) {
+        System.out.println(connectorIaasURL + "/infrastructures/" + infrastructureId + "/instances");
+        System.out.println(key + ":" + value);
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
                                                  "/instances");
         Response response = target.queryParam(key, value).request(MediaType.APPLICATION_JSON_TYPE).delete();
         checkAndGetResponse(response);
     }
 
-    public String postToScriptsWebResource(String infrastructureId, String key, String value, String scriptJson) {
+    public String postScript(String infrastructureId, String key, String value, String scriptJson) {
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
                                                  "/instances/scripts");
         Response response = target.queryParam(key, value)

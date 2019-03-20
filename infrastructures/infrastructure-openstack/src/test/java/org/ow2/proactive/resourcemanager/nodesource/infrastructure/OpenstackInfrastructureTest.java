@@ -187,14 +187,13 @@ public class OpenstackInfrastructureTest {
                                                                    "endpoint",
                                                                    false)).thenReturn("node_source_name");
 
-        when(connectorIaasController.createInstancesWithPublicKeyNameAndInitScript(anyString(),
-                                                                                   anyString(),
-                                                                                   anyString(),
-                                                                                   anyInt(),
-                                                                                   anyString(),
-                                                                                   anyString(),
-                                                                                   anyList())).thenReturn(Sets.newHashSet("123",
-                                                                                                                          "456"));
+        when(connectorIaasController.createOpenstackInstance(anyString(),
+                                                             anyString(),
+                                                             anyString(),
+                                                             anyInt(),
+                                                             anyString(),
+                                                             anyString(),
+                                                             anyList())).thenReturn(Sets.newHashSet("123", "456"));
 
         openstackInfrastructure.acquireNode();
 
@@ -211,13 +210,13 @@ public class OpenstackInfrastructureTest {
                                                                       "endpoint",
                                                                       true);
 
-        verify(connectorIaasController, times(2)).createInstancesWithPublicKeyNameAndInitScript(anyString(),
-                                                                                                anyString(),
-                                                                                                anyString(),
-                                                                                                anyInt(),
-                                                                                                anyString(),
-                                                                                                anyString(),
-                                                                                                anyList());
+        verify(connectorIaasController, times(2)).createOpenstackInstance(anyString(),
+                                                                          anyString(),
+                                                                          anyString(),
+                                                                          anyInt(),
+                                                                          anyString(),
+                                                                          anyString(),
+                                                                          anyList());
 
         verify(connectorIaasController, times(0)).executeScript(anyString(), anyString(), anyList());
 
@@ -261,14 +260,13 @@ public class OpenstackInfrastructureTest {
                                                                    "endpoint",
                                                                    false)).thenReturn("node_source_name");
 
-        when(connectorIaasController.createInstancesWithPublicKeyNameAndInitScript(anyString(),
-                                                                                   anyString(),
-                                                                                   anyString(),
-                                                                                   anyInt(),
-                                                                                   anyString(),
-                                                                                   anyString(),
-                                                                                   anyList())).thenReturn(Sets.newHashSet("123",
-                                                                                                                          "456"));
+        when(connectorIaasController.createOpenstackInstance(anyString(),
+                                                             anyString(),
+                                                             anyString(),
+                                                             anyInt(),
+                                                             anyString(),
+                                                             anyString(),
+                                                             anyList())).thenReturn(Sets.newHashSet("123", "456"));
 
         openstackInfrastructure.acquireAllNodes();
 
@@ -285,13 +283,13 @@ public class OpenstackInfrastructureTest {
                                                                       "endpoint",
                                                                       true);
 
-        verify(connectorIaasController, times(2)).createInstancesWithPublicKeyNameAndInitScript(anyString(),
-                                                                                                anyString(),
-                                                                                                anyString(),
-                                                                                                anyInt(),
-                                                                                                anyString(),
-                                                                                                anyString(),
-                                                                                                anyList());
+        verify(connectorIaasController, times(2)).createOpenstackInstance(anyString(),
+                                                                          anyString(),
+                                                                          anyString(),
+                                                                          anyInt(),
+                                                                          anyString(),
+                                                                          anyString(),
+                                                                          anyList());
 
         verify(connectorIaasController, times(0)).executeScript(anyString(), anyString(), anyList());
     }
@@ -336,7 +334,7 @@ public class OpenstackInfrastructureTest {
 
         verify(proActiveRuntime).killNode("nodename");
 
-        verify(connectorIaasController).terminateInstance("node_source_name", "123");
+        verify(connectorIaasController).terminateInstanceByTag("node_source_name", "123");
 
         assertThat(openstackInfrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 

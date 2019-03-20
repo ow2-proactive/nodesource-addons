@@ -125,12 +125,12 @@ public class ConnectorIaasJSONTransformerTest {
     public void testGetInstanceJSONWithPublicKeyAndScripts() {
 
         List<String> scripts = null;
-        JSONObject actual = new JSONObject(ConnectorIaasJSONTransformer.getInstanceJSONWithPublicKeyAndScripts("tag",
-                                                                                                               "image",
-                                                                                                               "number",
-                                                                                                               "publicKeyName",
-                                                                                                               "type",
-                                                                                                               scripts));
+        JSONObject actual = new JSONObject(ConnectorIaasJSONTransformer.getOpenstackInstanceJSON("tag",
+                                                                                                 "image",
+                                                                                                 "number",
+                                                                                                 "publicKeyName",
+                                                                                                 "type",
+                                                                                                 scripts));
 
         assertThat(actual.getString("tag"), is("tag"));
         assertThat(actual.getString("image"), is("image"));

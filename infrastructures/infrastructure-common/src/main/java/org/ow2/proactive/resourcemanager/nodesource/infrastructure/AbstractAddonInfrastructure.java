@@ -55,7 +55,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * map within the {@link InfrastructureManager#persistedInfraVariables} map of the
      * infrastructure, which holds the variables that are saved in database.
      */
-    private static final String NODES_PER_INSTANCES_KEY = "nodesPerInstance";
+    protected static final String NODES_PER_INSTANCES_KEY = "nodesPerInstance";
 
     /**
      * Key to retrieve in the {@link InfrastructureManager#persistedInfraVariables}
@@ -85,7 +85,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * Information about instances and their nodes. Maps the instance
      * identifier to the name of the nodes that belong to it.
      */
-    private Map<String, Set<String>> nodesPerInstance;
+    protected Map<String, Set<String>> nodesPerInstance;
 
     /**
      * Used to track the nodes that are not in the

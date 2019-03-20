@@ -163,12 +163,12 @@ public class ConnectorIaasControllerTest {
         List<String> scripts = Lists.newArrayList();
         scripts.add("ls -lrt");
 
-        String instanceJson = ConnectorIaasJSONTransformer.getInstanceJSONWithPublicKeyAndScripts("node_source_name",
-                                                                                                  "image",
-                                                                                                  "1",
-                                                                                                  "publicKeyName",
-                                                                                                  "3",
-                                                                                                  scripts);
+        String instanceJson = ConnectorIaasJSONTransformer.getOpenstackInstanceJSON("node_source_name",
+                                                                                    "image",
+                                                                                    "1",
+                                                                                    "publicKeyName",
+                                                                                    "3",
+                                                                                    scripts);
 
         Set<String> instanceIds = Sets.newHashSet("123", "456");
 
@@ -181,13 +181,13 @@ public class ConnectorIaasControllerTest {
 
         when(connectorIaasClient.getAllJsonInstancesByInfrastructureId("node_source_name")).thenReturn(existingInstances);
 
-        Set<String> instancesIds = connectorIaasController.createInstancesWithPublicKeyNameAndInitScript("node_source_name",
-                                                                                                         "node_source_name",
-                                                                                                         "image",
-                                                                                                         1,
-                                                                                                         "3",
-                                                                                                         "publicKeyName",
-                                                                                                         scripts);
+        Set<String> instancesIds = connectorIaasController.createOpenstackInstance("node_source_name",
+                                                                                   "node_source_name",
+                                                                                   "image",
+                                                                                   1,
+                                                                                   "3",
+                                                                                   "publicKeyName",
+                                                                                   scripts);
 
         assertThat(instancesIds.size(), is(2));
         assertThat(instancesIds.containsAll(instanceIds), is(true));
