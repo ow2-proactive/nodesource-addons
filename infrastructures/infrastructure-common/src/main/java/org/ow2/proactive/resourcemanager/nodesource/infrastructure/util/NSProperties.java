@@ -47,15 +47,11 @@ public class NSProperties {
 
     public static final String PROPERTIES_FILE = "NodeSource.properties";
 
-    private static final ListDelimiterHandler DELIMITER = new DefaultListDelimiterHandler(';');
+    private static final ListDelimiterHandler DELIMITER = new DefaultListDelimiterHandler(',');
 
     public static final String JRE_INSTALL = "ns.jre.install";
 
-    public static final String JRE_DOWNLOAD = "ns.script.linux.jre.download";
-
-    public static final String JRE_EXTRACT = "ns.script.linux.jre.extract";
-
-    public static final String JRE_RENAME = "ns.script.linux.jre.remane";
+    public static final String JRE_INSTALL_COMMAND = "ns.script.linux.jre.install.command";
 
     public static final String JAVA_COMMAND = "ns.script.linux.java.command";
 

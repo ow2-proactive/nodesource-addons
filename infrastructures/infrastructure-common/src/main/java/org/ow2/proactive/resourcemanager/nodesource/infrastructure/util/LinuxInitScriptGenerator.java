@@ -39,17 +39,16 @@ public class LinuxInitScriptGenerator {
 
     private List<String> commands = new ArrayList<>();
 
-    private Configuration nsConfig;
+    private static Configuration nsConfig = null;
 
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname,
             String instanceTagNodeProperty, String additionalProperties, String nsName, int numberOfNodesPerInstance) {
 
         loadNSConfig();
+        commands.clear();
 
         if (nsConfig.getBoolean(NSProperties.JRE_INSTALL)) {
-            commands.add(nsConfig.getString(NSProperties.JRE_DOWNLOAD));
-            commands.add(nsConfig.getString(NSProperties.JRE_EXTRACT));
-            commands.add(nsConfig.getString(NSProperties.JRE_RENAME));
+            commands.add(nsConfig.getString(NSProperties.JRE_INSTALL_COMMAND));
         }
 
         commands.add(generateNodeDownloadCommand(rmHostname));
@@ -86,11 +85,11 @@ public class LinuxInitScriptGenerator {
         return "nohup " + javaCommand + javaProperties + "  &";
     }
 
-    private void loadNSConfig() {
+    private static void loadNSConfig() {
         try {
-
-            nsConfig = NSProperties.loadConfig();
-
+            if (null == nsConfig) {
+                nsConfig = NSProperties.loadConfig();
+            }
         } catch (ConfigurationException e) {
             logger.error("Exception when loading NodeSource properties", e);
         }
