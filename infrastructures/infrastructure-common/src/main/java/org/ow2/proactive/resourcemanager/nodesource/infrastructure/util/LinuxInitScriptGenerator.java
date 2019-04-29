@@ -42,7 +42,8 @@ public class LinuxInitScriptGenerator {
     private static Configuration nsConfig = null;
 
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname,
-            String instanceTagNodeProperty, String additionalProperties, String nsName, int numberOfNodesPerInstance) {
+            String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
+            int numberOfNodesPerInstance) {
 
         loadNSConfig();
         commands.clear();
@@ -59,6 +60,7 @@ public class LinuxInitScriptGenerator {
                                               instanceTagNodeProperty,
                                               additionalProperties,
                                               nsName,
+                                              nodeName,
                                               numberOfNodesPerInstance));
 
         logger.info("Node starting script generated for Linux system: " + commands.toString());
@@ -71,16 +73,19 @@ public class LinuxInitScriptGenerator {
     }
 
     private String generateNodeStartCommand(String instanceId, String rmUrlToUse, String rmHostname,
-            String instanceTagNodeProperty, String additionalProperties, String nsName, int numberOfNodesPerInstance) {
+            String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeBaseName,
+            int numberOfNodesPerInstance) {
 
         String javaCommand = nsConfig.getString(NSProperties.JAVA_COMMAND) + " -jar node.jar";
 
         String protocol = rmUrlToUse.substring(0, rmUrlToUse.indexOf(':')).trim();
 
+        String nodeNamingOption = (nodeBaseName == null || nodeBaseName.isEmpty()) ? "" : " -n " + nodeBaseName;
+
         String javaProperties = " -Dproactive.communication.protocol=" + protocol +
                                 " -Dproactive.pamr.router.address=" + rmHostname + " -D" + instanceTagNodeProperty +
                                 "=" + instanceId + " " + additionalProperties + " -r " + rmUrlToUse + " -s " + nsName +
-                                " -w " + numberOfNodesPerInstance;
+                                nodeNamingOption + " -w " + numberOfNodesPerInstance;
 
         return "nohup " + javaCommand + javaProperties + "  &";
     }

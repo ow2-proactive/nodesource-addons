@@ -382,7 +382,7 @@ public class OpenstackInfrastructureTest {
     @Test
     public void testGetDescription() {
         assertThat(openstackInfrastructure.getDescription(),
-                   is("Handles nodes using Nova compute service of Openstack Cloud."));
+                   is("Handles ProActive nodes using Nova compute service of Openstack Cloud."));
     }
 
 }

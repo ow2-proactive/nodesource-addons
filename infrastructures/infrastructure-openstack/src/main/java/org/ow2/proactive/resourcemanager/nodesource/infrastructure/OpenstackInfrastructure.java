@@ -27,9 +27,10 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
@@ -41,16 +42,30 @@ import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxIni
 import com.google.common.collect.Maps;
 
 
+/**
+ * @author ActiveEon Team
+ * @since 2019-04-01
+ */
 public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
+
+    /**
+     *  Openstack infrastructure parameters
+     **/
+    private static final Logger logger = Logger.getLogger(OpenstackInfrastructure.class);
 
     public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
 
     public static final String INFRASTRUCTURE_TYPE = "openstack-nova";
 
-    private static final Logger logger = Logger.getLogger(OpenstackInfrastructure.class);
+    private final transient Lock acquireLock = new ReentrantLock();
 
-    private transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+    private boolean isInitializedAndCreated = false;
 
+    private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+
+    /**
+     *  Fields of the Openstack infrastructure form (in the RM portal)
+     */
     @Configurable(description = "Openstack username")
     protected String username = null;
 
@@ -84,7 +99,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Public key name for Openstack instance")
     protected String publicKeyName = null;
 
-    @Configurable(description = "Total instances to create")
+    @Configurable(description = "Total (max) number of instances to create")
     protected int numberOfInstances = 1;
 
     @Configurable(description = "Total nodes to create per instance")
@@ -102,10 +117,35 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
+    /**
+     * Dynamic policy parameters
+     **/
+    protected static final String TOTAL_NUMBER_OF_NODES_KEY = "TOTAL_NUMBER_OF_NODES";
+
+    private static final String INIT_DELAY_KEY = "INIT_DELAY";
+
+    private static final String REFRESH_TIME_KEY = "REFRESH_TIME";
+
+    private static final String MAX_NODES_KEY = "MAX_NODES";
+
+    int nbOfNodes;
+
+    int totalNodes;
+
+    int existingNodes;
+
+    int maxNodes;
+
+    long initDelay;
+
+    long refreshTime;
+
+    int instancesToDeploy;
+
     @Override
     public void configure(Object... parameters) {
 
-        logger.info("Validating parameters : " + parameters);
+        logger.info("Validating parameters : " + java.util.Arrays.toString(parameters));
         validate(parameters);
 
         this.username = parameters[0].toString().trim();
@@ -127,12 +167,11 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.additionalProperties = parameters[16].toString().trim();
 
         connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
-
     }
 
     private void validate(Object[] parameters) {
 
-        if (parameters == null || parameters.length < 15) {
+        if (parameters == null || parameters.length < 16) {
             throw new IllegalArgumentException("Invalid parameters for Openstack Infrastructure creation");
         }
 
@@ -194,43 +233,35 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        connectorIaasController.createOpenstackInfrastructure(getInfrastructureId(),
-                                                              username,
-                                                              password,
-                                                              domain,
-                                                              scopePrefix,
-                                                              scopeValue,
-                                                              region,
-                                                              identityVersion,
-                                                              endpoint,
-                                                              true);
+        createOpenstackInfrastructure();
 
         for (int i = 1; i <= numberOfInstances; i++) {
-
             String instanceTag = getInfrastructureId() + "_" + i;
-
-            List<String> scripts = linuxInitScriptGenerator.buildScript(instanceTag,
-                                                                        getRmUrl(),
-                                                                        rmHostname,
-                                                                        INSTANCE_TAG_NODE_PROPERTY,
-                                                                        additionalProperties,
-                                                                        nodeSource.getName(),
-                                                                        numberOfNodesPerInstance);
-
-            connectorIaasController.createOpenstackInstance(getInfrastructureId(),
-                                                            instanceTag,
-                                                            image,
-                                                            1,
-                                                            flavor,
-                                                            publicKeyName,
-                                                            scripts);
+            List<String> scripts = createScripts(instanceTag, null, numberOfNodesPerInstance);
+            createOpenstackInstance(instanceTag, scripts);
         }
-
     }
 
     @Override
     public void acquireAllNodes() {
         acquireNode();
+    }
+
+    @Override
+    public synchronized void acquireNodes(final int numberOfNodes, final Map<String, ?> nodeConfiguration) {
+        this.nodeSource.executeInParallel(() -> {
+            if (acquireLock.tryLock()) {
+                try {
+                    internalAcquireNodes(numberOfNodes, nodeConfiguration);
+                } catch (Exception e) {
+                    logger.error("Error during node acquisition", e);
+                } finally {
+                    acquireLock.unlock();
+                }
+            } else {
+                logger.info("acquireNodes skipped because infrastructure is busy.");
+            }
+        });
     }
 
     @Override
@@ -255,13 +286,12 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     public void notifyAcquiredNode(Node node) throws RMException {
 
         String instanceId = getInstanceIdProperty(node);
-
         addNewNodeForInstance(instanceId, node.getNodeInformation().getName());
     }
 
     @Override
     public String getDescription() {
-        return "Handles nodes using Nova compute service of Openstack Cloud.";
+        return "Handles ProActive nodes using Nova compute service of Openstack Cloud.";
     }
 
     /**
@@ -302,21 +332,23 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     protected void unregisterNodeAndRemoveInstanceIfNeeded(final String instanceTag, final String nodeName,
             final String infrastructureId, final boolean terminateInstanceIfEmpty) {
         setPersistedInfraVariable(() -> {
-            // first read from the runtime variables map
+            // First read from the runtime variables map
+            //noinspection unchecked
             nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-            // make modifications to the nodesPerInstance map
+            // Make modifications to the nodesPerInstance map
             if (nodesPerInstance.get(instanceTag) != null) {
                 nodesPerInstance.get(instanceTag).remove(nodeName);
-                logger.info("Removed node : " + nodeName);
+                logger.info("Removed node: " + nodeName);
                 if (nodesPerInstance.get(instanceTag).isEmpty()) {
                     if (terminateInstanceIfEmpty) {
                         connectorIaasController.terminateInstanceByTag(infrastructureId, instanceTag);
                         logger.info("Instance terminated: " + instanceTag);
                     }
                     nodesPerInstance.remove(instanceTag);
-                    logger.info("Removed instance : " + instanceTag);
+                    logger.info("Removed instance: " + instanceTag);
                 }
-                // finally write to the runtime variable map
+                // Finally write to the runtime variable map
+                decrementNumberOfAcquiredNodesWithLockAndPersist();
                 persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
             } else {
                 logger.error("Cannot remove node " + nodeName + " because instance " + instanceTag +
@@ -324,5 +356,242 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
             }
             return null;
         });
+    }
+
+    private void internalAcquireNodes(int numberOfNodes, Map<String, ?> dynamicPolicyParameters) {
+
+        nbOfNodes = numberOfNodes;
+
+        if (nbOfNodes > 0 && checkDynamicPolicyParameters(nbOfNodes, dynamicPolicyParameters)) {
+
+            // Create Openstack infrastructure (if it does not exist) and initialize its persistent variables
+            initializeOpenstackInfrastructure();
+
+            // Determine the number of instances to deploy and check it
+            if (!checkOpenstackInstancesToDeploy()) {
+                return;
+            }
+
+            int nbOfDeployedNodes = 0;
+
+            Map<String, Set<String>> instancesAndNodesToDeploy = Maps.newHashMap();
+
+            for (int i = 0; i < instancesToDeploy; i++) {
+
+                // Determine the numbe rof nodes to start in the current instance
+                int nodesInCurrentInstance = (existingNodes + nbOfDeployedNodes +
+                                              numberOfNodesPerInstance <= maxNodes) ? numberOfNodesPerInstance
+                                                                                    : nbOfNodes - nbOfDeployedNodes;
+                // Determine the instance tag
+                int currentIndex = getIndexAndIncrementWithLockAndPersist();
+                String instanceTag = getInfrastructureId() + "_" + currentIndex;
+                logger.info("Deploying Openstack instance with tag " + instanceTag + " and the number of nodes " +
+                            nodesInCurrentInstance);
+
+                // Build nodes'start scripts and deploy instance
+                List<String> scripts = createScripts(instanceTag, instanceTag, nodesInCurrentInstance);
+                createOpenstackInstance(instanceTag, scripts);
+
+                // Declare deploying nodes
+                Set<String> deployedNodes = declareNodesAsDeploying(nodesInCurrentInstance, instanceTag);
+
+                // Update the number of deployed instances and nodes
+                nbOfDeployedNodes += nodesInCurrentInstance;
+                instancesAndNodesToDeploy.put(instanceTag, deployedNodes);
+            }
+
+            if (!waitForNodesToBeUp(existingNodes + nbOfDeployedNodes, initDelay, refreshTime)) {
+                logger.info("Deployed Openstack instances and nodes will be removed");
+                removeDeployedInstancesAndNodes(instancesAndNodesToDeploy);
+            }
+
+            logger.info("Persistence information of the infrastructure '" + getInfrastructureId() + "' updated: " +
+                        persistedInfraVariables.toString());
+        }
+    }
+
+    private void initializeOpenstackInfrastructure() {
+        if (!isInitializedAndCreated) {
+            initializePersistedInfraVariables();
+            logger.info("Dynamic policy variables initialized");
+
+            connectorIaasController.waitForConnectorIaasToBeUP();
+            createOpenstackInfrastructure();
+            logger.info("Openstack infrastructure created");
+
+            isInitializedAndCreated = true;
+        }
+    }
+
+    // check that all the dynamic policy parameters exist and are correct
+    private boolean checkDynamicPolicyParameters(int numberOfNodes, Map<String, ?> dynamicPolicyParameters) {
+
+        if (!dynamicPolicyParameters.containsKey(TOTAL_NUMBER_OF_NODES_KEY)) {
+            logger.info("The dynamic policy parameters must include the total number of nodes");
+            return false;
+        } else if (!dynamicPolicyParameters.containsKey(MAX_NODES_KEY)) {
+            logger.info("The dynamic policy parameters must include the maximal number of nodes");
+            return false;
+        } else if (!dynamicPolicyParameters.containsKey(INIT_DELAY_KEY)) {
+            logger.info("The dynamic policy parameters must include the initialization delay of nodes");
+            return false;
+        } else if (!dynamicPolicyParameters.containsKey(REFRESH_TIME_KEY)) {
+            logger.info("The dynamic policy parameters must include the refresh time of the policy");
+            return false;
+        }
+
+        existingNodes = getNumberOfAcquiredNodesWithLock();
+
+        totalNodes = (Integer) dynamicPolicyParameters.get(TOTAL_NUMBER_OF_NODES_KEY);
+
+        maxNodes = (Integer) dynamicPolicyParameters.get(MAX_NODES_KEY);
+
+        initDelay = (Long) dynamicPolicyParameters.get(INIT_DELAY_KEY);
+
+        refreshTime = (Long) dynamicPolicyParameters.get(REFRESH_TIME_KEY);
+
+        if (existingNodes == totalNodes) {
+            logger.info("The number of existing nodes (" + existingNodes +
+                        ") is equal to total number of nodes required by the dynamic policy (" + totalNodes +
+                        "), so node acquisition is skipped!");
+            return false;
+        }
+
+        if (existingNodes + numberOfNodes != totalNodes) {
+            logger.warn("Dynamic policy (of Openstack infrastructure) is misconfigured. The total number of nodes (" +
+                        totalNodes + ") does not correspond to the sum of existing nodes (" + existingNodes +
+                        ") and the new nodes to add (" + numberOfNodes + ").");
+            return false;
+        }
+
+        // check that the maximal number of nodes is not reached
+        if (maxNodes - (existingNodes + numberOfNodes) < 0) {
+
+            logger.warn("The sum of existing nodes (" + existingNodes + ") and the required nodes (" + numberOfNodes +
+                        ") is greater than the maximal number of nodes (" + maxNodes +
+                        ") allowed by the dynamic policy, so deploying only " + (maxNodes - existingNodes) + " nodes.");
+
+            nbOfNodes = maxNodes - existingNodes;
+        }
+
+        return true;
+    }
+
+    private boolean checkOpenstackInstancesToDeploy() {
+
+        int existingInstances = getNumberOfInstancesWithLock();
+        logger.info("number of existing instances: " + existingInstances);
+
+        int preliminarynNumberOfInstances = (int) Math.ceil((double) nbOfNodes / (double) numberOfNodesPerInstance);
+        instancesToDeploy = Math.min(preliminarynNumberOfInstances, numberOfInstances);
+
+        if (instancesToDeploy == 0) {
+            logger.info("No need to add new instances to the infrastructure: " + this.getInfrastructureId());
+            return false;
+        } else if (existingInstances + instancesToDeploy > numberOfInstances) {
+            logger.info("The sum of existing instances (" + existingInstances + ") and the instances to deploy (" +
+                        instancesToDeploy +
+                        ") exceeds to total number of instances allowed by Openstack infrastructure (" +
+                        numberOfInstances + "), so node acquisition is skipped!");
+            return false;
+        }
+
+        logger.info("Openstack instances to deploy: " + instancesToDeploy);
+        logger.info("Total nodes to start in Openstack instances: " + nbOfNodes);
+
+        return true;
+    }
+
+    protected Set<String> declareNodesAsDeploying(int nodesInCurrentInstance, String nodeBaseName) {
+
+        Set<String> nodes = new HashSet<>();
+
+        for (int j = 0; j < nodesInCurrentInstance; j++) {
+            String nodeName = (nodesInCurrentInstance == 1) ? nodeBaseName : nodeBaseName + "_" + j;
+            String nodeUrl = addDeployingNode(nodeName,
+                                              "Initiated by Openstack infrastructure",
+                                              "Nodes running in Openstack compute instances",
+                                              initDelay);
+            logger.info("Deploying node " + nodeName + " [" + nodeUrl + "]");
+            nodes.add(nodeName);
+        }
+
+        return nodes;
+    }
+
+    private void createOpenstackInfrastructure() {
+        connectorIaasController.createOpenstackInfrastructure(getInfrastructureId(),
+                                                              username,
+                                                              password,
+                                                              domain,
+                                                              scopePrefix,
+                                                              scopeValue,
+                                                              region,
+                                                              identityVersion,
+                                                              endpoint,
+                                                              true);
+    }
+
+    private List<String> createScripts(String instanceTag, String nodeName, int nbNodes) {
+
+        return linuxInitScriptGenerator.buildScript(instanceTag,
+                                                    getRmUrl(),
+                                                    rmHostname,
+                                                    INSTANCE_TAG_NODE_PROPERTY,
+                                                    additionalProperties,
+                                                    nodeSource.getName(),
+                                                    nodeName,
+                                                    nbNodes);
+    }
+
+    private void createOpenstackInstance(String instanceTag, List<String> scripts) {
+        connectorIaasController.createOpenstackInstance(getInfrastructureId(),
+                                                        instanceTag,
+                                                        image,
+                                                        1,
+                                                        flavor,
+                                                        publicKeyName,
+                                                        scripts);
+    }
+
+    private boolean waitForNodesToBeUp(int totalNodes, long timeout, long refreshTime) {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Callable<Object> task = () -> {
+
+            while (getNumberOfAcquiredNodesWithLock() < totalNodes) {
+                logger.info("Waiting for " + (totalNodes - getNumberOfAcquiredNodesWithLock()) + " nodes to be up");
+                Thread.sleep(refreshTime);
+            }
+
+            return nodeSource.getNodesCount();
+        };
+        Future<Object> future = executor.submit(task);
+        try {
+            future.get(timeout, TimeUnit.MILLISECONDS);
+            return true;
+        } catch (TimeoutException | InterruptedException | ExecutionException ex) {
+            logger.error("A problem occurred while acquiring nodes.", ex);
+            return false;
+        } finally {
+            future.cancel(true);
+        }
+    }
+
+    private void removeDeployedInstancesAndNodes(Map<String, Set<String>> deployedInstancesAndNodes) {
+        for (Map.Entry<String, Set<String>> instanceWithNodes : deployedInstancesAndNodes.entrySet()) {
+            String instanceTag = instanceWithNodes.getKey();
+            for (String nodeName : instanceWithNodes.getValue()) {
+                unregisterNodeAndRemoveInstanceIfNeeded(instanceTag, nodeName, getInfrastructureId(), true);
+            }
+            connectorIaasController.terminateInstanceByTag(getInfrastructureId(), instanceTag);
+        }
+    }
+
+    private int getNumberOfInstancesWithLock() {
+        if (this.persistedInfraVariables.containsKey(NODES_PER_INSTANCES_KEY)) {
+            //noinspection unchecked
+            return ((Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY)).size();
+        } else
+            return 0;
     }
 }
