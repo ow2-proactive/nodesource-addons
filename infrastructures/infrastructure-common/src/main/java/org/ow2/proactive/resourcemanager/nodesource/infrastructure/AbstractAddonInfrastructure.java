@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
@@ -85,7 +86,7 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * Index of deployment, if startNodes is called multiple times, each time a new process will be created.
      * The index is used to prevent conflicts in nodes urls
      */
-    private static final String LAST_NODE_STARTED_INDEX_KEY = "lastNodeStartedIndex";
+    private static final String LAST_STARTED_INSTANCE_INDEX_KEY = "lastNodeStartedIndex";
 
     /**
      * The controller is transient as it is not supposed to be serialized or
@@ -98,6 +99,10 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * identifier to the name of the nodes that belong to it.
      */
     protected transient Map<String, Set<String>> nodesPerInstance;
+
+    protected AtomicInteger nbOfAcquiredNodes = new AtomicInteger(0);
+
+    protected AtomicInteger instancesIndex = new AtomicInteger(0);
 
     /**
      * Used to track the nodes that are not in the
@@ -134,32 +139,26 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
 
     private void incrementNumberOfAcquiredNodesWithLockAndPersist() {
         setPersistedInfraVariable(() -> {
-            int updated = (int) this.persistedInfraVariables.get(NB_ACQUIRED_NODES_KEY) + 1;
-            this.persistedInfraVariables.put(NB_ACQUIRED_NODES_KEY, updated);
-            return updated;
+            this.persistedInfraVariables.put(NB_ACQUIRED_NODES_KEY, nbOfAcquiredNodes.incrementAndGet());
+            return nbOfAcquiredNodes.get();
         });
     }
 
     protected int getNumberOfAcquiredNodesWithLock() {
-        if (this.persistedInfraVariables.containsKey(NB_ACQUIRED_NODES_KEY)) {
-            return getPersistedInfraVariable(() -> (int) this.persistedInfraVariables.get(NB_ACQUIRED_NODES_KEY));
-        } else
-            return 0;
-    }
-
-    protected int getIndexAndIncrementWithLockAndPersist() {
-        return setPersistedInfraVariable(() -> {
-            int deployedNodeIndex = (int) this.persistedInfraVariables.get(LAST_NODE_STARTED_INDEX_KEY);
-            this.persistedInfraVariables.put(LAST_NODE_STARTED_INDEX_KEY, deployedNodeIndex + 1);
-            return deployedNodeIndex;
-        });
+        return nbOfAcquiredNodes.get();
     }
 
     protected void decrementNumberOfAcquiredNodesWithLockAndPersist() {
         setPersistedInfraVariable(() -> {
-            int updated = (int) this.persistedInfraVariables.get(NB_ACQUIRED_NODES_KEY) - 1;
-            this.persistedInfraVariables.put(NB_ACQUIRED_NODES_KEY, updated);
-            return updated;
+            this.persistedInfraVariables.put(NB_ACQUIRED_NODES_KEY, nbOfAcquiredNodes.decrementAndGet());
+            return nbOfAcquiredNodes.get();
+        });
+    }
+
+    protected int getIndexAndIncrementWithLockAndPersist() {
+        return setPersistedInfraVariable(() -> {
+            this.persistedInfraVariables.put(LAST_STARTED_INSTANCE_INDEX_KEY, instancesIndex.incrementAndGet());
+            return instancesIndex.get();
         });
     }
 
@@ -206,8 +205,8 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
         persistedInfraVariables.put(NB_REMOVED_NODES_PER_INSTANCE_KEY, Maps.newHashMap(nbRemovedNodesPerInstance));
         persistedInfraVariables.put(INSTANCES_WITHOUT_NODES_MAP_KEY, Maps.newHashMap(instancesWithoutNodesMap));
         persistedInfraVariables.put(INFRASTRUCTURE_CREATED_FLAG_KEY, false);
-        persistedInfraVariables.put(NB_ACQUIRED_NODES_KEY, 0);
-        persistedInfraVariables.put(LAST_NODE_STARTED_INDEX_KEY, 0);
+        persistedInfraVariables.put(NB_ACQUIRED_NODES_KEY, nbOfAcquiredNodes);
+        persistedInfraVariables.put(LAST_STARTED_INSTANCE_INDEX_KEY, instancesIndex);
     }
 
     /**

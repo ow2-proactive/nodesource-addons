@@ -53,6 +53,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
      **/
     private static final Logger logger = Logger.getLogger(OpenstackInfrastructure.class);
 
+    private static final int NUMBER_OF_PARAMETERS = 16;
+
     public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
 
     public static final String INFRASTRUCTURE_TYPE = "openstack-nova";
@@ -171,7 +173,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     private void validate(Object[] parameters) {
 
-        if (parameters == null || parameters.length < 16) {
+        if (parameters == null || parameters.length < NUMBER_OF_PARAMETERS) {
             throw new IllegalArgumentException("Invalid parameters for Openstack Infrastructure creation");
         }
 
@@ -591,7 +593,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         if (this.persistedInfraVariables.containsKey(NODES_PER_INSTANCES_KEY)) {
             //noinspection unchecked
             return ((Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY)).size();
-        } else
+        } else {
             return 0;
+        }
     }
 }
