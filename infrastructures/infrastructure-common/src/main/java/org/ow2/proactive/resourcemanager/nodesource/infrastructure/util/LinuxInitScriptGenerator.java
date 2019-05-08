@@ -76,7 +76,6 @@ public class LinuxInitScriptGenerator {
     private String generateNodeStartCommand(String instanceId, String rmUrlToUse, String rmHostname,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeBaseName,
             int numberOfNodesPerInstance) {
-        additionalProperties = StringEscapeUtils.escapeXSI(additionalProperties);
 
         String javaCommand = nsConfig.getString(NSProperties.JAVA_COMMAND) + " -jar node.jar";
 
