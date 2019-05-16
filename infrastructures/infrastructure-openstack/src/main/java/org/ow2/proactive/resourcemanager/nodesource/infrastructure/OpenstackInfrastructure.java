@@ -114,7 +114,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Command used to download the node jar")
-    protected String downloadCommand = linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname);
+    protected String downloadCommand = linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname +
+                                                                                            LinuxInitScriptGenerator.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
