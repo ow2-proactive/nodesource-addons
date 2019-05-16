@@ -36,6 +36,8 @@ import org.apache.log4j.Logger;
 
 public class LinuxInitScriptGenerator {
 
+    public static final String DEFAULT_SUFFIX_RM_TO_NODEJAR_URL = ":8080/rest/node.jar";
+
     private static final Logger logger = Logger.getLogger(LinuxInitScriptGenerator.class);
 
     private List<String> commands = new ArrayList<>();
@@ -43,6 +45,20 @@ public class LinuxInitScriptGenerator {
     private static Configuration nsConfig = null;
 
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname,
+            String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
+            int numberOfNodesPerInstance) {
+        return buildScript(instanceId,
+                           rmUrlToUse,
+                           rmHostname,
+                           rmHostname + DEFAULT_SUFFIX_RM_TO_NODEJAR_URL,
+                           instanceTagNodeProperty,
+                           additionalProperties,
+                           nsName,
+                           nodeName,
+                           numberOfNodesPerInstance);
+    }
+
+    public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname, String nodeJarUrl,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
             int numberOfNodesPerInstance) {
 
@@ -53,7 +69,7 @@ public class LinuxInitScriptGenerator {
             commands.add(nsConfig.getString(NSProperties.JRE_INSTALL_COMMAND));
         }
 
-        commands.add(generateNodeDownloadCommand(rmHostname));
+        commands.add(generateNodeDownloadCommand(nodeJarUrl));
 
         commands.add(generateNodeStartCommand(instanceId,
                                               rmUrlToUse,
@@ -69,8 +85,8 @@ public class LinuxInitScriptGenerator {
         return commands;
     }
 
-    public String generateNodeDownloadCommand(String rmHostname) {
-        return "wget -nv " + rmHostname + ":8080/rest/node.jar";
+    public String generateNodeDownloadCommand(String nodeJarUrl) {
+        return "wget -nv " + nodeJarUrl;
     }
 
     private String generateNodeStartCommand(String instanceId, String rmUrlToUse, String rmHostname,
