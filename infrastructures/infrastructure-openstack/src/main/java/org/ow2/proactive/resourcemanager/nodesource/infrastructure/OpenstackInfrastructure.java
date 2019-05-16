@@ -111,14 +111,13 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     protected int numberOfNodesPerInstance = 1;
 
     @Configurable(description = "Connector-iaas URL")
-    protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
+    protected String connectorIaasURL = linuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
     @Configurable(description = "Resource Manager hostname or ip address")
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Command used to download the node jar")
-    protected String downloadCommand = linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname +
-                                                                                            LinuxInitScriptGenerator.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
+    protected String downloadCommand = linuxInitScriptGenerator.generateDefaultDownloadCommand(rmHostname);
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
@@ -147,8 +146,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     long refreshTime;
 
     int instancesToDeploy;
-
-    private static Configuration nsConfig = null;
 
     @Override
     public void configure(Object... parameters) {
@@ -364,42 +361,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
             }
             return null;
         });
-    }
-
-    private String generateDefaultIaasConnectorURL() {
-        if (nsConfig == null) {
-            try {
-                // If the configuration manager is not loaded, I load it with the NodeSource properties file
-                nsConfig = NSProperties.loadConfig();
-            } catch (ConfigurationException e) {
-                // If something go wring, I switch to hardcoded configuration, and leave.
-                logger.error("Exception when loading NodeSource properties", e);
-                return "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
-            }
-        }
-        // I return the requested value while taking into account the configuration parameters
-        return nsConfig.getString(NSProperties.DEFAULT_PREFIX_CONNECTOR_IAAS_URL) + generateDefaultRMHostname() +
-               nsConfig.getString(NSProperties.DEFAULT_SUFFIX_CONNECTOR_IAAS_URL);
-    }
-
-    private String generateDefaultDownloadCommand() {
-        String suffixRmToNodeJarUrl;
-        if (nsConfig == null) {
-            // If the configuration manager is not loaded, I load it with the NodeSource properties file
-            try {
-                nsConfig = NSProperties.loadConfig();
-                suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
-            } catch (ConfigurationException e) {
-                // If something go wring, I switch to hardcoded configuration.
-                logger.error("Exception when loading NodeSource properties", e);
-                suffixRmToNodeJarUrl = ":8080/rest/node.jar";
-            }
-        } else {
-            // If the configuration manager is already loaded, I use it to retrieve the value of DEFAULT_SUFFIX_RM_TO_NODEJAR_URL
-            suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
-        }
-        // I return the generated node.jar download command.
-        return linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname + suffixRmToNodeJarUrl);
     }
 
     private void internalAcquireNodes(int numberOfNodes, Map<String, ?> dynamicPolicyParameters) {
