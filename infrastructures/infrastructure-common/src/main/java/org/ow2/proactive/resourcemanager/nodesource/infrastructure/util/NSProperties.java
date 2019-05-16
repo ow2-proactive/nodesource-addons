@@ -55,6 +55,12 @@ public class NSProperties {
 
     public static final String JAVA_COMMAND = "ns.script.linux.java.command";
 
+    public static final String DEFAULT_SUFFIX_RM_TO_NODEJAR_URL = "ns.default.suffix.rm.to.nodejar.url";
+
+    public static final String DEFAULT_SUFFIX_CONNECTOR_IAAS_URL = "ns.default.suffix.connector.iaas.url";
+
+    public static final String DEFAULT_PREFIX_CONNECTOR_IAAS_URL = "ns.default.prefix.connector.iaas.url";
+
     /**
      * loads NodeSource configuration.
      *

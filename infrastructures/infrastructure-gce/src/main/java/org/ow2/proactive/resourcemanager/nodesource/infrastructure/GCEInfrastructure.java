@@ -33,12 +33,15 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.NSProperties;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
 
@@ -105,11 +108,10 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Connector-iaas URL")
-    protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
+    protected String connectorIaasURL = generateDefaultIaasConnectorURL();
 
     @Configurable(description = "Command used to download the node jar")
-    protected String downloadCommand = linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname +
-                                                                                            LinuxInitScriptGenerator.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
+    protected String downloadCommand = generateDefaultDownloadCommand();
 
     @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
@@ -128,6 +130,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     @Configurable(description = "Node timeout in ms. After this timeout expired, the node is considered to be lost")
     protected int nodeTimeout = 2 * 60 * 1000;// 2 min
+
+    private static Configuration nsConfig = null;
 
     @Override
     public void configure(Object... parameters) {
@@ -417,6 +421,42 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
             logger.warn(e);
             return "localhost";
         }
+    }
+
+    private String generateDefaultIaasConnectorURL() {
+        if (nsConfig == null) {
+            try {
+                // If the configuration manager is not loaded, I load it with the NodeSource properties file
+                nsConfig = NSProperties.loadConfig();
+            } catch (ConfigurationException e) {
+                // If something go wring, I switch to hardcoded configuration, and leave.
+                logger.error("Exception when loading NodeSource properties", e);
+                return "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
+            }
+        }
+        // I return the requested value while taking into account the configuration parameters
+        return nsConfig.getString(NSProperties.DEFAULT_PREFIX_CONNECTOR_IAAS_URL) + generateDefaultRMHostname() +
+               nsConfig.getString(NSProperties.DEFAULT_SUFFIX_CONNECTOR_IAAS_URL);
+    }
+
+    private String generateDefaultDownloadCommand() {
+        String suffixRmToNodeJarUrl;
+        if (nsConfig == null) {
+            // If the configuration manager is not loaded, I load it with the NodeSource properties file
+            try {
+                nsConfig = NSProperties.loadConfig();
+                suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
+            } catch (ConfigurationException e) {
+                // If something go wring, I switch to hardcoded configuration.
+                logger.error("Exception when loading NodeSource properties", e);
+                suffixRmToNodeJarUrl = ":8080/rest/node.jar";
+            }
+        } else {
+            // If the configuration manager is already loaded, I use it to retrieve the value of DEFAULT_SUFFIX_RM_TO_NODEJAR_URL
+            suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
+        }
+        // I return the generated node.jar download command.
+        return linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname + suffixRmToNodeJarUrl);
     }
 
     @SuppressWarnings("unchecked")

@@ -47,10 +47,11 @@ public class LinuxInitScriptGenerator {
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
             int numberOfNodesPerInstance) {
+        loadNSConfig();
         return buildScript(instanceId,
                            rmUrlToUse,
                            rmHostname,
-                           rmHostname + DEFAULT_SUFFIX_RM_TO_NODEJAR_URL,
+                           rmHostname + nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL),
                            instanceTagNodeProperty,
                            additionalProperties,
                            nsName,
