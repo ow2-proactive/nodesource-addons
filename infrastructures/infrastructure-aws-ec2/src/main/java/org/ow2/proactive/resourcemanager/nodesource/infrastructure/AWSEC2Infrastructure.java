@@ -42,9 +42,8 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
 import org.python.google.common.collect.Sets;
-
-import com.google.common.collect.Lists;
 
 
 public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
@@ -53,7 +52,11 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "aws-ec2";
 
+    public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
+
     private static final Logger logger = Logger.getLogger(AWSEC2Infrastructure.class);
+
+    private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
 
     @Configurable(description = "The AWS_AKEY")
     protected String aws_key = null;
@@ -86,7 +89,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     protected int numberOfNodesPerInstance = 1;
 
     @Configurable(description = "Command used to download the worker jar")
-    protected String downloadCommand = generateDefaultDownloadCommand();
+    protected String downloadCommand = linuxInitScriptGenerator.generateNodeDownloadCommand(rmHostname);
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "";
@@ -288,9 +291,15 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
-            List<String> scripts = Lists.newArrayList(this.downloadCommand,
-                                                      "nohup " + generateDefaultStartNodeCommand(currentInstanceId) +
-                                                                            "  &");
+            List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
+                                                                        getRmUrl(),
+                                                                        rmHostname,
+                                                                        INSTANCE_TAG_NODE_PROPERTY,
+                                                                        additionalProperties,
+                                                                        nodeSource.getName(),
+                                                                        null,
+                                                                        numberOfNodesPerInstance);
+
             boolean currentExistPersistedInstancesIds = existPersistedInstanceIds;
             instanceScriptExecutor.submit(() -> {
                 try {
@@ -400,31 +409,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         } catch (UnknownHostException e) {
             logger.warn(e);
             return "localhost";
-        }
-    }
-
-    private String generateDefaultDownloadCommand() {
-        if (System.getProperty("os.name").contains("Windows")) {
-            return "powershell -command \"& { (New-Object Net.WebClient).DownloadFile('" + this.rmHostname +
-                   ":8080/rest/node.jar" + "', 'node.jar') }\"";
-        } else {
-            return "wget -nv " + this.rmHostname + ":8080/rest/node.jar";
-        }
-    }
-
-    private String generateDefaultStartNodeCommand(String instanceId) {
-        try {
-            String rmUrlToUse = getRmUrl();
-
-            String protocol = rmUrlToUse.substring(0, rmUrlToUse.indexOf(':')).trim();
-            return "java -jar node.jar -Dproactive.communication.protocol=" + protocol +
-                   " -Dproactive.pamr.router.address=" + rmHostname + " -D" + INSTANCE_ID_NODE_PROPERTY + "=" +
-                   instanceId + " " + additionalProperties + " -r " + rmUrlToUse + " -s " + nodeSource.getName() +
-                   " -w " + numberOfNodesPerInstance;
-        } catch (Exception e) {
-            logger.error("Exception when generating the command, fallback on default value", e);
-            return "java -jar node.jar -D" + INSTANCE_ID_NODE_PROPERTY + "=" + instanceId + " " + additionalProperties +
-                   " -r " + getRmUrl() + " -s " + nodeSource.getName() + " -w " + numberOfNodesPerInstance;
         }
     }
 
