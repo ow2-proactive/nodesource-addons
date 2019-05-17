@@ -131,9 +131,9 @@ public class LinuxInitScriptGenerator {
             }
             suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
         } catch (ConfigurationException e) {
-                // If something go wring, I switch to hardcoded configuration.
-                logger.error("Exception when loading NodeSource properties", e);
-                suffixRmToNodeJarUrl = ":8080/rest/node.jar";
+            // If something go wring, I switch to hardcoded configuration.
+            logger.error("Exception when loading NodeSource properties", e);
+            suffixRmToNodeJarUrl = ":8080/rest/node.jar";
         } finally {
             // I return the generated node.jar download command.
             return generateNodeDownloadCommand(rmHostname + suffixRmToNodeJarUrl);
