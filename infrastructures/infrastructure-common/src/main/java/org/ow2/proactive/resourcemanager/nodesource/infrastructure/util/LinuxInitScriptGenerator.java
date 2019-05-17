@@ -36,8 +36,6 @@ import org.apache.log4j.Logger;
 
 public class LinuxInitScriptGenerator {
 
-    public static final String DEFAULT_SUFFIX_RM_TO_NODEJAR_URL = ":8080/rest/node.jar";
-
     private static final Logger logger = Logger.getLogger(LinuxInitScriptGenerator.class);
 
     private List<String> commands = new ArrayList<>();
@@ -125,23 +123,21 @@ public class LinuxInitScriptGenerator {
     }
 
     public String generateDefaultDownloadCommand(String rmHostname) {
-        String suffixRmToNodeJarUrl;
-        if (nsConfig == null) {
-            // If the configuration manager is not loaded, I load it with the NodeSource properties file
-            try {
+        String suffixRmToNodeJarUrl = "";
+        try {
+            if (nsConfig == null) {
+                // If the configuration manager is not loaded, I load it with the NodeSource properties file
                 nsConfig = NSProperties.loadConfig();
-                suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
-            } catch (ConfigurationException e) {
+            }
+            suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
+        } catch (ConfigurationException e) {
                 // If something go wring, I switch to hardcoded configuration.
                 logger.error("Exception when loading NodeSource properties", e);
                 suffixRmToNodeJarUrl = ":8080/rest/node.jar";
-            }
-        } else {
-            // If the configuration manager is already loaded, I use it to retrieve the value of DEFAULT_SUFFIX_RM_TO_NODEJAR_URL
-            suffixRmToNodeJarUrl = nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
+        } finally {
+            // I return the generated node.jar download command.
+            return generateNodeDownloadCommand(rmHostname + suffixRmToNodeJarUrl);
         }
-        // I return the generated node.jar download command.
-        return generateNodeDownloadCommand(rmHostname + suffixRmToNodeJarUrl);
     }
 
     private static void loadNSConfig() {
