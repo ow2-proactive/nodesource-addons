@@ -70,12 +70,8 @@ public class LinuxInitScriptGenerator {
     }
 
     public String generateNodeDownloadCommand(String rmHostname) {
-        if (System.getProperty("os.name").contains("Windows")) {
-            return "powershell -command \"& { (New-Object Net.WebClient).DownloadFile('" + rmHostname +
-                   ":8080/rest/node.jar" + "', 'node.jar') }\"";
-        } else {
-            return "wget -nv " + rmHostname + ":8080/rest/node.jar";
-        }
+
+        return "wget -nv " + rmHostname + ":8080/rest/node.jar";
     }
 
     private String generateNodeStartCommand(String instanceId, String rmUrlToUse, String rmHostname,
