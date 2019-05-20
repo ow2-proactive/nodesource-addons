@@ -45,6 +45,21 @@ public class LinuxInitScriptGenerator {
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
             int numberOfNodesPerInstance) {
+        loadNSConfig();
+        return buildScript(instanceId,
+                           rmUrlToUse,
+                           rmHostname,
+                           rmHostname + nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL),
+                           instanceTagNodeProperty,
+                           additionalProperties,
+                           nsName,
+                           nodeName,
+                           numberOfNodesPerInstance);
+    }
+
+    public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname, String nodeJarUrl,
+            String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
+            int numberOfNodesPerInstance) {
 
         loadNSConfig();
         commands.clear();
@@ -53,7 +68,7 @@ public class LinuxInitScriptGenerator {
             commands.add(nsConfig.getString(NSProperties.JRE_INSTALL_COMMAND));
         }
 
-        commands.add(generateNodeDownloadCommand(rmHostname));
+        commands.add(generateNodeDownloadCommand(nodeJarUrl));
 
         commands.add(generateNodeStartCommand(instanceId,
                                               rmUrlToUse,
@@ -69,9 +84,8 @@ public class LinuxInitScriptGenerator {
         return commands;
     }
 
-    public String generateNodeDownloadCommand(String rmHostname) {
-
-        return "wget -nv " + rmHostname + ":8080/rest/node.jar";
+    public String generateNodeDownloadCommand(String nodeJarUrl) {
+        return "wget -nv " + nodeJarUrl;
     }
 
     private String generateNodeStartCommand(String instanceId, String rmUrlToUse, String rmHostname,
@@ -90,6 +104,37 @@ public class LinuxInitScriptGenerator {
                                 nodeNamingOption + " -w " + numberOfNodesPerInstance;
 
         return "nohup " + javaCommand + javaProperties + "  &";
+    }
+
+    public String generateDefaultIaasConnectorURL(String DefaultRMHostname) {
+        if (nsConfig == null) {
+            try {
+                // If the configuration manager is not loaded, I load it with the NodeSource properties file
+                nsConfig = NSProperties.loadConfig();
+            } catch (ConfigurationException e) {
+                // If something go wring, I switch to hardcoded configuration, and leave.
+                logger.error("Exception when loading NodeSource properties", e);
+                // return null
+            }
+        }
+        // I return the requested value while taking into account the configuration parameters
+        return nsConfig.getString(NSProperties.DEFAULT_PREFIX_CONNECTOR_IAAS_URL) + DefaultRMHostname +
+               nsConfig.getString(NSProperties.DEFAULT_SUFFIX_CONNECTOR_IAAS_URL);
+    }
+
+    public String generateDefaultDownloadCommand(String rmHostname) {
+        if (nsConfig == null) {
+            // If the configuration manager is not loaded, I load it with the NodeSource properties file
+            try {
+                nsConfig = NSProperties.loadConfig();
+            } catch (ConfigurationException e) {
+                // If something go wring, I switch to hardcoded configuration.
+                logger.error("Exception when loading NodeSource properties", e);
+                // return null obviously
+            }
+        }
+        return generateNodeDownloadCommand(rmHostname +
+                                           nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL));
     }
 
     private static void loadNSConfig() {
