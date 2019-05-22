@@ -35,6 +35,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
+import org.objectweb.proactive.core.util.ProActiveCounter;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
@@ -238,7 +239,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         createOpenstackInfrastructure();
 
         for (int i = 1; i <= numberOfInstances; i++) {
-            String instanceTag = getInfrastructureId() + "_" + i;
+            String instanceTag = getInfrastructureId() + "_" + ProActiveCounter.getUniqID();
             List<String> scripts = createScripts(instanceTag, null, numberOfNodesPerInstance);
             createOpenstackInstance(instanceTag, scripts);
         }
@@ -385,8 +386,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                                               numberOfNodesPerInstance <= maxNodes) ? numberOfNodesPerInstance
                                                                                     : nbOfNodes - nbOfDeployedNodes;
                 // Determine the instance tag
-                int currentIndex = getIndexAndIncrementWithLockAndPersist();
-                String instanceTag = getInfrastructureId() + "_" + currentIndex;
+                String instanceTag = getInfrastructureId() + "_" + ProActiveCounter.getUniqID();
                 logger.info("Deploying Openstack instance with tag " + instanceTag + " and the number of nodes " +
                             nodesInCurrentInstance);
 

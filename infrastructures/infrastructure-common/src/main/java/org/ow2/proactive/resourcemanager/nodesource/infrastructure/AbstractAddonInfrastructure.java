@@ -83,12 +83,6 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     private static final String NB_ACQUIRED_NODES_KEY = "nbAcquiredNodes";
 
     /**
-     * Index of deployment, if startNodes is called multiple times, each time a new process will be created.
-     * The index is used to prevent conflicts in nodes urls
-     */
-    private static final String LAST_STARTED_INSTANCE_INDEX_KEY = "lastNodeStartedIndex";
-
-    /**
      * Dynamic policy parameters key
      **/
     private static final String TOTAL_NUMBER_OF_NODES_KEY = "TOTAL_NUMBER_OF_NODES";
@@ -162,13 +156,6 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
         });
     }
 
-    protected int getIndexAndIncrementWithLockAndPersist() {
-        return setPersistedInfraVariable(() -> {
-            this.persistedInfraVariables.put(LAST_STARTED_INSTANCE_INDEX_KEY, instancesIndex.incrementAndGet());
-            return instancesIndex.get();
-        });
-    }
-
     @Override
     public void notifyDownNode(String nodeName, String nodeUrl, Node node) throws RMException {
         // if the node object is null, it means that we are in a recovery of
@@ -213,7 +200,6 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
         persistedInfraVariables.put(INSTANCES_WITHOUT_NODES_MAP_KEY, Maps.newHashMap(instancesWithoutNodesMap));
         persistedInfraVariables.put(INFRASTRUCTURE_CREATED_FLAG_KEY, false);
         persistedInfraVariables.put(NB_ACQUIRED_NODES_KEY, nbOfAcquiredNodes);
-        persistedInfraVariables.put(LAST_STARTED_INSTANCE_INDEX_KEY, instancesIndex);
     }
 
     /**
