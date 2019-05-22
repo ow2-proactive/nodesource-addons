@@ -54,7 +54,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
      **/
     private static final Logger logger = Logger.getLogger(OpenstackInfrastructure.class);
 
-    private static final int NUMBER_OF_PARAMETERS = 16;
+    private static final int NUMBER_OF_PARAMETERS = 17;
 
     public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
 
@@ -120,6 +120,9 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
+    @Configurable(description = "Estimated startup time of the nodes (including the startup time of VMs)")
+    protected long nodesInitDelay = 240000;
+
     /**
      * Dynamic policy parameters
      **/
@@ -138,8 +141,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     int existingNodes;
 
     int maxNodes;
-
-    long initDelay;
 
     long refreshTime;
 
@@ -168,6 +169,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.rmHostname = parameters[14].toString().trim();
         this.downloadCommand = parameters[15].toString().trim();
         this.additionalProperties = parameters[16].toString().trim();
+        this.nodesInitDelay = Long.parseLong(parameters[17].toString().trim());
 
         connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
@@ -240,8 +242,13 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
         for (int i = 1; i <= numberOfInstances; i++) {
             String instanceTag = getInfrastructureId() + "_" + ProActiveCounter.getUniqID();
-            List<String> scripts = createScripts(instanceTag, null, numberOfNodesPerInstance);
+            List<String> scripts = createScripts(instanceTag, instanceTag, numberOfNodesPerInstance);
             createOpenstackInstance(instanceTag, scripts);
+
+            // Declare nodes are deploying
+            Executors.newCachedThreadPool().submit(() -> {
+                declareNodesAsDeploying(numberOfNodesPerInstance, instanceTag);
+            });
         }
     }
 
@@ -402,7 +409,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                 instancesAndNodesToDeploy.put(instanceTag, deployedNodes);
             }
 
-            if (!waitForNodesToBeUp(existingNodes + nbOfDeployedNodes, initDelay, refreshTime)) {
+            if (!waitForNodesToBeUp(existingNodes + nbOfDeployedNodes, refreshTime)) {
                 logger.info("Deployed Openstack instances and nodes will be removed");
                 removeDeployedInstancesAndNodes(instancesAndNodesToDeploy);
             }
@@ -447,8 +454,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         totalNodes = (Integer) dynamicPolicyParameters.get(TOTAL_NUMBER_OF_NODES_KEY);
 
         maxNodes = (Integer) dynamicPolicyParameters.get(MAX_NODES_KEY);
-
-        initDelay = (Long) dynamicPolicyParameters.get(INIT_DELAY_KEY);
 
         refreshTime = (Long) dynamicPolicyParameters.get(REFRESH_TIME_KEY);
 
@@ -513,7 +518,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
             String nodeUrl = addDeployingNode(nodeName,
                                               "Initiated by Openstack infrastructure",
                                               "Nodes running in Openstack compute instances",
-                                              initDelay);
+                                              nodesInitDelay);
             logger.info("Deploying node " + nodeName + " [" + nodeUrl + "]");
             nodes.add(nodeName);
         }
@@ -556,7 +561,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                                                         scripts);
     }
 
-    private boolean waitForNodesToBeUp(int totalNodes, long timeout, long refreshTime) {
+    private boolean waitForNodesToBeUp(int totalNodes, long refreshTime) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Callable<Object> task = () -> {
 
@@ -569,7 +574,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         };
         Future<Object> future = executor.submit(task);
         try {
-            future.get(timeout, TimeUnit.MILLISECONDS);
+            future.get(nodesInitDelay, TimeUnit.MILLISECONDS);
             return true;
         } catch (TimeoutException | InterruptedException | ExecutionException ex) {
             logger.error("A problem occurred while acquiring nodes.", ex);

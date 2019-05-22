@@ -127,7 +127,8 @@ public class OpenstackInfrastructureTest {
                                           "http://localhost:8088/connector-iaas",
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
-                                          "-Dnew=value");
+                                          "-Dnew=value",
+                                          240000);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -170,7 +171,8 @@ public class OpenstackInfrastructureTest {
                                           "http://localhost:8088/connector-iaas",
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
-                                          "-Dnew=value");
+                                          "-Dnew=value",
+                                          240000);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -243,7 +245,8 @@ public class OpenstackInfrastructureTest {
                                           "http://localhost:8088/connector-iaas",
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
-                                          "-Dnew=value");
+                                          "-Dnew=value",
+                                          240000);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -316,7 +319,8 @@ public class OpenstackInfrastructureTest {
                                           "http://localhost:8088/connector-iaas",
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
-                                          "-Dnew=value");
+                                          "-Dnew=value",
+                                          240000);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -361,7 +365,8 @@ public class OpenstackInfrastructureTest {
                                           "http://localhost:8088/connector-iaas",
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
-                                          "-Dnew=value");
+                                          "-Dnew=value",
+                                          240000);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
