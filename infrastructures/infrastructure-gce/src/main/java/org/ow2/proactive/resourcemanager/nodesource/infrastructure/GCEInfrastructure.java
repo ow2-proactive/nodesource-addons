@@ -413,15 +413,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         // Delete the instance when instance doesn't contain any other deploying nodes or persisted nodes
         if (!existOtherDeployingNodesOnInstance(currentNode, instanceTag) &&
             !existRegisteredNodesOnInstance(instanceTag)) {
-            nodeSource.executeInParallel(() -> {
-                writeDeletingLock.lock();
-                try {
-                    connectorIaasController.terminateInstanceByTag(getInfrastructureId(), instanceTag);
-                    logger.info("Terminated the instance: " + instanceTag);
-                } finally {
-                    writeDeletingLock.unlock();
-                }
-            });
+            terminateInstance(getInfrastructureId(), instanceTag);
         }
     }
 
@@ -440,23 +432,28 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         return nodesPerInstance.get(instanceTag) != null && !nodesPerInstance.get(instanceTag).isEmpty();
     }
 
-    @Override
-    public void removeNode(Node node) {
+    private void terminateInstance(String infrastructureId, String instanceTag) {
         nodeSource.executeInParallel(() -> {
-            String nodeName = node.getNodeInformation().getName();
-            String instanceId;
+            writeDeletingLock.lock();
             try {
-                instanceId = getInstanceIdProperty(node);
-            } catch (RMException e) {
-                throw new IllegalStateException(e);
+                connectorIaasController.terminateInstanceByTag(infrastructureId, instanceTag);
+                logger.info("Terminated the instance: " + instanceTag);
+            } finally {
+                writeDeletingLock.unlock();
             }
-            try {
-                node.getProActiveRuntime().killNode(nodeName);
-            } catch (Exception e) {
-                logger.warn("Unable to remove the node '" + node.getNodeInformation().getName() + "' with error: " + e);
-            }
-            unregisterNodeAndRemoveInstanceIfNeeded(instanceId, nodeName, getInfrastructureId(), true);
         });
+    }
+
+    @Override
+    public void removeNode(Node node) throws RMException {
+        String nodeName = node.getNodeInformation().getName();
+        String instanceId = getInstanceIdProperty(node);
+        try {
+            node.getProActiveRuntime().killNode(nodeName);
+        } catch (Exception e) {
+            logger.warn("Unable to remove the node: " + nodeName, e);
+        }
+        unregisterNodeAndRemoveInstanceIfNeeded(instanceId, nodeName, getInfrastructureId(), true);
     }
 
     @Override
@@ -518,13 +515,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
                 logger.info("Removed node: " + nodeName);
                 if (nodesPerInstance.get(instanceTag).isEmpty()) {
                     if (terminateInstanceIfEmpty) {
-                        writeDeletingLock.lock();
-                        try {
-                            connectorIaasController.terminateInstanceByTag(infrastructureId, instanceTag);
-                        } finally {
-                            writeDeletingLock.unlock();
-                        }
-                        logger.info("Instance terminated: " + instanceTag);
+                        terminateInstance(infrastructureId, instanceTag);
                     }
                     nodesPerInstance.remove(instanceTag);
                     logger.info("Removed instance: " + instanceTag);

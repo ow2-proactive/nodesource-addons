@@ -523,7 +523,7 @@ public class GCEInfrastructureTest {
     }
 
     @Test
-    public void testRemoveNode() throws ProActiveException {
+    public void testRemoveNode() throws ProActiveException, RMException {
         gceInfrastructure.configure(CREDENTIAL_FILE,
                                     NUMBER_INSTANCES,
                                     NUMBER_NODES_PER_INSTANCE,
