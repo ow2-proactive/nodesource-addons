@@ -31,6 +31,7 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -40,8 +41,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
-
-import com.google.common.collect.Lists;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
 
 
 public class AzureInfrastructure extends AbstractAddonInfrastructure {
@@ -57,6 +57,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     public static final String INFRASTRUCTURE_TYPE = "azure";
 
     private static final String DEFAULT_HTTP_RM_URL = "http://localhost:8080";
+
+    private static final String DEFAULT_ADDITIONAL_PROPERTIES = "-Dproactive.useIPaddress=true -Dproactive.net.public_address=$(wget -qO- ipinfo.io/ip) -Dproactive.pnp.port=64738";
 
     private final static int PARAMETERS_NUMBER = 24;
 
@@ -139,6 +141,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                                           " -r " + RM_URL_PATTERN + " -s " + NODESOURCE_NAME_PATTERN +
                                                           " -w " + NUMBER_OF_NODES_PATTERN;
 
+    private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+
     @Configurable(description = "The Azure clientId")
     protected String clientId = null;
 
@@ -209,7 +213,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     protected boolean staticPublicIP = true;
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
-    protected String additionalProperties = "-Dproactive.useIPaddress=true";
+    protected String additionalProperties = DEFAULT_ADDITIONAL_PROPERTIES;
 
     @Override
     public void configure(Object... parameters) {
@@ -345,11 +349,16 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
-            String fullScript = generateScriptFromInstanceId(currentInstanceId, imageOSType);
+            List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
+                                                                        getRmUrl(),
+                                                                        rmHttpUrl,
+                                                                        INSTANCE_ID_NODE_PROPERTY,
+                                                                        additionalProperties,
+                                                                        nodeSource.getName(),
+                                                                        currentInstanceId,
+                                                                        numberOfNodesPerInstance);
             try {
-                connectorIaasController.executeScript(getInfrastructureId(),
-                                                      currentInstanceId,
-                                                      Lists.newArrayList(fullScript));
+                connectorIaasController.executeScript(getInfrastructureId(), currentInstanceId, scripts);
             } catch (ScriptNotExecutedException exception) {
                 boolean acquireNodeTriggered = handleScriptNotExecutedException(existPersistedInstanceIds,
                                                                                 currentInstanceId,

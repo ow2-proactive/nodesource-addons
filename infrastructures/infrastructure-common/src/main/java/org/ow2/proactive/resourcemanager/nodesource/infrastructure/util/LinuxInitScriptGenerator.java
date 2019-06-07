@@ -105,7 +105,9 @@ public class LinuxInitScriptGenerator {
 
         String nodeNamingOption = (nodeBaseName == null || nodeBaseName.isEmpty()) ? "" : " -n " + nodeBaseName;
 
-        String javaProperties = " -Dproactive.communication.protocol=" + protocol +
+        String jythonPath = nsConfig.getString(NSProperties.DEFAULT_JYTHON_PATH);
+
+        String javaProperties = " -Dproactive.communication.protocol=" + protocol + " -Dpython.path=" + jythonPath +
                                 " -Dproactive.pamr.router.address=" + rmHostname + " -D" + instanceTagNodeProperty +
                                 "=" + instanceId + " " + additionalProperties + " -r " + rmUrlToUse + " -s " + nsName +
                                 nodeNamingOption + " -w " + numberOfNodesPerInstance;
