@@ -107,7 +107,8 @@ public class AzureInfrastructureTest {
         assertThat(azureInfrastructure.downloadCommand, is(nullValue()));
         assertThat(azureInfrastructure.privateNetworkCIDR, is(nullValue()));
         assertThat(azureInfrastructure.staticPublicIP, is(true));
-        assertThat(azureInfrastructure.additionalProperties, is("-Dproactive.useIPaddress=true"));
+        assertThat(azureInfrastructure.additionalProperties,
+                   is("-Dproactive.useIPaddress=true -Dproactive.net.public_address=$(wget -qO- ipinfo.io/ip) -Dproactive.pnp.port=64738"));
     }
 
     @Test
