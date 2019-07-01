@@ -222,13 +222,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         }
         // rmHostname
         parameterIndex++;
-        if (parameters[parameterIndex] == null) {
-            throw new IllegalArgumentException("The resource manager hostname must be specified");
-        }
-        if (parameters[parameterIndex].toString().contains("/")) {
-            throw new IllegalArgumentException(String.format("Invalid hostname %s (hostname should not contains '/').",
-                                                             parameters[parameterIndex]));
-        }
+        checkRMHostname(parameters[parameterIndex].toString());
         // connectorIaasURL
         parameterIndex++;
         if (parameters[parameterIndex] == null) {
@@ -248,16 +242,6 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         parameterIndex++;
         if (parameters[parameterIndex] == null) {
             throw new IllegalArgumentException("The node timeout must be specified");
-        }
-    }
-
-    private int parseIntParameter(String parameterName, Object parameter) {
-        try {
-            return Integer.parseInt(parameter.toString().trim());
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(String.format("Non numeric value (\"%s\") for the parameter \"%s\".",
-                                                             parameter.toString(),
-                                                             parameterName));
         }
     }
 
@@ -425,11 +409,6 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
             }
         }
         return false;
-    }
-
-    private boolean existRegisteredNodesOnInstance(String instanceTag) {
-        nodesPerInstance = getNodesPerInstancesMap();
-        return nodesPerInstance.get(instanceTag) != null && !nodesPerInstance.get(instanceTag).isEmpty();
     }
 
     private void terminateInstance(String infrastructureId, String instanceTag) {

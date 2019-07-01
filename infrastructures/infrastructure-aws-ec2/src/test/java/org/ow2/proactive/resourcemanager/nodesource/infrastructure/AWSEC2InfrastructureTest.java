@@ -30,32 +30,76 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
+import org.mockito.stubbing.Answer;
 import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
-import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
 import org.python.google.common.collect.Sets;
 
 
 public class AWSEC2InfrastructureTest {
 
-    private static final byte[] PRIVATE_KEY = new byte[] { 0, 1, 2, 3, 4 };
+    private static final String AWS_KEY = "aws_key";
 
+    private static final String AWS_SECRET_KEY = "aws_secret_key";
+
+    private static final int NUMBER_OF_INSTANCES = 2;
+
+    private static final int NUMBER_OF_NODES_PER_INSTANCE = 3;
+
+    private static final String IMAGE = "region/ami-image";
+
+    private static final String VM_USERNAME = "admin";
+
+    private static final String VM_KEY_PAIR_NAME = "keyname";
+
+    private static final byte[] VM_PRIVATE_KEY = new byte[] { 0, 1, 2, 3, 4 };
+
+    private static final int RAM = 512;
+
+    private static final int CORES = 1;
+
+    private static final String SPOT_PRICE = ""; //"0.05";
+
+    private static final String SECURITY_GROUP_NAMES = "sg-default";
+
+    private static final String SUBNET_ID = "subnet-id";
+
+    private static final String RM_HOSTNAME = "test.activeeon.com";
+
+    private static final String CONNECTOR_IAAS_URL = "http://localhost:8088/connector-iaas";
+
+    private static final String NODE_JAR_URL = "wget -nv test.activeeon.com/rest/node.jar";
+
+    private static final String ADDITIONAL_PROPERTIES = "-Dnew=value";
+
+    private static final int NODE_TIMEOUT = 300000;
+
+    private static final boolean DESTROY_INSTANCES_ON_SHUTDOWN = true;
+
+    private static final String INFRASTRUCTURE_ID = "infrastructure_id";
+
+    private static final List<String> INIT_SCRIPTS = Arrays.asList("node download cmd", "node start cmd");
+
+    @InjectMocks
+    @Spy
     private AWSEC2Infrastructure awsec2Infrastructure;
 
     @Mock
@@ -74,248 +118,260 @@ public class AWSEC2InfrastructureTest {
     private NodeInformation nodeInformation;
 
     @Mock
-    private RMDBManager dbManager;
+    private LinuxInitScriptGenerator linuxInitScriptGenerator;
 
     @Before
     public void init() {
         MockitoAnnotations.initMocks(this);
-        awsec2Infrastructure = new AWSEC2Infrastructure();
-        awsec2Infrastructure.setRmDbManager(dbManager);
         awsec2Infrastructure.initializePersistedInfraVariables();
-        when(connectorIaasController.createAwsEc2KeyPair(anyString(),
-                                                         anyString(),
-                                                         anyString(),
-                                                         anyInt(),
-                                                         anyInt(),
-                                                         anyInt())).thenReturn(new AbstractMap.SimpleImmutableEntry<>("keyname",
-                                                                                                                      "privatekey"));
     }
 
     @Test
     public void testInitialParamateres() {
-        assertThat(awsec2Infrastructure.aws_key, is(nullValue()));
-        assertThat(awsec2Infrastructure.aws_secret_key, is(nullValue()));
+        assertThat(awsec2Infrastructure.awsKey, is(nullValue()));
+        assertThat(awsec2Infrastructure.awsSecretKey, is(nullValue()));
+        assertThat(awsec2Infrastructure.numberOfInstances, is(not(nullValue())));
+        assertThat(awsec2Infrastructure.numberOfNodesPerInstance, is(not(nullValue())));
+        assertThat(awsec2Infrastructure.image, not(nullValue()));
+        assertThat(awsec2Infrastructure.vmUsername, is(not(nullValue())));
+        assertThat(awsec2Infrastructure.vmKeyPairName, is(nullValue()));
+        assertThat(awsec2Infrastructure.vmPrivateKey, is(nullValue()));
+        assertThat(awsec2Infrastructure.ram, is(not(nullValue())));
+        assertThat(awsec2Infrastructure.cores, is(not(nullValue())));
         assertThat(awsec2Infrastructure.rmHostname, is(not(nullValue())));
         assertThat(awsec2Infrastructure.connectorIaasURL,
                    is("http://" + awsec2Infrastructure.rmHostname + ":8080/connector-iaas"));
-        assertThat(awsec2Infrastructure.image, is(nullValue()));
-        assertThat(awsec2Infrastructure.numberOfInstances, is(1));
-        assertThat(awsec2Infrastructure.numberOfNodesPerInstance, is(1));
-        if (System.getProperty("os.name").contains("Windows")) {
-            assertThat(awsec2Infrastructure.downloadCommand,
-                       is("powershell -command \"& { (New-Object Net.WebClient).DownloadFile('" +
-                          awsec2Infrastructure.rmHostname + ":8080/rest/node.jar', 'node.jar') }\""));
-        } else {
-            assertThat(awsec2Infrastructure.downloadCommand,
-                       is("wget -nv " + awsec2Infrastructure.rmHostname + ":8080/rest/node.jar"));
-
-        }
+        assertThat(awsec2Infrastructure.nodeJarURL, is(awsec2Infrastructure.rmHostname + ":8080/rest/node.jar"));
         assertThat(awsec2Infrastructure.additionalProperties, is(""));
-        assertThat(awsec2Infrastructure.ram, is(512));
-        assertThat(awsec2Infrastructure.cores, is(1));
     }
 
     @Test
     public void testConfigure() {
-
-        when(nodeSource.getName()).thenReturn("Node source Name");
-        awsec2Infrastructure.nodeSource = nodeSource;
-
-        awsec2Infrastructure.configure("aws_key",
-                                       "aws_secret_key",
-                                       "test.activeeon.com",
-                                       "http://localhost:8088/connector-iaas",
-                                       "aws-image",
-                                       "admin",
-                                       "keyname",
-                                       PRIVATE_KEY,
-                                       "2",
-                                       "3",
-                                       "wget -nv test.activeeon.com/rest/node.jar",
-                                       "-Dnew=value",
-                                       512,
-                                       1,
-                                       "0.05",
-                                       "default",
-                                       "127.0.0.1");
+        awsec2Infrastructure.configure(AWS_KEY,
+                                       AWS_SECRET_KEY,
+                                       NUMBER_OF_INSTANCES,
+                                       NUMBER_OF_NODES_PER_INSTANCE,
+                                       IMAGE,
+                                       VM_USERNAME,
+                                       VM_KEY_PAIR_NAME,
+                                       VM_PRIVATE_KEY,
+                                       RAM,
+                                       CORES,
+                                       //                                       SPOT_PRICE,
+                                       SECURITY_GROUP_NAMES,
+                                       SUBNET_ID,
+                                       RM_HOSTNAME,
+                                       CONNECTOR_IAAS_URL,
+                                       NODE_JAR_URL,
+                                       ADDITIONAL_PROPERTIES,
+                                       NODE_TIMEOUT);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void tesConfigureNotEnoughParameters() {
-
-        when(nodeSource.getName()).thenReturn("Node source Name");
-        awsec2Infrastructure.nodeSource = nodeSource;
-
-        awsec2Infrastructure.configure("aws_key",
-                                       "aws_secret_key",
-                                       "test.activeeon.com",
-                                       "http://localhost:8088/connector-iaas",
-                                       "aws-image",
-                                       "wget -nv test.activeeon.com/rest/node.jar",
-                                       "-Dnew=value",
-                                       512,
-                                       1,
-                                       "0.05",
-                                       "default",
-                                       "127.0.0.1");
+        awsec2Infrastructure.configure(AWS_KEY,
+                                       AWS_SECRET_KEY,
+                                       IMAGE,
+                                       VM_USERNAME,
+                                       VM_KEY_PAIR_NAME,
+                                       VM_PRIVATE_KEY,
+                                       RAM,
+                                       CORES,
+                                       //                                       SPOT_PRICE,
+                                       SECURITY_GROUP_NAMES,
+                                       SUBNET_ID,
+                                       RM_HOSTNAME,
+                                       CONNECTOR_IAAS_URL,
+                                       NODE_JAR_URL,
+                                       ADDITIONAL_PROPERTIES,
+                                       NODE_TIMEOUT);
     }
 
     @Test
-    public void testAcquireNode() throws ScriptNotExecutedException, InterruptedException {
-
-        when(nodeSource.getName()).thenReturn("Node source Name");
-        awsec2Infrastructure.nodeSource = nodeSource;
-
-        awsec2Infrastructure.configure("aws_key",
-                                       "aws_secret_key",
-                                       "test.activeeon.com",
-                                       "http://localhost:8088/connector-iaas",
-                                       "aws-image",
-                                       "admin",
-                                       "keyname",
-                                       PRIVATE_KEY,
-                                       "2",
-                                       "3",
-                                       "wget -nv test.activeeon.com/rest/node.jar",
-                                       "-Dnew=value",
-                                       512,
-                                       1,
-                                       "0.05",
-                                       "default",
-                                       "127.0.0.1");
+    public void testAcquireNode() throws ScriptNotExecutedException {
+        awsec2Infrastructure.configure(AWS_KEY,
+                                       AWS_SECRET_KEY,
+                                       NUMBER_OF_INSTANCES,
+                                       NUMBER_OF_NODES_PER_INSTANCE,
+                                       IMAGE,
+                                       VM_USERNAME,
+                                       VM_KEY_PAIR_NAME,
+                                       VM_PRIVATE_KEY,
+                                       RAM,
+                                       CORES,
+                                       //                                       SPOT_PRICE,
+                                       SECURITY_GROUP_NAMES,
+                                       SUBNET_ID,
+                                       RM_HOSTNAME,
+                                       CONNECTOR_IAAS_URL,
+                                       NODE_JAR_URL,
+                                       ADDITIONAL_PROPERTIES,
+                                       NODE_TIMEOUT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
-        awsec2Infrastructure.nodeSource = nodeSource;
-        awsec2Infrastructure.setRmUrl("http://test.activeeon.com");
 
-        when(connectorIaasController.createInfrastructure("node_source_name",
-                                                          "aws_key",
-                                                          "aws_secret_key",
+        when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
+
+        when(linuxInitScriptGenerator.buildScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt())).thenReturn(INIT_SCRIPTS);
+
+        doAnswer((Answer<Object>) invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(nodeSource).executeInParallel(any(Runnable.class));
+
+        doReturn(new ArrayList<>()).when(awsec2Infrastructure).addMultipleDeployingNodes(anyListOf(String.class),
+                                                                                         anyString(),
+                                                                                         anyString(),
+                                                                                         anyLong());
+
+        when(connectorIaasController.createInfrastructure(INFRASTRUCTURE_ID,
+                                                          AWS_KEY,
+                                                          AWS_SECRET_KEY,
                                                           null,
-                                                          true)).thenReturn("node_source_name");
+                                                          DESTROY_INSTANCES_ON_SHUTDOWN)).thenReturn(INFRASTRUCTURE_ID);
 
-        when(connectorIaasController.createAwsEc2InstancesWithOptions("node_source_name",
-                                                                      "node_source_name",
-                                                                      "aws-image",
-                                                                      2,
+        when(connectorIaasController.createAwsEc2InstancesWithOptions(INFRASTRUCTURE_ID,
+                                                                      INFRASTRUCTURE_ID,
+                                                                      IMAGE,
                                                                       1,
-                                                                      512,
-                                                                      "0.05",
-                                                                      "default",
-                                                                      "127.0.0.1",
+                                                                      CORES,
+                                                                      RAM,
+                                                                      SPOT_PRICE,
+                                                                      SECURITY_GROUP_NAMES,
+                                                                      SUBNET_ID,
                                                                       null,
-                                                                      "admin",
-                                                                      "keyname")).thenReturn(Sets.newHashSet("123",
-                                                                                                             "456"));
+                                                                      VM_USERNAME,
+                                                                      VM_KEY_PAIR_NAME)).thenReturn(Sets.newHashSet("123"));
 
         awsec2Infrastructure.acquireNode();
 
-        Thread.sleep(500);
-
         verify(connectorIaasController, times(1)).waitForConnectorIaasToBeUP();
 
-        verify(connectorIaasController).createInfrastructure("node_source_name",
-                                                             "aws_key",
-                                                             "aws_secret_key",
+        verify(connectorIaasController).createInfrastructure(INFRASTRUCTURE_ID,
+                                                             AWS_KEY,
+                                                             AWS_SECRET_KEY,
                                                              null,
-                                                             false);
+                                                             DESTROY_INSTANCES_ON_SHUTDOWN);
 
-        verify(connectorIaasController).createAwsEc2InstancesWithOptions("node_source_name",
-                                                                         "node_source_name",
-                                                                         "aws-image",
-                                                                         2,
+        verify(connectorIaasController).createAwsEc2InstancesWithOptions(INFRASTRUCTURE_ID,
+                                                                         INFRASTRUCTURE_ID,
+                                                                         IMAGE,
                                                                          1,
-                                                                         512,
-                                                                         "0.05",
-                                                                         "default",
-                                                                         "127.0.0.1",
+                                                                         CORES,
+                                                                         RAM,
+                                                                         SPOT_PRICE,
+                                                                         SECURITY_GROUP_NAMES,
+                                                                         SUBNET_ID,
                                                                          null,
-                                                                         "admin",
-                                                                         "keyname");
+                                                                         VM_USERNAME,
+                                                                         VM_KEY_PAIR_NAME);
 
-        verify(connectorIaasController, times(2)).executeScriptWithKeyAuthentication(anyString(),
+        verify(connectorIaasController, times(1)).executeScriptWithKeyAuthentication(anyString(),
                                                                                      anyString(),
-                                                                                     anyList(),
+                                                                                     anyListOf(String.class),
                                                                                      anyString(),
                                                                                      anyString());
 
     }
 
     @Test
-    public void testAcquireAllNodes() throws ScriptNotExecutedException, InterruptedException {
-        when(nodeSource.getName()).thenReturn("Node source Name");
-        awsec2Infrastructure.nodeSource = nodeSource;
-
-        awsec2Infrastructure.configure("aws_key",
-                                       "aws_secret_key",
-                                       "test.activeeon.com",
-                                       "http://localhost:8088/connector-iaas",
-                                       "aws-image",
-                                       "admin",
-                                       "keyname",
-                                       PRIVATE_KEY,
-                                       "2",
-                                       "3",
-                                       "wget -nv test.activeeon.com/rest/node.jar",
-                                       "-Dnew=value",
-                                       512,
-                                       1,
-                                       "0.05",
-                                       "default",
-                                       "127.0.0.1");
+    public void testAcquireAllNodes() throws ScriptNotExecutedException {
+        awsec2Infrastructure.configure(AWS_KEY,
+                                       AWS_SECRET_KEY,
+                                       NUMBER_OF_INSTANCES,
+                                       NUMBER_OF_NODES_PER_INSTANCE,
+                                       IMAGE,
+                                       VM_USERNAME,
+                                       VM_KEY_PAIR_NAME,
+                                       VM_PRIVATE_KEY,
+                                       RAM,
+                                       CORES,
+                                       //                                       SPOT_PRICE,
+                                       SECURITY_GROUP_NAMES,
+                                       SUBNET_ID,
+                                       RM_HOSTNAME,
+                                       CONNECTOR_IAAS_URL,
+                                       NODE_JAR_URL,
+                                       ADDITIONAL_PROPERTIES,
+                                       NODE_TIMEOUT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
-        awsec2Infrastructure.nodeSource = nodeSource;
-        awsec2Infrastructure.setRmUrl("http://test.activeeon.com");
 
-        when(connectorIaasController.createInfrastructure("node_source_name",
-                                                          "aws_key",
-                                                          "aws_secret_key",
+        when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
+
+        when(linuxInitScriptGenerator.buildScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt())).thenReturn(INIT_SCRIPTS);
+        doAnswer((Answer<Object>) invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(nodeSource).executeInParallel(any(Runnable.class));
+
+        doReturn(new ArrayList<>()).when(awsec2Infrastructure).addMultipleDeployingNodes(anyListOf(String.class),
+                                                                                         anyString(),
+                                                                                         anyString(),
+                                                                                         anyLong());
+
+        when(connectorIaasController.createInfrastructure(INFRASTRUCTURE_ID,
+                                                          AWS_KEY,
+                                                          AWS_SECRET_KEY,
                                                           null,
-                                                          true)).thenReturn("node_source_name");
+                                                          DESTROY_INSTANCES_ON_SHUTDOWN)).thenReturn(INFRASTRUCTURE_ID);
 
-        when(connectorIaasController.createAwsEc2InstancesWithOptions("node_source_name",
-                                                                      "node_source_name",
-                                                                      "aws-image",
-                                                                      2,
-                                                                      1,
-                                                                      512,
-                                                                      "0.05",
-                                                                      "default",
-                                                                      "127.0.0.1",
+        when(connectorIaasController.createAwsEc2InstancesWithOptions(INFRASTRUCTURE_ID,
+                                                                      INFRASTRUCTURE_ID,
+                                                                      IMAGE,
+                                                                      NUMBER_OF_INSTANCES,
+                                                                      CORES,
+                                                                      RAM,
+                                                                      SPOT_PRICE,
+                                                                      SECURITY_GROUP_NAMES,
+                                                                      SUBNET_ID,
                                                                       null,
-                                                                      "admin",
-                                                                      "keyname")).thenReturn(Sets.newHashSet("123",
-                                                                                                             "456"));
+                                                                      VM_USERNAME,
+                                                                      VM_KEY_PAIR_NAME)).thenReturn(Sets.newHashSet("123",
+                                                                                                                    "456"));
 
         awsec2Infrastructure.acquireAllNodes();
 
-        Thread.sleep(500);
-
         verify(connectorIaasController, times(1)).waitForConnectorIaasToBeUP();
 
-        verify(connectorIaasController).createInfrastructure("node_source_name",
-                                                             "aws_key",
-                                                             "aws_secret_key",
+        verify(connectorIaasController).createInfrastructure(INFRASTRUCTURE_ID,
+                                                             AWS_KEY,
+                                                             AWS_SECRET_KEY,
                                                              null,
-                                                             false);
+                                                             DESTROY_INSTANCES_ON_SHUTDOWN);
 
-        verify(connectorIaasController).createAwsEc2InstancesWithOptions("node_source_name",
-                                                                         "node_source_name",
-                                                                         "aws-image",
-                                                                         2,
-                                                                         1,
-                                                                         512,
-                                                                         "0.05",
-                                                                         "default",
-                                                                         "127.0.0.1",
+        verify(connectorIaasController).createAwsEc2InstancesWithOptions(INFRASTRUCTURE_ID,
+                                                                         INFRASTRUCTURE_ID,
+                                                                         IMAGE,
+                                                                         NUMBER_OF_INSTANCES,
+                                                                         CORES,
+                                                                         RAM,
+                                                                         SPOT_PRICE,
+                                                                         SECURITY_GROUP_NAMES,
+                                                                         SUBNET_ID,
                                                                          null,
-                                                                         "admin",
-                                                                         "keyname");
+                                                                         VM_USERNAME,
+                                                                         VM_KEY_PAIR_NAME);
 
         verify(connectorIaasController, times(2)).executeScriptWithKeyAuthentication(anyString(),
                                                                                      anyString(),
-                                                                                     anyList(),
+                                                                                     anyListOf(String.class),
                                                                                      anyString(),
                                                                                      anyString());
     }
@@ -323,28 +379,28 @@ public class AWSEC2InfrastructureTest {
     @Test
     public void testRemoveNode() throws ProActiveException, RMException {
 
-        when(nodeSource.getName()).thenReturn("Node source Name");
-        awsec2Infrastructure.nodeSource = nodeSource;
-
-        awsec2Infrastructure.configure("aws_key",
-                                       "aws_secret_key",
-                                       "test.activeeon.com",
-                                       "http://localhost:8088/connector-iaas",
-                                       "aws-image",
-                                       "admin",
-                                       "keyname",
-                                       PRIVATE_KEY,
-                                       "2",
-                                       "3",
-                                       "wget -nv test.activeeon.com/rest/node.jar",
-                                       "-Dnew=value",
-                                       512,
-                                       1,
-                                       "0.05",
-                                       "default",
-                                       "127.0.0.1");
+        awsec2Infrastructure.configure(AWS_KEY,
+                                       AWS_SECRET_KEY,
+                                       NUMBER_OF_INSTANCES,
+                                       NUMBER_OF_NODES_PER_INSTANCE,
+                                       IMAGE,
+                                       VM_USERNAME,
+                                       VM_KEY_PAIR_NAME,
+                                       VM_PRIVATE_KEY,
+                                       RAM,
+                                       CORES,
+                                       //                                       SPOT_PRICE,
+                                       SECURITY_GROUP_NAMES,
+                                       SUBNET_ID,
+                                       RM_HOSTNAME,
+                                       CONNECTOR_IAAS_URL,
+                                       NODE_JAR_URL,
+                                       ADDITIONAL_PROPERTIES,
+                                       NODE_TIMEOUT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
+
+        when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
 
         when(node.getProperty(AWSEC2Infrastructure.INSTANCE_ID_NODE_PROPERTY)).thenReturn("123");
 
@@ -360,7 +416,7 @@ public class AWSEC2InfrastructureTest {
 
         verify(proActiveRuntime).killNode("nodename");
 
-        verify(connectorIaasController).terminateInstance("node_source_name", "123");
+        verify(connectorIaasController).terminateInstance(INFRASTRUCTURE_ID, "123");
 
         assertThat(awsec2Infrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
@@ -369,26 +425,24 @@ public class AWSEC2InfrastructureTest {
     @Test
     public void testNotifyAcquiredNode() throws ProActiveException, RMException {
 
-        when(nodeSource.getName()).thenReturn("Node source Name");
-        awsec2Infrastructure.nodeSource = nodeSource;
-
-        awsec2Infrastructure.configure("aws_key",
-                                       "aws_secret_key",
-                                       "test.activeeon.com",
-                                       "http://localhost:8088/connector-iaas",
-                                       "aws-image",
-                                       "admin",
-                                       "keyname",
-                                       PRIVATE_KEY,
-                                       "2",
-                                       "3",
-                                       "wget -nv test.activeeon.com/rest/node.jar",
-                                       "-Dnew=value",
-                                       512,
-                                       1,
-                                       "0.05",
-                                       "default",
-                                       "127.0.0.1");
+        awsec2Infrastructure.configure(AWS_KEY,
+                                       AWS_SECRET_KEY,
+                                       NUMBER_OF_INSTANCES,
+                                       NUMBER_OF_NODES_PER_INSTANCE,
+                                       IMAGE,
+                                       VM_USERNAME,
+                                       VM_KEY_PAIR_NAME,
+                                       VM_PRIVATE_KEY,
+                                       RAM,
+                                       CORES,
+                                       //                                       SPOT_PRICE,
+                                       SECURITY_GROUP_NAMES,
+                                       SUBNET_ID,
+                                       RM_HOSTNAME,
+                                       CONNECTOR_IAAS_URL,
+                                       NODE_JAR_URL,
+                                       ADDITIONAL_PROPERTIES,
+                                       NODE_TIMEOUT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 

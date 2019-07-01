@@ -455,6 +455,11 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
         return getNodesPerInstancesMapCopy().size();
     }
 
+    protected boolean existRegisteredNodesOnInstance(String instanceTag) {
+        nodesPerInstance = getNodesPerInstancesMap();
+        return nodesPerInstance.get(instanceTag) != null && !nodesPerInstance.get(instanceTag).isEmpty();
+    }
+
     /**
      * Take into account a node in the tracked removed nodes and mark the
      * given instance as free if all the nodes are marked as removed for this
@@ -575,4 +580,23 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
                     instancesWithoutNodesMap);
     }
 
+    protected int parseIntParameter(String parameterName, Object parameter) {
+        try {
+            return Integer.parseInt(parameter.toString().trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(String.format("Non numeric value (\"%s\") for the parameter \"%s\".",
+                                                             parameter.toString(),
+                                                             parameterName));
+        }
+    }
+
+    protected void checkRMHostname(String rmHostname) {
+        if (rmHostname == null) {
+            throw new IllegalArgumentException("The resource manager hostname must be specified");
+        }
+        if (rmHostname.contains("/")) {
+            throw new IllegalArgumentException(String.format("Invalid hostname %s (hostname should not contains '/').",
+                                                             rmHostname));
+        }
+    }
 }

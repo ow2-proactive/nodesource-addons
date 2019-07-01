@@ -25,17 +25,16 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
-import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManagerProperties.RM_CLOUD_INFRASTRUCTURES_DESTROY_INSTANCES_ON_SHUTDOWN;
-
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
@@ -43,9 +42,9 @@ import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
-import org.python.google.common.collect.Sets;
+import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
+import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 
@@ -55,230 +54,285 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "aws-ec2";
 
+    private static final int NUMBER_OF_PARAMETERS = 17;
+
+    private static final String DEFAULT_IMAGE = "eu-west-3/ami-03bca18cb3dc173c9";
+
+    private static final String DEFAULT_VM_USERNAME = "ubuntu";
+
+    private static final int DEFAULT_RAM = 2048;
+
+    private static final int DEFAULT_CORES = 2;
+
+    private static final int DEFAULT_NODE_TIMEOUT = 5 * 60 * 1000;// 5 min
+
+    private static final boolean DESTROY_INSTANCES_ON_SHUTDOWN = true;
+
+    // jClouds use the format "region/instanceIdInsideRegion" as the complete instanceId
+    private static final String INSTANCE_ID_REGION_DELIMITER = "/";
+
+    // as INSTANCE_ID_REGION_DELIMITER('/') is invalid in the node name, we use another delimiter to replace INSTANCE_ID_REGION_DELIMITER
+    // this delimiter is supposed to not appear in the AWS region.
+    private static final String INSTANCE_ID_REGION_DELIMITER_IN_NODENAME = "__";
+
+    private static final char NODE_INDEX_DELIMITER = '_';
+
     private static final Logger logger = Logger.getLogger(AWSEC2Infrastructure.class);
 
-    private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+    private transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
 
-    @Configurable(description = "The AWS_AKEY")
-    protected String aws_key = null;
+    // Lock for acquireNodes (dynamic policy)
+    private final transient Lock dynamicAcquireLock = new ReentrantLock();
 
-    @Configurable(description = "The AWS_SKEY")
-    protected String aws_secret_key = null;
+    private boolean isCreatedInfrastructure = false;
 
-    @Configurable(description = "Resource manager hostname or ip address")
+    @Configurable(description = "Your AWS access key ID (e.g., AKIAIOSFODNN7EXAMPLE)")
+    protected String awsKey = null;
+
+    @Configurable(description = "Your AWS secret access key (e.g., wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY)")
+    protected String awsSecretKey = null;
+
+    @Configurable(description = "The number of VMs to create (maximum number of VMs in case of dynamic policy)")
+    protected int numberOfInstances = 1;
+
+    @Configurable(description = "The number of nodes to create on each VM")
+    protected int numberOfNodesPerInstance = 1;
+
+    @Configurable(description = "(optional, default value: " + DEFAULT_IMAGE + ") VM image id, format region/imageId")
+    protected String image = DEFAULT_IMAGE;
+
+    @Configurable(description = "(optional, default value: " + DEFAULT_VM_USERNAME +
+                                ") Default username of your VM image, make sure it's adapted to 'image'")
+    protected String vmUsername = DEFAULT_VM_USERNAME;
+
+    @Configurable(description = "(optional) The name of your AWS key pair for accessing VM")
+    protected String vmKeyPairName = null;
+
+    @Configurable(fileBrowser = true, description = "(optional) Your AWS private key file corresponding to 'vmKeyPairName' for accessing VM")
+    protected byte[] vmPrivateKey;
+
+    @Configurable(description = "(optional) The minimum RAM required (in Mega Bytes) for each VM")
+    protected int ram = DEFAULT_RAM;
+
+    @Configurable(description = "(optional) The minimum number of CPU cores required for each VM")
+    protected int cores = DEFAULT_CORES;
+
+    // TODO disable to configure the parameter spotPrice for the moment, because we don't yet have a checking mechanism for it now, but it may cause the RM portal blocked (hanging in createInstance).
+    //    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price)")
+    protected String spotPrice = "";
+
+    @Configurable(description = "(optional) The ids(s) of the security group(s) for VMs, spearated by comma in case of multiple ids.")
+    protected String securityGroupIds = null;
+
+    @Configurable(description = "(optional) The subnet ID which is added to a specific Amazon VPC.")
+    protected String subnetId = null;
+
+    @Configurable(description = "Resource Manager hostname or ip address (must be accessible from nodes)")
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Connector-iaas URL")
     protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
 
-    @Configurable(description = "Image")
-    protected String image = null;
+    @Configurable(description = "URL used to download the node jar on the VM")
+    protected String nodeJarURL = linuxInitScriptGenerator.generateDefaultNodeJarURL(rmHostname);
 
-    @Configurable(description = "The virtual machine Username (optional)")
-    protected String vmUsername = null;
-
-    @Configurable(description = "The name of the AWS key pair (optional)")
-    protected String vmKeyPairName = null;
-
-    @Configurable(fileBrowser = true, description = "The AWS private key file (optional)")
-    protected byte[] vmPrivateKey;
-
-    @Configurable(description = "Total instance to create")
-    protected int numberOfInstances = 1;
-
-    @Configurable(description = "Total nodes to create per instance")
-    protected int numberOfNodesPerInstance = 1;
-
-    @Configurable(description = "Command used to download the worker jar")
-    protected String downloadCommand = linuxInitScriptGenerator.generateDefaultDownloadCommand(rmHostname);
-
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
+    @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
     protected String additionalProperties = "";
 
-    @Configurable(description = "minumum RAM required (in Mega Bytes)")
-    protected int ram = 512;
-
-    @Configurable(description = "minimum number of CPU cores required")
-    protected int cores = 1;
-
-    @Configurable(description = "Spot Price")
-    protected String spotPrice = null;
-
-    @Configurable(description = "Security Group Names")
-    protected String securityGroupNames = null;
-
-    @Configurable(description = "Subnet and VPC")
-    protected String subnetId = null;
+    @Configurable(description = "The timeout for nodes to connect to RM (in ms). After this timeout expired, the node is considered to be lost.")
+    protected int nodeTimeout = DEFAULT_NODE_TIMEOUT;// 5 min
 
     /**
      * Key to retrieve the key pair used to deploy the infrastructure
      */
     private static final String KEY_PAIR_KEY = "keyPair";
 
-    private ExecutorService instanceScriptExecutor;
-
     @Override
     public void configure(Object... parameters) {
 
-        logger.info("Validating parameters : " + parameters);
+        logger.info("Validating parameters : " + Arrays.toString(parameters));
         validate(parameters);
 
         int parameterIndex = 0;
-        this.aws_key = parameters[parameterIndex++].toString().trim();
-        this.aws_secret_key = parameters[parameterIndex++].toString().trim();
-        this.rmHostname = parameters[parameterIndex++].toString().trim();
-        this.connectorIaasURL = parameters[parameterIndex++].toString().trim();
+        this.awsKey = parameters[parameterIndex++].toString().trim();
+        this.awsSecretKey = parameters[parameterIndex++].toString().trim();
+        this.numberOfInstances = parseIntParameter("numberOfInstances", parameters[parameterIndex++]);
+        this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance", parameters[parameterIndex++]);
         this.image = parameters[parameterIndex++].toString().trim();
         this.vmUsername = parameters[parameterIndex++].toString().trim();
         this.vmKeyPairName = parameters[parameterIndex++].toString().trim();
         this.vmPrivateKey = (byte[]) parameters[parameterIndex++];
-        this.numberOfInstances = Integer.parseInt(parameters[parameterIndex++].toString().trim());
-        this.numberOfNodesPerInstance = Integer.parseInt(parameters[parameterIndex++].toString().trim());
-        this.downloadCommand = parameters[parameterIndex++].toString().trim();
+        this.ram = parseIntParameter("ram", parameters[parameterIndex++]);
+        this.cores = parseIntParameter("cores", parameters[parameterIndex++]);
+        //        TODO disable to configure the parameter spotPrice for the moment
+        //        this.spotPrice = parameters[parameterIndex++].toString().trim();
+        this.securityGroupIds = parameters[parameterIndex++].toString().trim();
+        this.subnetId = parameters[parameterIndex++].toString().trim();
+        this.rmHostname = parameters[parameterIndex++].toString().trim();
+        this.connectorIaasURL = parameters[parameterIndex++].toString().trim();
+        this.nodeJarURL = parameters[parameterIndex++].toString().trim();
         this.additionalProperties = parameters[parameterIndex++].toString().trim();
-        this.ram = Integer.parseInt(parameters[parameterIndex++].toString().trim());
-        this.cores = Integer.parseInt(parameters[parameterIndex++].toString().trim());
-        this.spotPrice = parameters[parameterIndex++].toString().trim();
-        this.securityGroupNames = parameters[parameterIndex++].toString().trim();
-        this.subnetId = parameters[parameterIndex].toString().trim();
+        this.nodeTimeout = parseIntParameter("nodeTimeout", parameters[parameterIndex++]);
 
         connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
-        instanceScriptExecutor = Executors.newFixedThreadPool(Math.min(numberOfInstances,
-                                                                       Runtime.getRuntime().availableProcessors() - 1));
-
     }
 
     private void validate(Object[] parameters) {
-        int parameterIndex = 0;
-        if (parameters == null || parameters.length < 14) {
+        if (parameters == null || parameters.length < NUMBER_OF_PARAMETERS) {
             throw new IllegalArgumentException("Invalid parameters for EC2Infrastructure creation");
         }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("EC2 key must be specified");
-        }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("EC2 secret key  must be specified");
-        }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("The Resource manager hostname must be specified");
-        }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("The connector-iaas URL must be specified");
-        }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("The image id must be specified");
-        }
-
-        // VM username
+        int parameterIndex = 0;
+        // awsKey
         if (parameters[parameterIndex] == null) {
-            parameters[parameterIndex++] = "";
+            throw new IllegalArgumentException("AWS access key ID must be specified");
         }
-
-        // key pair name
+        parameterIndex++;
+        // awsSecretKey
         if (parameters[parameterIndex] == null) {
-            parameters[parameterIndex++] = "";
+            throw new IllegalArgumentException("AWS secret access key must be specified");
         }
-
-        // private key file
+        parameterIndex++;
+        // numberOfInstances
         if (parameters[parameterIndex] == null) {
-            parameters[parameterIndex++] = "";
-        }
-
-        if (parameters[parameterIndex++] == null) {
             throw new IllegalArgumentException("The number of instances to create must be specified");
         }
-
-        if (parameters[parameterIndex++] == null) {
+        parameterIndex++;
+        // numberOfNodesPerInstance
+        if (parameters[parameterIndex] == null) {
             throw new IllegalArgumentException("The number of nodes per instance to deploy must be specified");
         }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("The download node.jar command must be specified");
-        }
-
+        parameterIndex++;
+        // image
         if (parameters[parameterIndex] == null) {
-            parameters[parameterIndex++] = "";
+            parameters[parameterIndex] = DEFAULT_IMAGE;
         }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("The amount of minimum RAM required must be specified");
+        if (!parameters[parameterIndex].toString().contains("/")) {
+            throw new IllegalArgumentException(String.format("Invalid image %s (image should be in format 'region/ami-id').",
+                                                             parameters[parameterIndex]));
         }
-
-        if (parameters[parameterIndex++] == null) {
-            throw new IllegalArgumentException("The minimum number of cores required must be specified");
-        }
-
+        parameterIndex++;
+        // vmUsername
         if (parameters[parameterIndex] == null) {
-            parameters[parameterIndex++] = "";
+            parameters[parameterIndex] = DEFAULT_VM_USERNAME;
         }
-
-        if (parameters[parameterIndex] == null) {
-            parameters[parameterIndex++] = "";
-        }
-
+        parameterIndex++;
+        // vmKeyPairName
         if (parameters[parameterIndex] == null) {
             parameters[parameterIndex] = "";
         }
-
+        parameterIndex++;
+        // vmPrivateKey
+        if (parameters[parameterIndex] == null) {
+            parameters[parameterIndex] = "";
+        }
+        parameterIndex++;
+        // ram
+        if (parameters[parameterIndex] == null) {
+            parameters[parameterIndex] = DEFAULT_RAM;
+        }
+        parameterIndex++;
+        // cores
+        if (parameters[parameterIndex] == null) {
+            parameters[parameterIndex] = DEFAULT_CORES;
+        }
+        parameterIndex++;
+        //        TODO disable to configure the parameter spotPrice for the moment
+        //        // spotPrice
+        //        if (parameters[parameterIndex] == null) {
+        //            parameters[parameterIndex] = "";
+        //        }
+        //        parameterIndex++;
+        // securityGroupIds
+        if (parameters[parameterIndex] == null) {
+            parameters[parameterIndex] = "";
+        }
+        parameterIndex++;
+        // subnetId
+        if (parameters[parameterIndex] == null) {
+            parameters[parameterIndex] = "";
+        }
+        parameterIndex++;
+        // rmHostname
+        checkRMHostname(parameters[parameterIndex].toString());
+        parameterIndex++;
+        // connectorIaasURL
+        if (parameters[parameterIndex] == null) {
+            throw new IllegalArgumentException("The connector-iaas URL must be specified");
+        }
+        parameterIndex++;
+        // nodeJarURL
+        if (parameters[parameterIndex] == null) {
+            throw new IllegalArgumentException("The URL for downloading the node jar must be specified");
+        }
+        parameterIndex++;
+        // additionalProperties
+        if (parameters[parameterIndex] == null) {
+            parameters[parameterIndex] = "";
+        }
+        parameterIndex++;
+        // nodeTimeout
+        if (parameters[parameterIndex] == null) {
+            throw new IllegalArgumentException("The node timeout must be specified");
+        }
     }
 
-    private void createAwsInfrastructure() {
-        connectorIaasController.createInfrastructure(getInfrastructureId(),
-                                                     aws_key,
-                                                     aws_secret_key,
-                                                     null,
-                                                     RM_CLOUD_INFRASTRUCTURES_DESTROY_INSTANCES_ON_SHUTDOWN.getValueAsBoolean());
+    @Override
+    public void acquireAllNodes() {
+        deployInstancesWithNodes(numberOfInstances, true);
     }
 
     @Override
     public void acquireNode() {
+        deployInstancesWithNodes(1, true);
+    }
 
+    @Override
+    public synchronized void acquireNodes(final int numberOfNodes, final Map<String, ?> nodeConfiguration) {
+        logger.info(String.format("Acquiring %d nodes with the configuration: %s.", numberOfNodes, nodeConfiguration));
+
+        nodeSource.executeInParallel(() -> {
+            if (dynamicAcquireLock.tryLock()) {
+                try {
+                    int nbInstancesToDeploy = calNumberOfInstancesToDeploy(numberOfNodes,
+                                                                           nodeConfiguration,
+                                                                           numberOfInstances,
+                                                                           numberOfNodesPerInstance);
+                    if (nbInstancesToDeploy <= 0) {
+                        logger.info("No need to deploy new instances, acquireNodes skipped.");
+                        return;
+                    }
+                    deployInstancesWithNodes(nbInstancesToDeploy, false);
+                } catch (Exception e) {
+                    logger.error("Error during node acquisition", e);
+                } finally {
+                    dynamicAcquireLock.unlock();
+                }
+            } else {
+                logger.info("Infrastructure is busy, acquireNodes skipped.");
+            }
+        });
+    }
+
+    private void deployInstancesWithNodes(int nbInstancesToDeploy, boolean reuseCreatedInstances) {
         connectorIaasController.waitForConnectorIaasToBeUP();
 
-        createAwsInfrastructure();
+        createAwsInfrastructureIfNeeded();
 
-        String instanceTag = getInfrastructureId();
-        Set<String> instancesIds = Sets.newHashSet();
+        String infrastructureId = getInfrastructureId();
+        Set<String> instancesIds;
         boolean existPersistedInstanceIds = false;
 
-        // we check a persisted flag that says whether this infrastructure has
-        // already been deployed
-        if (expectInstancesAlreadyCreated(false, true)) {
+        // we create new instances in two cases:
+        // 1) we don't want to reuse the created instances (e.g., for dynamic policy)
+        // 2) we reuse created instances, but there aren't any.
+        // For the second case, we check a persisted flag that says whether this infrastructure has already been deployed.
+        if (!reuseCreatedInstances || expectInstancesAlreadyCreated(false, true)) {
 
             // by default, the key pair that is used to deploy the instances has
             // the name of the node source
-            String keyPairName = createOrUseKeyPair(getInfrastructureId());
+            String keyPairName = createOrUseKeyPair(infrastructureId, nbInstancesToDeploy);
 
-            // create instances
-            if (spotPrice.isEmpty() && securityGroupNames.isEmpty() && subnetId.isEmpty()) {
-                instancesIds = connectorIaasController.createAwsEc2Instances(getInfrastructureId(),
-                                                                             instanceTag,
-                                                                             image,
-                                                                             numberOfInstances,
-                                                                             cores,
-                                                                             ram,
-                                                                             vmUsername,
-                                                                             keyPairName);
-            } else {
-                instancesIds = connectorIaasController.createAwsEc2InstancesWithOptions(getInfrastructureId(),
-                                                                                        instanceTag,
-                                                                                        image,
-                                                                                        numberOfInstances,
-                                                                                        cores,
-                                                                                        ram,
-                                                                                        spotPrice,
-                                                                                        securityGroupNames,
-                                                                                        subnetId,
-                                                                                        null,
-                                                                                        vmUsername,
-                                                                                        keyPairName);
-            }
-            logger.info("Instances ids created: " + instancesIds);
+            instancesIds = createInstances(infrastructureId, keyPairName, nbInstancesToDeploy);
 
         } else {
 
@@ -288,44 +342,96 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             // nodes are down. Indeed if they are all removed on purpose, the
             // instance should be shut down). Note that in this case, if the
             // free instances map is empty, no script will be run at all.
-            Map<String, Integer> freeInstancesMap = getInstancesWithoutNodesMapCopy();
-            instancesIds = freeInstancesMap.keySet();
+            instancesIds = getInstancesWithoutNodesMapCopy().keySet();
             logger.info("Instances ids previously saved which require script re-execution: " + instancesIds);
             existPersistedInstanceIds = true;
         }
 
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
+            deployNodesOnInstance(currentInstanceId, existPersistedInstanceIds);
 
-            List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
-                                                                        getRmUrl(),
-                                                                        rmHostname,
-                                                                        INSTANCE_ID_NODE_PROPERTY,
-                                                                        additionalProperties,
-                                                                        nodeSource.getName(),
-                                                                        null,
-                                                                        numberOfNodesPerInstance);
-
-            boolean currentExistPersistedInstancesIds = existPersistedInstanceIds;
-            instanceScriptExecutor.submit(() -> {
-                try {
-                    connectorIaasController.executeScriptWithKeyAuthentication(getInfrastructureId(),
-                                                                               currentInstanceId,
-                                                                               scripts,
-                                                                               vmUsername,
-                                                                               getPersistedKeyPairInfo().getValue());
-                } catch (ScriptNotExecutedException e) {
-                    handleScriptNotExecutedException(currentExistPersistedInstancesIds, currentInstanceId, e);
-                }
-            });
             // in all cases, we must remove the instance from the free
             // instance map as we tried everything to deploy nodes on it
             removeFromInstancesWithoutNodesMap(currentInstanceId);
         }
-
     }
 
-    private String createOrUseKeyPair(String infrastructureId) {
+    private void createAwsInfrastructureIfNeeded() {
+        // Create infrastructure if it does not exist
+        if (!isCreatedInfrastructure) {
+            connectorIaasController.createInfrastructure(getInfrastructureId(),
+                                                         awsKey,
+                                                         awsSecretKey,
+                                                         null,
+                                                         DESTROY_INSTANCES_ON_SHUTDOWN);
+            isCreatedInfrastructure = true;
+        }
+    }
+
+    private Set<String> createInstances(String infrastructureId, String keyPairName, int nbInstances) {
+        // create instances
+        if (spotPrice.isEmpty() && securityGroupIds.isEmpty() && subnetId.isEmpty()) {
+            return connectorIaasController.createAwsEc2Instances(infrastructureId,
+                                                                 infrastructureId,
+                                                                 image,
+                                                                 nbInstances,
+                                                                 cores,
+                                                                 ram,
+                                                                 vmUsername,
+                                                                 keyPairName);
+        } else {
+            return connectorIaasController.createAwsEc2InstancesWithOptions(infrastructureId,
+                                                                            infrastructureId,
+                                                                            image,
+                                                                            nbInstances,
+                                                                            cores,
+                                                                            ram,
+                                                                            spotPrice,
+                                                                            securityGroupIds,
+                                                                            subnetId,
+                                                                            null,
+                                                                            vmUsername,
+                                                                            keyPairName);
+        }
+    }
+
+    private void deployNodesOnInstance(final String instanceId, final boolean existPersistedInstanceIds) {
+        nodeSource.executeInParallel(() -> {
+            //change the delimiter between the instanceId and region to make a valid nodeName
+            String baseNodeName = getBaseNodeNameFromInstanceId(instanceId);
+
+            List<String> scripts = linuxInitScriptGenerator.buildScript(instanceId,
+                                                                        getRmUrl(),
+                                                                        rmHostname,
+                                                                        nodeJarURL,
+                                                                        INSTANCE_ID_NODE_PROPERTY,
+                                                                        additionalProperties,
+                                                                        nodeSource.getName(),
+                                                                        baseNodeName,
+                                                                        numberOfNodesPerInstance);
+
+            // declare nodes as "deploying" state to the RM
+            List<String> nodeNames = RMNodeStarter.getWorkersNodeNames(baseNodeName, numberOfNodesPerInstance);
+            List<String> deployingNodes = addMultipleDeployingNodes(nodeNames,
+                                                                    scripts.toString(),
+                                                                    "Nodes deployment on AWS EC2",
+                                                                    nodeTimeout);
+            logger.info("Deploying nodes: " + deployingNodes);
+            // run node.jar on the instance with the specified VM credentials
+            try {
+                connectorIaasController.executeScriptWithKeyAuthentication(getInfrastructureId(),
+                                                                           instanceId,
+                                                                           scripts,
+                                                                           vmUsername,
+                                                                           getPersistedKeyPairInfo().getValue());
+            } catch (ScriptNotExecutedException e) {
+                handleScriptNotExecutedException(existPersistedInstanceIds, instanceId, e);
+            }
+        });
+    }
+
+    private String createOrUseKeyPair(String infrastructureId, int nbInstances) {
         SimpleImmutableEntry<String, String> keyPairInfo;
         if (vmPrivateKey.length == 0 || vmKeyPairName.isEmpty()) {
             // create a key pair in AWS
@@ -334,7 +440,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                 keyPairInfo = connectorIaasController.createAwsEc2KeyPair(infrastructureId,
                                                                           infrastructureId,
                                                                           image,
-                                                                          numberOfInstances,
+                                                                          nbInstances,
                                                                           cores,
                                                                           ram);
             } catch (Exception e) {
@@ -362,11 +468,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             throw new IllegalStateException("Key pair cannot be created in AWS and there is no persisted private key. Will not deploy infrastructure " +
                                             getInfrastructureId());
         }
-    }
-
-    @Override
-    public void acquireAllNodes() {
-        acquireNode();
     }
 
     @Override
@@ -430,8 +531,62 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     }
 
     @Override
+    protected void notifyDeployingNodeLost(String pnURL) {
+        super.notifyDeployingNodeLost(pnURL);
+        logger.info("Unregistering the lost node " + pnURL);
+        RMDeployingNode currentNode = getDeployingOrLostNode(pnURL);
+        String instanceId = parseInstanceIdFromNodeName(currentNode.getNodeName());
+
+        // Delete the instance when instance doesn't contain any other deploying nodes or persisted nodes
+        if (!existOtherDeployingNodesOnInstance(currentNode, instanceId) &&
+            !existRegisteredNodesOnInstance(instanceId)) {
+            connectorIaasController.terminateInstance(getInfrastructureId(), instanceId);
+        }
+    }
+
+    private boolean existOtherDeployingNodesOnInstance(RMDeployingNode currentNode, String instanceTag) {
+        for (RMDeployingNode node : getDeployingAndLostNodes()) {
+            if (!node.equals(currentNode) && !node.isLost() &&
+                parseInstanceIdFromNodeName(node.getNodeName()).equals(instanceTag)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Parse the instanceId (i.e., baseNodeName) from the complete nodeName.
+     * The nodeName may contain an index (e.g., _0, _1) as suffix or not.
+     * @param nodeName (e.g., region__instance-id_0, region__instance-id_1, or region__instance-id)
+     * @return instanceId with AWS format (e.g., region/instance-id)
+     */
+    private static String parseInstanceIdFromNodeName(final String nodeName) {
+        int indexNodeSeparator = nodeName.lastIndexOf(NODE_INDEX_DELIMITER);
+        // when nodeName contains no NODE_INDEX_DELIMITER, baseNodeName is same as nodeName, otherwise it's the part before NODE_INDEX_DELIMITER
+        String baseNodeName = (indexNodeSeparator == -1) ? nodeName : nodeName.substring(0, indexNodeSeparator);
+        return getInstanceIdFromBaseNodeName(baseNodeName);
+    }
+
+    private static String getInstanceIdFromBaseNodeName(final String baseNodeName) {
+        return baseNodeName.replaceFirst(INSTANCE_ID_REGION_DELIMITER_IN_NODENAME, INSTANCE_ID_REGION_DELIMITER);
+    }
+
+    private static String getBaseNodeNameFromInstanceId(final String instanceId) {
+        return instanceId.replaceFirst(INSTANCE_ID_REGION_DELIMITER, INSTANCE_ID_REGION_DELIMITER_IN_NODENAME);
+    }
+
+    @Override
     public String getDescription() {
         return "Handles nodes from the Amazon Elastic Compute Cloud Service.";
+    }
+
+    @Override
+    public void shutDown() {
+        super.shutDown();
+        String infrastructureId = getInfrastructureId();
+        logger.info(String.format("Deleting infrastructure (%s) and its instances", infrastructureId));
+        connectorIaasController.terminateInfrastructure(infrastructureId, true);
+        logger.info(String.format("Successfully deleted infrastructure (%s) and its instances.", infrastructureId));
     }
 
     /**

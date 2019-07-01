@@ -37,8 +37,6 @@ public class LinuxInitScriptGenerator {
 
     private static final Logger logger = Logger.getLogger(LinuxInitScriptGenerator.class);
 
-    private List<String> commands = new ArrayList<>();
-
     private static Configuration nsConfig;
 
     static {
@@ -68,8 +66,7 @@ public class LinuxInitScriptGenerator {
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname, String nodeJarUrl,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
             int numberOfNodesPerInstance) {
-
-        commands.clear();
+        List<String> commands = new ArrayList<>();
 
         if (nsConfig.getBoolean(NSProperties.JRE_INSTALL)) {
             commands.add(nsConfig.getString(NSProperties.JRE_INSTALL_COMMAND));
@@ -91,7 +88,7 @@ public class LinuxInitScriptGenerator {
         return commands;
     }
 
-    public String generateNodeDownloadCommand(String nodeJarUrl) {
+    public static String generateNodeDownloadCommand(String nodeJarUrl) {
         return "wget -nv " + nodeJarUrl;
     }
 
@@ -121,11 +118,11 @@ public class LinuxInitScriptGenerator {
                nsConfig.getString(NSProperties.DEFAULT_SUFFIX_CONNECTOR_IAAS_URL);
     }
 
-    public String generateDefaultDownloadCommand(String rmHostname) {
+    public static String generateDefaultDownloadCommand(String rmHostname) {
         return generateNodeDownloadCommand(generateDefaultNodeJarURL(rmHostname));
     }
 
-    public String generateDefaultNodeJarURL(String rmHostname) {
+    public static String generateDefaultNodeJarURL(String rmHostname) {
         return rmHostname + nsConfig.getString(NSProperties.DEFAULT_SUFFIX_RM_TO_NODEJAR_URL);
     }
 }
