@@ -37,11 +37,12 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.log4j.Logger;
-import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
+
+import lombok.Getter;
 
 
 public class AzureInfrastructure extends AbstractAddonInfrastructure {
@@ -52,7 +53,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String LINUX = "linux";
 
-    public static final String INSTANCE_ID_NODE_PROPERTY = "instanceId";
+    @Getter
+    private final String instanceIdNodeProperty = "instanceId";
 
     public static final String INFRASTRUCTURE_TYPE = "azure";
 
@@ -130,16 +132,15 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private static final String WGET_DOWNLOAD_CMD = "wget -nv " + RM_HTTP_URL_PATTERN + "/rest/node.jar";
 
-    private static final String START_NODE_CMD = "java -jar node.jar -Dproactive.pamr.router.address=" +
-                                                 RM_HTTP_URL_PATTERN + " -D" + INSTANCE_ID_NODE_PROPERTY + "=" +
-                                                 INSTANCE_ID_PATTERN + " " + ADDITIONAL_PROPERTIES_PATTERN + " -r " +
-                                                 RM_URL_PATTERN + " -s " + NODESOURCE_NAME_PATTERN + " -w " +
-                                                 NUMBER_OF_NODES_PATTERN;
+    private final String START_NODE_CMD = "java -jar node.jar -Dproactive.pamr.router.address=" + RM_HTTP_URL_PATTERN +
+                                          " -D" + instanceIdNodeProperty + "=" + INSTANCE_ID_PATTERN + " " +
+                                          ADDITIONAL_PROPERTIES_PATTERN + " -r " + RM_URL_PATTERN + " -s " +
+                                          NODESOURCE_NAME_PATTERN + " -w " + NUMBER_OF_NODES_PATTERN;
 
-    private static final String START_NODE_FALLBACK_CMD = "java -jar node.jar -D" + INSTANCE_ID_NODE_PROPERTY + "=" +
-                                                          INSTANCE_ID_PATTERN + " " + ADDITIONAL_PROPERTIES_PATTERN +
-                                                          " -r " + RM_URL_PATTERN + " -s " + NODESOURCE_NAME_PATTERN +
-                                                          " -w " + NUMBER_OF_NODES_PATTERN;
+    private final String START_NODE_FALLBACK_CMD = "java -jar node.jar -D" + instanceIdNodeProperty + "=" +
+                                                   INSTANCE_ID_PATTERN + " " + ADDITIONAL_PROPERTIES_PATTERN + " -r " +
+                                                   RM_URL_PATTERN + " -s " + NODESOURCE_NAME_PATTERN + " -w " +
+                                                   NUMBER_OF_NODES_PATTERN;
 
     private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
 
@@ -352,7 +353,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
                                                                         getRmUrl(),
                                                                         rmHttpUrl,
-                                                                        INSTANCE_ID_NODE_PROPERTY,
+                                                                        instanceIdNodeProperty,
                                                                         additionalProperties,
                                                                         nodeSource.getName(),
                                                                         currentInstanceId,
@@ -489,14 +490,4 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                           .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
         }
     }
-
-    @Override
-    protected String getInstanceIdProperty(Node node) throws RMException {
-        try {
-            return node.getProperty(INSTANCE_ID_NODE_PROPERTY);
-        } catch (ProActiveException e) {
-            throw new RMException(e);
-        }
-    }
-
 }

@@ -37,7 +37,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
-import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
@@ -47,10 +46,13 @@ import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
 
 import com.google.common.collect.Maps;
 
+import lombok.Getter;
+
 
 public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
-    public static final String INSTANCE_ID_NODE_PROPERTY = "instanceId";
+    @Getter
+    private final String instanceIdNodeProperty = "instanceId";
 
     public static final String INFRASTRUCTURE_TYPE = "aws-ec2";
 
@@ -405,7 +407,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                                         getRmUrl(),
                                                                         rmHostname,
                                                                         nodeJarURL,
-                                                                        INSTANCE_ID_NODE_PROPERTY,
+                                                                        instanceIdNodeProperty,
                                                                         additionalProperties,
                                                                         nodeSource.getName(),
                                                                         baseNodeName,
@@ -604,16 +606,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         } catch (UnknownHostException e) {
             logger.warn(e);
             return "localhost";
-        }
-    }
-
-    @Override
-    protected String getInstanceIdProperty(Node node) throws RMException {
-        try {
-
-            return node.getProperty(INSTANCE_ID_NODE_PROPERTY);
-        } catch (ProActiveException e) {
-            throw new RMException(e);
         }
     }
 

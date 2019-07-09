@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
+import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 
@@ -209,7 +210,19 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * @param node the node for which the instance is looked for
      * @return the identifier of the instance
      */
-    protected abstract String getInstanceIdProperty(Node node) throws RMException;
+    protected String getInstanceIdProperty(Node node) throws RMException {
+        String instanceId = tryToFindInstanceIdOfNode(node.getNodeInformation().getName());
+        if (instanceId == null) {
+            try {
+                return node.getProperty(getInstanceIdNodeProperty());
+            } catch (ProActiveException e) {
+                throw new RMException(e);
+            }
+        }
+        return instanceId;
+    }
+
+    protected abstract String getInstanceIdNodeProperty();
 
     protected String getInfrastructureId() {
         return nodeSource.getName().trim().replace(" ", "_").toLowerCase();
@@ -557,20 +570,11 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
             // we do not have the map key for this value, need to go
             // through the map entries to find the key of this node
             // break as soon as possible because we are holding a lock
-            String instanceIdOfNode = null;
             for (Map.Entry<String, Set<String>> entry : nodesPerInstance.entrySet()) {
-                Set<String> instanceNodeNameSet = entry.getValue();
-                for (String instanceNodeName : instanceNodeNameSet) {
-                    if (instanceNodeName.equals(nodeName)) {
-                        instanceIdOfNode = entry.getKey();
-                        break;
-                    }
-                }
-                if (instanceIdOfNode != null) {
-                    break;
-                }
+                if (entry.getValue().contains(nodeName))
+                    return entry.getKey();
             }
-            return instanceIdOfNode;
+            return null;
         });
     }
 

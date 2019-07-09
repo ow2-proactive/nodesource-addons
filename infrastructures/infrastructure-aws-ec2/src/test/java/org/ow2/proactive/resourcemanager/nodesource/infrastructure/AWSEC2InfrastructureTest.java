@@ -378,6 +378,9 @@ public class AWSEC2InfrastructureTest {
 
     @Test
     public void testRemoveNode() throws ProActiveException, RMException {
+        final String instanceId = "instance-id";
+        final String nodeName = "region__" + instanceId + "_0";
+        final String instanceIdWithRegion = "region/" + instanceId;
 
         awsec2Infrastructure.configure(AWS_KEY,
                                        AWS_SECRET_KEY,
@@ -402,21 +405,19 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
 
-        when(node.getProperty(AWSEC2Infrastructure.INSTANCE_ID_NODE_PROPERTY)).thenReturn("123");
-
         when(node.getNodeInformation()).thenReturn(nodeInformation);
 
         when(node.getProActiveRuntime()).thenReturn(proActiveRuntime);
 
-        when(nodeInformation.getName()).thenReturn("nodename");
+        when(nodeInformation.getName()).thenReturn(nodeName);
 
-        awsec2Infrastructure.getNodesPerInstancesMap().put("123", Sets.newHashSet("nodename"));
+        awsec2Infrastructure.getNodesPerInstancesMap().put(instanceIdWithRegion, Sets.newHashSet(nodeName));
 
         awsec2Infrastructure.removeNode(node);
 
-        verify(proActiveRuntime).killNode("nodename");
+        verify(proActiveRuntime).killNode(nodeName);
 
-        verify(connectorIaasController).terminateInstance(INFRASTRUCTURE_ID, "123");
+        verify(connectorIaasController).terminateInstance(INFRASTRUCTURE_ID, instanceIdWithRegion);
 
         assertThat(awsec2Infrastructure.getNodesPerInstancesMap().isEmpty(), is(true));
 
@@ -446,7 +447,7 @@ public class AWSEC2InfrastructureTest {
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
-        when(node.getProperty(AWSEC2Infrastructure.INSTANCE_ID_NODE_PROPERTY)).thenReturn("123");
+        when(node.getProperty(awsec2Infrastructure.getInstanceIdNodeProperty())).thenReturn("123");
 
         when(node.getNodeInformation()).thenReturn(nodeInformation);
 

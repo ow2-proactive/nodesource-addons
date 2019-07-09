@@ -56,7 +56,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "google-compute-engine";
 
-    public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
+    @Getter
+    private final String instanceIdNodeProperty = "instanceTag";
 
     private static final int NUMBER_OF_PARAMETERS = 15;
 
@@ -341,7 +342,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
                                                     getRmUrl(),
                                                     rmHostname,
                                                     nodeJarURL,
-                                                    INSTANCE_TAG_NODE_PROPERTY,
+                                                    instanceIdNodeProperty,
                                                     additionalProperties,
                                                     nodeSource.getName(),
                                                     NODE_NAME_ON_NODE,
@@ -448,15 +449,6 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
             writeDeletingLock.unlock();
         }
 
-    }
-
-    @Override
-    protected String getInstanceIdProperty(Node node) throws RMException {
-        try {
-            return node.getProperty(INSTANCE_TAG_NODE_PROPERTY);
-        } catch (ProActiveException e) {
-            throw new RMException(e);
-        }
     }
 
     @Override

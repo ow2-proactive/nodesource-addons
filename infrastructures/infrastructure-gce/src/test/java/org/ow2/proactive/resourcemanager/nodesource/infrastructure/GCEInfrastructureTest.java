@@ -511,7 +511,7 @@ public class GCEInfrastructureTest {
         gceInfrastructure.connectorIaasController = connectorIaasController;
         final String instanceTag = "instance-tag";
         final String nodeName = "node-name";
-        when(node.getProperty(GCEInfrastructure.INSTANCE_TAG_NODE_PROPERTY)).thenReturn(instanceTag);
+        when(node.getProperty(gceInfrastructure.getInstanceIdNodeProperty())).thenReturn(instanceTag);
         when(node.getNodeInformation()).thenReturn(nodeInformation);
         when(nodeInformation.getName()).thenReturn(nodeName);
 
@@ -547,7 +547,7 @@ public class GCEInfrastructureTest {
         }).when(nodeSource).executeInParallel(any(Runnable.class));
         final String instanceTag = "instance-tag";
         final String nodeName = "node-name";
-        when(node.getProperty(GCEInfrastructure.INSTANCE_TAG_NODE_PROPERTY)).thenReturn(instanceTag);
+        when(node.getProperty(gceInfrastructure.getInstanceIdNodeProperty())).thenReturn(instanceTag);
         when(node.getProActiveRuntime()).thenReturn(proActiveRuntime);
         when(node.getNodeInformation()).thenReturn(nodeInformation);
         when(nodeInformation.getName()).thenReturn(nodeName);

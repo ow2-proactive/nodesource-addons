@@ -324,7 +324,7 @@ public class OpenstackInfrastructureTest {
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
-        when(node.getProperty(OpenstackInfrastructure.INSTANCE_TAG_NODE_PROPERTY)).thenReturn("123");
+        when(node.getProperty(openstackInfrastructure.getInstanceIdNodeProperty())).thenReturn("123");
 
         when(node.getNodeInformation()).thenReturn(nodeInformation);
 
@@ -370,7 +370,7 @@ public class OpenstackInfrastructureTest {
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
-        when(node.getProperty(OpenstackInfrastructure.INSTANCE_TAG_NODE_PROPERTY)).thenReturn("123");
+        when(node.getProperty(openstackInfrastructure.getInstanceIdNodeProperty())).thenReturn("123");
 
         when(node.getNodeInformation()).thenReturn(nodeInformation);
 

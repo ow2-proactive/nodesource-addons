@@ -33,7 +33,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
-import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.util.ProActiveCounter;
 import org.ow2.proactive.resourcemanager.exception.RMException;
@@ -41,6 +40,8 @@ import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
 
 import com.google.common.collect.Maps;
+
+import lombok.Getter;
 
 
 /**
@@ -56,7 +57,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     private static final int NUMBER_OF_PARAMETERS = 17;
 
-    public static final String INSTANCE_TAG_NODE_PROPERTY = "instanceTag";
+    @Getter
+    private final String instanceIdNodeProperty = "instanceTag";
 
     public static final String INFRASTRUCTURE_TYPE = "openstack-nova";
 
@@ -323,15 +325,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     }
 
     @Override
-    protected String getInstanceIdProperty(Node node) throws RMException {
-        try {
-            return node.getProperty(INSTANCE_TAG_NODE_PROPERTY);
-        } catch (ProActiveException e) {
-            throw new RMException(e);
-        }
-    }
-
-    @Override
     public void shutDown() {
         String infrastructureId = getInfrastructureId();
         logger.info("Deleting infrastructure : " + infrastructureId + " and its underlying instances");
@@ -544,7 +537,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         return linuxInitScriptGenerator.buildScript(instanceTag,
                                                     getRmUrl(),
                                                     rmHostname,
-                                                    INSTANCE_TAG_NODE_PROPERTY,
+                                                    instanceIdNodeProperty,
                                                     additionalProperties,
                                                     nodeSource.getName(),
                                                     nodeName,

@@ -30,17 +30,19 @@ import java.net.UnknownHostException;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 
 import com.google.common.collect.Lists;
 
+import lombok.Getter;
+
 
 public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
-    public static final String INSTANCE_ID_NODE_PROPERTY = "instanceId";
+    @Getter
+    private final String instanceIdNodeProperty = "instanceId";
 
     public static final String INFRASTRUCTURE_TYPE = "vmware";
 
@@ -302,23 +304,13 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
             String protocol = rmUrlToUse.substring(0, rmUrlToUse.indexOf(':')).trim();
             return "java -jar node.jar -Dproactive.communication.protocol=" + protocol +
-                   " -Dproactive.pamr.router.address=" + rmHostname + " -D" + INSTANCE_ID_NODE_PROPERTY + "=" +
+                   " -Dproactive.pamr.router.address=" + rmHostname + " -D" + instanceIdNodeProperty + "=" +
                    instanceId + " " + additionalProperties + " -r " + rmUrlToUse + " -s " + nodeSource.getName() +
                    " -w " + numberOfNodesPerInstance;
         } catch (Exception e) {
             logger.error("Exception when generating the command, fallback on default value", e);
-            return "java -jar node.jar -D" + INSTANCE_ID_NODE_PROPERTY + "=" + instanceId + " " + additionalProperties +
+            return "java -jar node.jar -D" + instanceIdNodeProperty + "=" + instanceId + " " + additionalProperties +
                    " -r " + getRmUrl() + " -s " + nodeSource.getName() + " -w " + numberOfNodesPerInstance;
         }
     }
-
-    @Override
-    protected String getInstanceIdProperty(Node node) throws RMException {
-        try {
-            return node.getProperty(INSTANCE_ID_NODE_PROPERTY);
-        } catch (ProActiveException e) {
-            throw new RMException(e);
-        }
-    }
-
 }

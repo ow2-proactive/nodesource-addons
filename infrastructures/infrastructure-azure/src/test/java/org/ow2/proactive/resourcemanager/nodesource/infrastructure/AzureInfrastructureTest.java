@@ -311,7 +311,7 @@ public class AzureInfrastructureTest {
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
-        when(node.getProperty(AzureInfrastructure.INSTANCE_ID_NODE_PROPERTY)).thenReturn("123");
+        when(node.getProperty(azureInfrastructure.getInstanceIdNodeProperty())).thenReturn("123");
 
         when(node.getNodeInformation()).thenReturn(nodeInformation);
 
@@ -363,7 +363,7 @@ public class AzureInfrastructureTest {
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
-        when(node.getProperty(AzureInfrastructure.INSTANCE_ID_NODE_PROPERTY)).thenReturn("123");
+        when(node.getProperty(azureInfrastructure.getInstanceIdNodeProperty())).thenReturn("123");
 
         when(node.getNodeInformation()).thenReturn(nodeInformation);
 
