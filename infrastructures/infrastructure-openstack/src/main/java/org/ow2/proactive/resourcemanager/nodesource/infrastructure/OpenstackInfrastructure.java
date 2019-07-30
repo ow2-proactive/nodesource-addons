@@ -71,58 +71,58 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     /**
      *  Fields of the Openstack infrastructure form (in the RM portal)
      */
-    @Configurable(description = "Openstack username")
+    @Configurable(description = "Openstack username", sectionSelector = 1, important = true)
     protected String username = null;
 
-    @Configurable(description = "Openstack password")
+    @Configurable(description = "Openstack password", password = true, sectionSelector = 1, important = true)
     protected String password = null;
 
-    @Configurable(description = "Openstack user domain")
+    @Configurable(description = "Openstack user domain", sectionSelector = 1, important = true)
     protected String domain = null;
 
-    @Configurable(description = "Openstack identity endPoint")
+    @Configurable(description = "Openstack identity endPoint", sectionSelector = 1, important = true)
     protected String endpoint = null;
 
-    @Configurable(description = "Openstack scope prefix")
+    @Configurable(description = "Openstack scope prefix", sectionSelector = 1, important = true)
     protected String scopePrefix = null;
 
-    @Configurable(description = "Openstack scope value")
+    @Configurable(description = "Openstack scope value", sectionSelector = 1, important = true)
     protected String scopeValue = null;
 
-    @Configurable(description = "Openstack region")
+    @Configurable(description = "Openstack region", sectionSelector = 1, important = true)
     protected String region = null;
 
-    @Configurable(description = "Openstack identity version")
+    @Configurable(description = "Openstack identity version", sectionSelector = 1)
     protected String identityVersion = null;
 
-    @Configurable(description = "Openstack image")
+    @Configurable(description = "Openstack image", sectionSelector = 2, important = true)
     protected String image = null;
 
-    @Configurable(description = "Flavor type of OpenStack")
+    @Configurable(description = "Flavor type of OpenStack", sectionSelector = 2, important = true)
     protected String flavor = null;
 
-    @Configurable(description = "Public key name for Openstack instance")
+    @Configurable(description = "Public key name for Openstack instance", sectionSelector = 2)
     protected String publicKeyName = null;
 
-    @Configurable(description = "Total (max) number of instances to create")
+    @Configurable(description = "Total (max) number of instances to create", sectionSelector = 2, important = true)
     protected int numberOfInstances = 1;
 
-    @Configurable(description = "Total nodes to create per instance")
+    @Configurable(description = "Total nodes to create per instance", sectionSelector = 2, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "Connector-iaas URL")
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 3, important = true)
     protected String connectorIaasURL = linuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
-    @Configurable(description = "Resource Manager hostname or ip address")
+    @Configurable(description = "Resource Manager hostname or ip address", sectionSelector = 3, important = true)
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "Command used to download the node jar")
+    @Configurable(description = "Command used to download the node jar", sectionSelector = 3, important = true)
     protected String downloadCommand = linuxInitScriptGenerator.generateDefaultDownloadCommand(rmHostname);
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
+    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 3)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
-    @Configurable(description = "Estimated startup time of the nodes (including the startup time of VMs)")
+    @Configurable(description = "Estimated startup time of the nodes (including the startup time of VMs)", sectionSelector = 3)
     protected long nodesInitDelay = 240000;
 
     /**
@@ -594,5 +594,14 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         } else {
             return 0;
         }
+    }
+
+    @Override
+    public Map<Integer, String> getSectionDescriptions() {
+        Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
+        sectionDescriptions.put(1, "Openstack Parameters");
+        sectionDescriptions.put(2, "Instance Parameters");
+        sectionDescriptions.put(3, "ProActive Parameters");
+        return sectionDescriptions;
     }
 }
