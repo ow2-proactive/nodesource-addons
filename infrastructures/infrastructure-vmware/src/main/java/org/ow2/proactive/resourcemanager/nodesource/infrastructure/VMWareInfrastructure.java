@@ -27,6 +27,7 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -48,49 +49,49 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
     private static final Logger logger = Logger.getLogger(VMWareInfrastructure.class);
 
-    @Configurable(description = "The VMWare_Username")
+    @Configurable(description = "The VMWare_Username", sectionSelector = 1, important = true)
     protected String username = null;
 
-    @Configurable(description = "The VMWare_Password")
+    @Configurable(description = "The VMWare_Password", password = true, sectionSelector = 1, important = true)
     protected String password = null;
 
-    @Configurable(description = "The VMWare_EndPoint")
+    @Configurable(description = "The VMWare_EndPoint", sectionSelector = 1, important = true)
     protected String endpoint = null;
 
-    @Configurable(description = "Resource manager hostname or ip address")
+    @Configurable(description = "Resource manager hostname or ip address", sectionSelector = 4)
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "Connector-iaas URL")
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
     protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
 
-    @Configurable(description = "Image")
+    @Configurable(description = "Image", sectionSelector = 2, important = true)
     protected String image = null;
 
-    @Configurable(description = "minumum RAM required (in Mega Bytes)")
+    @Configurable(description = "minumum RAM required (in Mega Bytes)", sectionSelector = 2, important = true)
     protected int ram = 512;
 
-    @Configurable(description = "minimum number of CPU cores required")
+    @Configurable(description = "minimum number of CPU cores required", sectionSelector = 2, important = true)
     protected int cores = 1;
 
-    @Configurable(description = "The virtual machine Username")
+    @Configurable(description = "The virtual machine Username", sectionSelector = 2, important = true)
     protected String vmUsername = null;
 
-    @Configurable(description = "The virtual machine Password")
+    @Configurable(description = "The virtual machine Password", password = true, sectionSelector = 2, important = true)
     protected String vmPassword = null;
 
-    @Configurable(description = "Total instance to create")
+    @Configurable(description = "Total instance to create", sectionSelector = 3, important = true)
     protected int numberOfInstances = 1;
 
-    @Configurable(description = "Total nodes to create per instance")
+    @Configurable(description = "Total nodes to create per instance", sectionSelector = 3, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "Command used to download the worker jar")
+    @Configurable(description = "Command used to download the worker jar", sectionSelector = 4)
     protected String downloadCommand = generateDefaultDownloadCommand();
 
-    @Configurable(description = "Optional list of MAC addresses separated by comma ',' to assign on new cloned VMs")
+    @Configurable(description = "Optional list of MAC addresses separated by comma ',' to assign on new cloned VMs", sectionSelector = 2)
     protected String macAddresses = null;
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
+    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 4)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
     @Override
@@ -312,5 +313,15 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
             return "java -jar node.jar -D" + instanceIdNodeProperty + "=" + instanceId + " " + additionalProperties +
                    " -r " + getRmUrl() + " -s " + nodeSource.getName() + " -w " + numberOfNodesPerInstance;
         }
+    }
+
+    @Override
+    public Map<Integer, String> getSectionDescriptions() {
+        Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
+        sectionDescriptions.put(1, "Connection Parameters");
+        sectionDescriptions.put(2, "VM Parameters");
+        sectionDescriptions.put(3, "Node Parameters");
+        sectionDescriptions.put(4, "ProActive Parameters");
+        return sectionDescriptions;
     }
 }
