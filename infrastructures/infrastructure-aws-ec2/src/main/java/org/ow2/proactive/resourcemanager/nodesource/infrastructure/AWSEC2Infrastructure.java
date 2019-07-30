@@ -88,60 +88,61 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     private boolean isCreatedInfrastructure = false;
 
-    @Configurable(description = "Your AWS access key ID (e.g., AKIAIOSFODNN7EXAMPLE)")
+    @Configurable(description = "Your AWS access key ID (e.g., AKIAIOSFODNN7EXAMPLE)", sectionSelector = 1, important = true)
     protected String awsKey = null;
 
-    @Configurable(description = "Your AWS secret access key (e.g., wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY)")
+    @Configurable(description = "Your AWS secret access key (e.g., wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY)", sectionSelector = 1, important = true)
     protected String awsSecretKey = null;
 
-    @Configurable(description = "The number of VMs to create (maximum number of VMs in case of dynamic policy)")
+    @Configurable(description = "The number of VMs to create (maximum number of VMs in case of dynamic policy)", sectionSelector = 2, important = true)
     protected int numberOfInstances = 1;
 
-    @Configurable(description = "The number of nodes to create on each VM")
+    @Configurable(description = "The number of nodes to create on each VM", sectionSelector = 2, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "(optional, default value: " + DEFAULT_IMAGE + ") VM image id, format region/imageId")
+    @Configurable(description = "(optional, default value: " + DEFAULT_IMAGE +
+                                ") VM image id, format region/imageId", sectionSelector = 2)
     protected String image = DEFAULT_IMAGE;
 
     @Configurable(description = "(optional, default value: " + DEFAULT_VM_USERNAME +
-                                ") Default username of your VM image, make sure it's adapted to 'image'")
+                                ") Default username of your VM image, make sure it's adapted to 'image'", sectionSelector = 2)
     protected String vmUsername = DEFAULT_VM_USERNAME;
 
-    @Configurable(description = "(optional) The name of your AWS key pair for accessing VM")
+    @Configurable(description = "(optional) The name of your AWS key pair for accessing VM", sectionSelector = 2)
     protected String vmKeyPairName = null;
 
-    @Configurable(fileBrowser = true, description = "(optional) Your AWS private key file corresponding to 'vmKeyPairName' for accessing VM")
+    @Configurable(fileBrowser = true, description = "(optional) Your AWS private key file corresponding to 'vmKeyPairName' for accessing VM", sectionSelector = 2)
     protected byte[] vmPrivateKey;
 
-    @Configurable(description = "(optional) The minimum RAM required (in Mega Bytes) for each VM")
+    @Configurable(description = "(optional) The minimum RAM required (in Mega Bytes) for each VM", sectionSelector = 2)
     protected int ram = DEFAULT_RAM;
 
-    @Configurable(description = "(optional) The minimum number of CPU cores required for each VM")
+    @Configurable(description = "(optional) The minimum number of CPU cores required for each VM", sectionSelector = 2)
     protected int cores = DEFAULT_CORES;
 
     // TODO disable to configure the parameter spotPrice for the moment, because we don't yet have a checking mechanism for it now, but it may cause the RM portal blocked (hanging in createInstance).
     //    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price)")
     protected String spotPrice = "";
 
-    @Configurable(description = "(optional) The ids(s) of the security group(s) for VMs, spearated by comma in case of multiple ids.")
+    @Configurable(description = "(optional) The ids(s) of the security group(s) for VMs, spearated by comma in case of multiple ids.", sectionSelector = 2)
     protected String securityGroupIds = null;
 
-    @Configurable(description = "(optional) The subnet ID which is added to a specific Amazon VPC.")
+    @Configurable(description = "(optional) The subnet ID which is added to a specific Amazon VPC.", sectionSelector = 2)
     protected String subnetId = null;
 
-    @Configurable(description = "Resource Manager hostname or ip address (must be accessible from nodes)")
+    @Configurable(description = "Resource Manager hostname or ip address (must be accessible from nodes)", sectionSelector = 3, important = true)
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "Connector-iaas URL")
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 3, important = true)
     protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
 
-    @Configurable(description = "URL used to download the node jar on the VM")
+    @Configurable(description = "URL used to download the node jar on the VM", sectionSelector = 3, important = true)
     protected String nodeJarURL = linuxInitScriptGenerator.generateDefaultNodeJarURL(rmHostname);
 
-    @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
+    @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 4)
     protected String additionalProperties = "";
 
-    @Configurable(description = "The timeout for nodes to connect to RM (in ms). After this timeout expired, the node is considered to be lost.")
+    @Configurable(description = "The timeout for nodes to connect to RM (in ms). After this timeout expired, the node is considered to be lost.", sectionSelector = 4)
     protected int nodeTimeout = DEFAULT_NODE_TIMEOUT;// 5 min
 
     /**
@@ -618,4 +619,13 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         return getPersistedInfraVariable(() -> (SimpleImmutableEntry<String, String>) persistedInfraVariables.get(KEY_PAIR_KEY));
     }
 
+    @Override
+    public Map<Integer, String> getSectionDescriptions() {
+        Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
+        sectionDescriptions.put(1, "Cloud Platform Credentials");
+        sectionDescriptions.put(2, "Instance Configuration");
+        sectionDescriptions.put(3, "ProActive Parameters");
+        sectionDescriptions.put(4, "Node Configuration");
+        return sectionDescriptions;
+    }
 }

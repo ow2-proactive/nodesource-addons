@@ -147,7 +147,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "The Azure clientId", sectionSelector = 1, important = true)
     protected String clientId = null;
 
-    @Configurable(description = "The Azure secret key", password = true, sectionSelector = 1, important = true)
+    @Configurable(description = "The Azure secret key", sectionSelector = 1, important = true)
     protected String secret = null;
 
     @Configurable(description = "The Azure domain or tenantId", sectionSelector = 1, important = true)
