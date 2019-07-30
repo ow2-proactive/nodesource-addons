@@ -144,76 +144,76 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
 
-    @Configurable(description = "The Azure clientId")
+    @Configurable(description = "The Azure clientId", sectionSelector = 1, important = true)
     protected String clientId = null;
 
-    @Configurable(description = "The Azure secret key")
+    @Configurable(description = "The Azure secret key", password = true, sectionSelector = 1, important = true)
     protected String secret = null;
 
-    @Configurable(description = "The Azure domain or tenantId")
+    @Configurable(description = "The Azure domain or tenantId", sectionSelector = 1, important = true)
     protected String domain = null;
 
-    @Configurable(description = "The Azure subscriptionId to use (if not specified, it will try to use the default one)")
+    @Configurable(description = "The Azure subscriptionId to use (if not specified, it will try to use the default one)", sectionSelector = 1, important = true)
     protected String subscriptionId = null;
 
-    @Configurable(description = "Optional authentication endpoint from specific Azure environment")
+    @Configurable(description = "Optional authentication endpoint from specific Azure environment", sectionSelector = 2)
     protected String authenticationEndpoint = null;
 
-    @Configurable(description = "Optional management endpoint from specific Azure environment")
+    @Configurable(description = "Optional management endpoint from specific Azure environment", sectionSelector = 2)
     protected String managementEndpoint = null;
 
-    @Configurable(description = "Optional resource manager endpoint from specific Azure environment")
+    @Configurable(description = "Optional resource manager endpoint from specific Azure environment", sectionSelector = 2)
     protected String resourceManagerEndpoint = null;
 
-    @Configurable(description = "Optional graph endpoint from specific Azure environment")
+    @Configurable(description = "Optional graph endpoint from specific Azure environment", sectionSelector = 2)
     protected String graphEndpoint = null;
 
-    @Configurable(description = "Resource manager HTTP URL (must be accessible from nodes)")
+    @Configurable(description = "Resource manager HTTP URL (must be accessible from nodes)", sectionSelector = 3, important = true)
     protected String rmHttpUrl = generateDefaultHttpRMUrl();
 
-    @Configurable(description = "Connector-iaas URL")
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 3, important = true)
     protected String connectorIaasURL = generateDefaultHttpRMUrl() + "/connector-iaas";
 
-    @Configurable(description = "Image (name or key)")
+    @Configurable(description = "Image (name or key)", sectionSelector = 4, important = true)
     protected String image = null;
 
-    @Configurable(description = "Image OS type (choose between 'linux' and 'windows', default: 'linux')")
+    @Configurable(description = "Image OS type (choose between 'linux' and 'windows', default: 'linux')", sectionSelector = 4, important = true)
     protected String imageOSType = LINUX;
 
-    @Configurable(description = "Azure virtual machine size type (by default: 'Standard_D1_v2')")
+    @Configurable(description = "Azure virtual machine size type (by default: 'Standard_D1_v2')", sectionSelector = 4, important = true)
     protected String vmSizeType = null;
 
-    @Configurable(description = "The virtual machine Username")
+    @Configurable(description = "The virtual machine Username", sectionSelector = 4, important = true)
     protected String vmUsername = null;
 
-    @Configurable(description = "The virtual machine Password")
+    @Configurable(description = "The virtual machine Password", password = true, sectionSelector = 4, important = true)
     protected String vmPassword = null;
 
-    @Configurable(description = "A public key to allow SSH connection to the VM")
+    @Configurable(description = "A public key to allow SSH connection to the VM", sectionSelector = 4)
     protected String vmPublicKey = null;
 
-    @Configurable(description = "The Azure resourceGroup to use (if not specified, the one from the image will be used)")
+    @Configurable(description = "The Azure resourceGroup to use (if not specified, the one from the image will be used)", sectionSelector = 4, important = true)
     protected String resourceGroup = null;
 
-    @Configurable(description = "The Azure Region to use (if not specified, the one from the image will be used)")
+    @Configurable(description = "The Azure Region to use (if not specified, the one from the image will be used)", sectionSelector = 4)
     protected String region = null;
 
-    @Configurable(description = "Total instance to create")
+    @Configurable(description = "Total instance to create", sectionSelector = 5, important = true)
     protected int numberOfInstances = 1;
 
-    @Configurable(description = "Total nodes to create per instance")
+    @Configurable(description = "Total nodes to create per instance", sectionSelector = 5, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "Command used to download the worker jar (a default command will be generated for the specified image OS type)")
+    @Configurable(description = "Command used to download the worker jar (a default command will be generated for the specified image OS type)", sectionSelector = 5)
     protected String downloadCommand = null;
 
-    @Configurable(description = "Optional network CIDR to attach with new VM(s) (by default: '10.0.0.0/24')")
+    @Configurable(description = "Optional network CIDR to attach with new VM(s) (by default: '10.0.0.0/24')", sectionSelector = 5)
     protected String privateNetworkCIDR = null;
 
-    @Configurable(description = "Optional flag to specify if the public IP(s) of the new VM(s) must be static ('true' by default)")
+    @Configurable(description = "Optional flag to specify if the public IP(s) of the new VM(s) must be static ('true' by default)", checkbox = true, sectionSelector = 5)
     protected boolean staticPublicIP = true;
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")")
+    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 5)
     protected String additionalProperties = DEFAULT_ADDITIONAL_PROPERTIES;
 
     @Override
@@ -489,5 +489,16 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                           .replace(NODESOURCE_NAME_PATTERN, nodeSource.getName())
                                           .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
         }
+    }
+
+    @Override
+    public Map<Integer, String> getSectionDescriptions() {
+        Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
+        sectionDescriptions.put(1, "Azure Connection");
+        sectionDescriptions.put(2, "Endpoints");
+        sectionDescriptions.put(3, "ProActive Parameters");
+        sectionDescriptions.put(4, "VM Configuration");
+        sectionDescriptions.put(5, "Node Configuration");
+        return sectionDescriptions;
     }
 }
