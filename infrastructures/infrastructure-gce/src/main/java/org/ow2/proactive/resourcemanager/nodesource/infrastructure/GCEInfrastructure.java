@@ -105,40 +105,40 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Total nodes to create per instance", sectionSelector = 2, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "(optional) The virtual machine username", sectionSelector = 2)
+    @Configurable(description = "(optional) The virtual machine username", sectionSelector = 3)
     protected String vmUsername = null;
 
-    @Configurable(fileBrowser = true, description = "(optional) The public key for accessing the virtual machine", sectionSelector = 2)
+    @Configurable(fileBrowser = true, description = "(optional) The public key for accessing the virtual machine", sectionSelector = 3)
     protected String vmPublicKey = null;
 
-    @Configurable(fileBrowser = true, description = "(optional) The private key for accessing the virtual machine", sectionSelector = 2)
+    @Configurable(fileBrowser = true, description = "(optional) The private key for accessing the virtual machine", sectionSelector = 3)
     protected String vmPrivateKey = null;
 
-    @Configurable(description = "(optional) The image of the virtual machine", sectionSelector = 2)
+    @Configurable(description = "(optional) The image of the virtual machine", sectionSelector = 3)
     protected String image = DEFAULT_IMAGE;
 
-    @Configurable(description = "(optional) The region of the virtual machine", sectionSelector = 2)
+    @Configurable(description = "(optional) The region of the virtual machine", sectionSelector = 3)
     protected String region = DEFAULT_REGION;
 
-    @Configurable(description = "(optional) The minimum RAM required (in Mega Bytes) for each virtual machine", sectionSelector = 2)
+    @Configurable(description = "(optional) The minimum RAM required (in Mega Bytes) for each virtual machine", sectionSelector = 3)
     protected int ram = DEFAULT_RAM;
 
-    @Configurable(description = "(optional) The minimum number of CPU cores required for each virtual machine", sectionSelector = 2)
+    @Configurable(description = "(optional) The minimum number of CPU cores required for each virtual machine", sectionSelector = 3)
     protected int cores = DEFAULT_CORES;
 
-    @Configurable(description = "Resource manager hostname or ip address (must be accessible from nodes)", sectionSelector = 3, important = true)
+    @Configurable(description = "Resource manager hostname or ip address (must be accessible from nodes)", sectionSelector = 4, important = true)
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "Connector-iaas URL", sectionSelector = 3, important = true)
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 4, important = true)
     protected String connectorIaasURL = linuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
-    @Configurable(description = "URL used to download the node jar on the virtual machine", sectionSelector = 3, important = true)
+    @Configurable(description = "URL used to download the node jar on the virtual machine", sectionSelector = 4, important = true)
     protected String nodeJarURL = linuxInitScriptGenerator.generateDefaultNodeJarURL(rmHostname);
 
-    @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 4)
+    @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 5)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
-    @Configurable(description = "Node timeout in ms. After this timeout expired, the node is considered to be lost", sectionSelector = 4)
+    @Configurable(description = "Node timeout in ms. After this timeout expired, the node is considered to be lost", sectionSelector = 5)
     protected int nodeTimeout = 2 * 60 * 1000;// 2 min
 
     @Override
@@ -542,10 +542,11 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public Map<Integer, String> getSectionDescriptions() {
         Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
-        sectionDescriptions.put(1, "GCE Credentials");
-        sectionDescriptions.put(2, "Instance Configuration");
-        sectionDescriptions.put(3, "ProActive Parameters");
-        sectionDescriptions.put(4, "Node Configuration");
+        sectionDescriptions.put(1, "GCE Configuration");
+        sectionDescriptions.put(2, "Deployment Configuration");
+        sectionDescriptions.put(3, "VM Configuration");
+        sectionDescriptions.put(4, "PA Server Configuration");
+        sectionDescriptions.put(5, "Node Configuration");
         return sectionDescriptions;
     }
 }

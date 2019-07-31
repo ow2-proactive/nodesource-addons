@@ -58,10 +58,10 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "The VMWare_EndPoint", sectionSelector = 1, important = true)
     protected String endpoint = null;
 
-    @Configurable(description = "Resource manager hostname or ip address", sectionSelector = 4)
+    @Configurable(description = "Resource manager hostname or ip address", sectionSelector = 5)
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 5)
     protected String connectorIaasURL = "http://" + generateDefaultRMHostname() + ":8080/connector-iaas";
 
     @Configurable(description = "Image", sectionSelector = 2, important = true)
@@ -318,10 +318,11 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public Map<Integer, String> getSectionDescriptions() {
         Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
-        sectionDescriptions.put(1, "Connection Parameters");
-        sectionDescriptions.put(2, "VM Parameters");
-        sectionDescriptions.put(3, "Node Parameters");
-        sectionDescriptions.put(4, "ProActive Parameters");
+        sectionDescriptions.put(1, "VMWare Configuration");
+        sectionDescriptions.put(2, "VM Configuration");
+        sectionDescriptions.put(3, "Deployment Configuration");
+        sectionDescriptions.put(4, "Node Configuration");
+        sectionDescriptions.put(5, "PA Server Configuration");
         return sectionDescriptions;
     }
 }

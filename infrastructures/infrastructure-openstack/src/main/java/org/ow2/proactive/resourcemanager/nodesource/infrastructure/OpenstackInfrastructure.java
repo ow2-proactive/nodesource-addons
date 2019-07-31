@@ -95,13 +95,13 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Openstack identity version", sectionSelector = 1)
     protected String identityVersion = null;
 
-    @Configurable(description = "Openstack image", sectionSelector = 2, important = true)
+    @Configurable(description = "Openstack image", sectionSelector = 3, important = true)
     protected String image = null;
 
-    @Configurable(description = "Flavor type of OpenStack", sectionSelector = 2, important = true)
+    @Configurable(description = "Flavor type of OpenStack", sectionSelector = 3, important = true)
     protected String flavor = null;
 
-    @Configurable(description = "Public key name for Openstack instance", sectionSelector = 2)
+    @Configurable(description = "Public key name for Openstack instance", sectionSelector = 3)
     protected String publicKeyName = null;
 
     @Configurable(description = "Total (max) number of instances to create", sectionSelector = 2, important = true)
@@ -110,19 +110,19 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Total nodes to create per instance", sectionSelector = 2, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "Connector-iaas URL", sectionSelector = 3, important = true)
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 4, important = true)
     protected String connectorIaasURL = linuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
-    @Configurable(description = "Resource Manager hostname or ip address", sectionSelector = 3, important = true)
+    @Configurable(description = "Resource Manager hostname or ip address", sectionSelector = 4, important = true)
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "Command used to download the node jar", sectionSelector = 3, important = true)
+    @Configurable(description = "Command used to download the node jar", sectionSelector = 5, important = true)
     protected String downloadCommand = linuxInitScriptGenerator.generateDefaultDownloadCommand(rmHostname);
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 3)
+    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 5)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
-    @Configurable(description = "Estimated startup time of the nodes (including the startup time of VMs)", sectionSelector = 3)
+    @Configurable(description = "Estimated startup time of the nodes (including the startup time of VMs)", sectionSelector = 5)
     protected long nodesInitDelay = 240000;
 
     /**
@@ -599,9 +599,11 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public Map<Integer, String> getSectionDescriptions() {
         Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
-        sectionDescriptions.put(1, "Openstack Parameters");
-        sectionDescriptions.put(2, "Instance Parameters");
-        sectionDescriptions.put(3, "ProActive Parameters");
+        sectionDescriptions.put(1, "Openstack Configuration");
+        sectionDescriptions.put(2, "Deployment Configuration");
+        sectionDescriptions.put(3, "VM Configuration");
+        sectionDescriptions.put(4, "PA Server Configuration");
+        sectionDescriptions.put(5, "Node Configuration");
         return sectionDescriptions;
     }
 }
