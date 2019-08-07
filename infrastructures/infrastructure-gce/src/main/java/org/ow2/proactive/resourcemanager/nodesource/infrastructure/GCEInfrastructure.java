@@ -141,6 +141,13 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Node timeout in ms. After this timeout expired, the node is considered to be lost", sectionSelector = 5)
     protected int nodeTimeout = 2 * 60 * 1000;// 2 min
 
+    private Map<String, String> meta = new HashMap<>();
+
+    {
+        meta.putAll(super.getMeta());
+        meta.put(InfrastructureManager.ELASTIC, "true");
+    }
+
     @Override
     public void configure(Object... parameters) {
         logger.info("Validating parameters : " + Arrays.toString(parameters));
@@ -548,5 +555,10 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         sectionDescriptions.put(4, "PA Server Configuration");
         sectionDescriptions.put(5, "Node Configuration");
         return sectionDescriptions;
+    }
+
+    @Override
+    public Map<String, String> getMeta() {
+        return meta;
     }
 }

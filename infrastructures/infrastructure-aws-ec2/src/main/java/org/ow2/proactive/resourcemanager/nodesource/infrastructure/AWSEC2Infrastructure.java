@@ -30,6 +30,7 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -149,6 +150,13 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
      * Key to retrieve the key pair used to deploy the infrastructure
      */
     private static final String KEY_PAIR_KEY = "keyPair";
+
+    private Map<String, String> meta = new HashMap<>();
+
+    {
+        meta.putAll(super.getMeta());
+        meta.put(InfrastructureManager.ELASTIC, "true");
+    }
 
     @Override
     public void configure(Object... parameters) {
@@ -628,5 +636,10 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         sectionDescriptions.put(4, "PA Server Configuration");
         sectionDescriptions.put(5, "Node Configuration");
         return sectionDescriptions;
+    }
+
+    @Override
+    public Map<String, String> getMeta() {
+        return meta;
     }
 }

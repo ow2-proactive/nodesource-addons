@@ -148,6 +148,13 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     int instancesToDeploy;
 
+    private Map<String, String> meta = new HashMap<>();
+
+    {
+        meta.putAll(super.getMeta());
+        meta.put(InfrastructureManager.ELASTIC, "true");
+    }
+
     @Override
     public void configure(Object... parameters) {
 
@@ -605,5 +612,10 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         sectionDescriptions.put(4, "PA Server Configuration");
         sectionDescriptions.put(5, "Node Configuration");
         return sectionDescriptions;
+    }
+
+    @Override
+    public Map<String, String> getMeta() {
+        return meta;
     }
 }
