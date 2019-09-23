@@ -28,12 +28,9 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyException;
+import java.util.*;
 import java.util.AbstractMap.SimpleImmutableEntry;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -412,30 +409,34 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             //change the delimiter between the instanceId and region to make a valid nodeName
             String baseNodeName = getBaseNodeNameFromInstanceId(instanceId);
 
-            List<String> scripts = linuxInitScriptGenerator.buildScript(instanceId,
-                                                                        getRmUrl(),
-                                                                        rmHostname,
-                                                                        nodeJarURL,
-                                                                        instanceIdNodeProperty,
-                                                                        additionalProperties,
-                                                                        nodeSource.getName(),
-                                                                        baseNodeName,
-                                                                        numberOfNodesPerInstance);
-
-            // declare nodes as "deploying" state to the RM
-            List<String> nodeNames = RMNodeStarter.getWorkersNodeNames(baseNodeName, numberOfNodesPerInstance);
-            List<String> deployingNodes = addMultipleDeployingNodes(nodeNames,
-                                                                    scripts.toString(),
-                                                                    "Nodes deployment on AWS EC2",
-                                                                    nodeTimeout);
-            logger.info("Deploying nodes: " + deployingNodes);
-            // run node.jar on the instance with the specified VM credentials
             try {
+                List<String> scripts = linuxInitScriptGenerator.buildScript(instanceId,
+                                                                            getRmUrl(),
+                                                                            rmHostname,
+                                                                            nodeJarURL,
+                                                                            instanceIdNodeProperty,
+                                                                            additionalProperties,
+                                                                            nodeSource.getName(),
+                                                                            baseNodeName,
+                                                                            numberOfNodesPerInstance,
+                                                                            getCredentials());
+
+                // declare nodes as "deploying" state to the RM
+                List<String> nodeNames = RMNodeStarter.getWorkersNodeNames(baseNodeName, numberOfNodesPerInstance);
+                List<String> deployingNodes = addMultipleDeployingNodes(nodeNames,
+                                                                        scripts.toString(),
+                                                                        "Nodes deployment on AWS EC2",
+                                                                        nodeTimeout);
+                logger.info("Deploying nodes: " + deployingNodes);
+                // run node.jar on the instance with the specified VM credentials
+
                 connectorIaasController.executeScriptWithKeyAuthentication(getInfrastructureId(),
                                                                            instanceId,
                                                                            scripts,
                                                                            vmUsername,
                                                                            getPersistedKeyPairInfo().getValue());
+            } catch (KeyException e) {
+                logger.error("A problem occurred while acquiring user credentials path. The node startup script will be not executed.");
             } catch (ScriptNotExecutedException e) {
                 handleScriptNotExecutedException(existPersistedInstanceIds, instanceId, e);
             }

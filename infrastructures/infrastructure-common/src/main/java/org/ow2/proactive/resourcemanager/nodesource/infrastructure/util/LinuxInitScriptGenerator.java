@@ -51,7 +51,7 @@ public class LinuxInitScriptGenerator {
 
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
-            int numberOfNodesPerInstance) {
+            int numberOfNodesPerInstance, String credentials) {
         return buildScript(instanceId,
                            rmUrlToUse,
                            rmHostname,
@@ -60,12 +60,13 @@ public class LinuxInitScriptGenerator {
                            additionalProperties,
                            nsName,
                            nodeName,
-                           numberOfNodesPerInstance);
+                           numberOfNodesPerInstance,
+                           credentials);
     }
 
     public List<String> buildScript(String instanceId, String rmUrlToUse, String rmHostname, String nodeJarUrl,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeName,
-            int numberOfNodesPerInstance) {
+            int numberOfNodesPerInstance, String credentials) {
         List<String> commands = new ArrayList<>();
 
         if (nsConfig.getBoolean(NSProperties.JRE_INSTALL)) {
@@ -81,7 +82,8 @@ public class LinuxInitScriptGenerator {
                                               additionalProperties,
                                               nsName,
                                               nodeName,
-                                              numberOfNodesPerInstance));
+                                              numberOfNodesPerInstance,
+                                              credentials));
 
         logger.info("Node starting script generated for Linux system: " + commands.toString());
 
@@ -94,7 +96,7 @@ public class LinuxInitScriptGenerator {
 
     private String generateNodeStartCommand(String instanceId, String rmUrlToUse, String rmHostname,
             String instanceTagNodeProperty, String additionalProperties, String nsName, String nodeBaseName,
-            int numberOfNodesPerInstance) {
+            int numberOfNodesPerInstance, String credentials) {
 
         String javaCommand = nsConfig.getString(NSProperties.JAVA_COMMAND) + " -jar node.jar";
 
@@ -104,12 +106,14 @@ public class LinuxInitScriptGenerator {
 
         String jythonPath = nsConfig.getString(NSProperties.DEFAULT_JYTHON_PATH);
 
+        String credentialsProperty = " -v " + credentials;
+
         String javaProperties = " -Dproactive.communication.protocol=" + protocol + " -Dpython.path=" + jythonPath +
                                 " -Dproactive.pamr.router.address=" + rmHostname + " -D" + instanceTagNodeProperty +
                                 "=" + instanceId + " " + additionalProperties + " -r " + rmUrlToUse + " -s " + nsName +
                                 nodeNamingOption + " -w " + numberOfNodesPerInstance;
 
-        return "nohup " + javaCommand + javaProperties + "  &";
+        return "nohup " + javaCommand + credentialsProperty + javaProperties + "  &";
     }
 
     public String generateDefaultIaasConnectorURL(String DefaultRMHostname) {

@@ -34,6 +34,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
+import java.security.KeyException;
 import java.util.*;
 
 import org.junit.Before;
@@ -47,6 +48,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.authentication.crypto.Credentials;
 import org.ow2.proactive.resourcemanager.authentication.Client;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
@@ -107,6 +109,8 @@ public class GCEInfrastructureTest {
 
     private static final List<String> INIT_SCRIPTS = Arrays.asList("wget -nv " + NODE_JAR_URL, "node start cmd");
 
+    private static final String rmCreds = "UlNBCjEwMjQKUlNBL0VDQi9QS0NTMVBhZGRpbmcKdaUX3K5Cx1epYuylbM3ApIbM0C1gsIZWIX6MsFhzfUZxMnB7/BeUvAFQz3lYcTEqSl2E1LWlibBbxHMCxjUMzSoOZXFKsnTxMCieWetgUcP5sCTO/Kg1UukL4xDqOgpLp1iK0FK4dYDSBBkoUn4ePBLZWu2YOb1+mPFEE2G2hxSW0DUVMXginosmRNcG5P2n1GqrDgplizEjD7G6rN6UezDGXv6MthSjP9VbFAzOSY79UTELjOhb0Rz3qfBhl4DNvae2c3ZrHJkKHL3P6GC4Zz0BvY90VKOMQj8Y8LuwdxKthWDgcmFppfSldJ8vwsEIhbwHM9bzsRCBDelMRyDYOD9km24uOMYGAmv6/EqMHRsC2w7drAhByzU/xg4OGtYaDy4xBzlHGzpq2NBCwTdx+xLiSmTFNT7U/MZ1dTTFmCUfJ25fM5ncO1rPNvLqrzdrm2x2NEhnXCTGO1aFVTUhMyLmeNi/0KmXmE51WHPyeoWxZ5/GfQT9HxUMVBei3tE8gCM6f5W4iNTZKY6Et1nVKw==";
+
     @InjectMocks
     @Spy
     private GCEInfrastructure gceInfrastructure;
@@ -128,6 +132,9 @@ public class GCEInfrastructureTest {
 
     @Mock
     private ProActiveRuntime proActiveRuntime;
+
+    @Mock
+    private Client client = new Client();
 
     @Before
     public void init() {
@@ -226,7 +233,7 @@ public class GCEInfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() {
+    public void testAcquireAllNodes() throws KeyException {
         gceInfrastructure.configure(CREDENTIAL_FILE,
                                     NUMBER_INSTANCES,
                                     NUMBER_NODES_PER_INSTANCE,
@@ -244,6 +251,8 @@ public class GCEInfrastructureTest {
                                     NODE_TIMEOUT);
         // re-assign needed because gceInfrastructure.configure new the object gceInfrastructure.connectorIaasController
         gceInfrastructure.connectorIaasController = connectorIaasController;
+        when(nodeSource.getAdministrator()).thenReturn(client);
+        when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
         when(linuxInitScriptGenerator.buildScript(anyString(),
                                                   anyString(),
@@ -253,7 +262,8 @@ public class GCEInfrastructureTest {
                                                   anyString(),
                                                   anyString(),
                                                   anyString(),
-                                                  anyInt())).thenReturn(INIT_SCRIPTS);
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireAllNodes();
 
@@ -277,7 +287,7 @@ public class GCEInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNodes() {
+    public void testAcquireNodes() throws KeyException {
         final int numberOfNodes = 5;
         final Map<String, ?> nodeConfiguration = new HashMap<String, Object>() {
             {
@@ -308,6 +318,8 @@ public class GCEInfrastructureTest {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
         }).when(nodeSource).executeInParallel(any(Runnable.class));
+        when(nodeSource.getAdministrator()).thenReturn(client);
+        when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
         when(nodeSource.getNodesCount()).thenReturn(existingNodes);
         gceInfrastructure.getNodesPerInstancesMap().put("existed-instance", Sets.newHashSet());
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
@@ -319,7 +331,8 @@ public class GCEInfrastructureTest {
                                                   anyString(),
                                                   anyString(),
                                                   anyString(),
-                                                  anyInt())).thenReturn(INIT_SCRIPTS);
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireNodes(numberOfNodes, nodeConfiguration);
 
@@ -350,7 +363,7 @@ public class GCEInfrastructureTest {
      * Then acquireNodes should only deploy 4-1=3 instances.
      */
     @Test
-    public void testAcquireNodesGivenMoreThanMaxInstances() {
+    public void testAcquireNodesGivenMoreThanMaxInstances() throws KeyException {
         final int numberOfNodes = 10;
         final Map<String, ?> nodeConfiguration = new HashMap<String, Object>() {
             {
@@ -382,6 +395,8 @@ public class GCEInfrastructureTest {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
         }).when(nodeSource).executeInParallel(any(Runnable.class));
+        when(nodeSource.getAdministrator()).thenReturn(client);
+        when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
         when(nodeSource.getNodesCount()).thenReturn(existingNodes);
         gceInfrastructure.getNodesPerInstancesMap().put("existed-instance", Sets.newHashSet());
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
@@ -393,7 +408,8 @@ public class GCEInfrastructureTest {
                                                   anyString(),
                                                   anyString(),
                                                   anyString(),
-                                                  anyInt())).thenReturn(INIT_SCRIPTS);
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireNodes(numberOfNodes, nodeConfiguration);
 
@@ -425,7 +441,7 @@ public class GCEInfrastructureTest {
      * Then acquireNodes should only deploy 1 instances.
      */
     @Test
-    public void testAcquireNodesGivenMoreThanMaxNodes() {
+    public void testAcquireNodesGivenMoreThanMaxNodes() throws KeyException {
         final int numberOfNodes = 3;
         final Map<String, ?> nodeConfiguration = new HashMap<String, Object>() {
             {
@@ -456,6 +472,8 @@ public class GCEInfrastructureTest {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
         }).when(nodeSource).executeInParallel(any(Runnable.class));
+        when(nodeSource.getAdministrator()).thenReturn(client);
+        when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
         when(nodeSource.getNodesCount()).thenReturn(existingNodes);
         gceInfrastructure.getNodesPerInstancesMap().put("existed-instance", Sets.newHashSet());
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
@@ -467,7 +485,8 @@ public class GCEInfrastructureTest {
                                                   anyString(),
                                                   anyString(),
                                                   anyString(),
-                                                  anyInt())).thenReturn(INIT_SCRIPTS);
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireNodes(numberOfNodes, nodeConfiguration);
 

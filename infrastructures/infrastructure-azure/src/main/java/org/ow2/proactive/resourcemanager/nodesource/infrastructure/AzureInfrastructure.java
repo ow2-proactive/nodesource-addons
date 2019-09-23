@@ -30,6 +30,7 @@ import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManage
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.security.KeyException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -350,16 +351,20 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
-            List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
-                                                                        getRmUrl(),
-                                                                        rmHttpUrl,
-                                                                        instanceIdNodeProperty,
-                                                                        additionalProperties,
-                                                                        nodeSource.getName(),
-                                                                        currentInstanceId,
-                                                                        numberOfNodesPerInstance);
             try {
+                List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
+                                                                            getRmUrl(),
+                                                                            rmHttpUrl,
+                                                                            instanceIdNodeProperty,
+                                                                            additionalProperties,
+                                                                            nodeSource.getName(),
+                                                                            currentInstanceId,
+                                                                            numberOfNodesPerInstance,
+                                                                            getCredentials());
+
                 connectorIaasController.executeScript(getInfrastructureId(), currentInstanceId, scripts);
+            } catch (KeyException e) {
+                LOGGER.error("A problem occurred while acquiring user credentials path. The node startup script will be not executed.");
             } catch (ScriptNotExecutedException exception) {
                 boolean acquireNodeTriggered = handleScriptNotExecutedException(existPersistedInstanceIds,
                                                                                 currentInstanceId,

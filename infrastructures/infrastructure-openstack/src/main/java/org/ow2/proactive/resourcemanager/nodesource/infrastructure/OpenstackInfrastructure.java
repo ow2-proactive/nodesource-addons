@@ -27,6 +27,7 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.KeyException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
@@ -541,14 +542,21 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     private List<String> createScripts(String instanceTag, String nodeName, int nbNodes) {
 
-        return linuxInitScriptGenerator.buildScript(instanceTag,
-                                                    getRmUrl(),
-                                                    rmHostname,
-                                                    instanceIdNodeProperty,
-                                                    additionalProperties,
-                                                    nodeSource.getName(),
-                                                    nodeName,
-                                                    nbNodes);
+        try {
+
+            return linuxInitScriptGenerator.buildScript(instanceTag,
+                                                        getRmUrl(),
+                                                        rmHostname,
+                                                        instanceIdNodeProperty,
+                                                        additionalProperties,
+                                                        nodeSource.getName(),
+                                                        nodeName,
+                                                        nbNodes,
+                                                        getCredentials());
+        } catch (KeyException a) {
+            logger.error("A problem occurred while acquiring user credentials path. The node startup script will be empty.");
+            return new ArrayList<>();
+        }
     }
 
     private void createOpenstackInstance(String instanceTag, List<String> scripts) {

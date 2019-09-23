@@ -36,6 +36,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.security.KeyException;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -44,6 +46,8 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
+import org.ow2.proactive.authentication.crypto.Credentials;
+import org.ow2.proactive.resourcemanager.authentication.Client;
 import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
@@ -53,6 +57,8 @@ import org.python.google.common.collect.Sets;
 public class OpenstackInfrastructureTest {
 
     private OpenstackInfrastructure openstackInfrastructure;
+
+    private static final String rmCreds = "UlNBCjEwMjQKUlNBL0VDQi9QS0NTMVBhZGRpbmcKdaUX3K5Cx1epYuylbM3ApIbM0C1gsIZWIX6MsFhzfUZxMnB7/BeUvAFQz3lYcTEqSl2E1LWlibBbxHMCxjUMzSoOZXFKsnTxMCieWetgUcP5sCTO/Kg1UukL4xDqOgpLp1iK0FK4dYDSBBkoUn4ePBLZWu2YOb1+mPFEE2G2hxSW0DUVMXginosmRNcG5P2n1GqrDgplizEjD7G6rN6UezDGXv6MthSjP9VbFAzOSY79UTELjOhb0Rz3qfBhl4DNvae2c3ZrHJkKHL3P6GC4Zz0BvY90VKOMQj8Y8LuwdxKthWDgcmFppfSldJ8vwsEIhbwHM9bzsRCBDelMRyDYOD9km24uOMYGAmv6/EqMHRsC2w7drAhByzU/xg4OGtYaDy4xBzlHGzpq2NBCwTdx+xLiSmTFNT7U/MZ1dTTFmCUfJ25fM5ncO1rPNvLqrzdrm2x2NEhnXCTGO1aFVTUhMyLmeNi/0KmXmE51WHPyeoWxZ5/GfQT9HxUMVBei3tE8gCM6f5W4iNTZKY6Et1nVKw==";
 
     @Mock
     private ConnectorIaasController connectorIaasController;
@@ -71,6 +77,9 @@ public class OpenstackInfrastructureTest {
 
     @Mock
     private RMDBManager dbManager;
+
+    @Mock
+    private Client client = new Client();
 
     @Before
     public void init() {
@@ -150,9 +159,14 @@ public class OpenstackInfrastructureTest {
     }
 
     @Test
-    public void testAcquireNode() throws ScriptNotExecutedException {
+    public void testAcquireNode() throws ScriptNotExecutedException, KeyException {
 
         when(nodeSource.getName()).thenReturn("node source name");
+
+        when(nodeSource.getAdministrator()).thenReturn(client);
+
+        when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
+
         openstackInfrastructure.nodeSource = nodeSource;
 
         openstackInfrastructure.configure("username",
@@ -225,8 +239,13 @@ public class OpenstackInfrastructureTest {
     }
 
     @Test
-    public void testAcquireAllNodes() throws ScriptNotExecutedException {
+    public void testAcquireAllNodes() throws ScriptNotExecutedException, KeyException {
         when(nodeSource.getName()).thenReturn("node source name");
+
+        when(nodeSource.getAdministrator()).thenReturn(client);
+
+        when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
+
         openstackInfrastructure.nodeSource = nodeSource;
 
         openstackInfrastructure.configure("username",

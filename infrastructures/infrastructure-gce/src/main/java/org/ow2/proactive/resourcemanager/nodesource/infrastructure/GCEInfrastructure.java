@@ -27,6 +27,7 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.KeyException;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
@@ -345,15 +346,21 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     }
 
     private List<String> buildNodeStartScripts(int numberOfNodes) {
-        return linuxInitScriptGenerator.buildScript(INSTANCE_TAG_ON_NODE,
-                                                    getRmUrl(),
-                                                    rmHostname,
-                                                    nodeJarURL,
-                                                    instanceIdNodeProperty,
-                                                    additionalProperties,
-                                                    nodeSource.getName(),
-                                                    NODE_NAME_ON_NODE,
-                                                    numberOfNodes);
+        try {
+            return linuxInitScriptGenerator.buildScript(INSTANCE_TAG_ON_NODE,
+                                                        getRmUrl(),
+                                                        rmHostname,
+                                                        nodeJarURL,
+                                                        instanceIdNodeProperty,
+                                                        additionalProperties,
+                                                        nodeSource.getName(),
+                                                        NODE_NAME_ON_NODE,
+                                                        numberOfNodes,
+                                                        getCredentials());
+        } catch (KeyException a) {
+            logger.error("A problem occurred while acquiring user credentials path. The node startup script will be empty.");
+            return new ArrayList<>();
+        }
     }
 
     private Set<String> createInstanceWithNodesStartCmd(String infrastructureId, int nbInstances,

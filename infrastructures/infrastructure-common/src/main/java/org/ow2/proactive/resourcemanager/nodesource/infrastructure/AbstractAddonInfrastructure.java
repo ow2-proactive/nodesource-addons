@@ -25,6 +25,7 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
+import java.security.KeyException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
+import org.ow2.proactive.authentication.crypto.Credentials;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 
 import com.google.common.collect.Maps;
@@ -126,12 +128,24 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     private Map<String, Integer> instancesWithoutNodesMap;
 
     /**
+     * Absolute path to credentials file used to add the node to the Resource Manager
+     */
+    private Credentials credentials;
+
+    /**
      * Default constructor
      */
     protected AbstractAddonInfrastructure() {
         nodesPerInstance = new HashMap<>();
         nbRemovedNodesPerInstance = new HashMap<>();
         instancesWithoutNodesMap = new HashMap<>();
+    }
+
+    protected String getCredentials() throws KeyException {
+        if (this.credentials == null) {
+            this.credentials = super.nodeSource.getAdministrator().getCredentials();
+        }
+        return new String(this.credentials.getBase64());
     }
 
     @Override
