@@ -106,14 +106,12 @@ public class LinuxInitScriptGenerator {
 
         String jythonPath = nsConfig.getString(NSProperties.DEFAULT_JYTHON_PATH);
 
-        String credentialsProperty = " -v " + credentials;
-
         String javaProperties = " -Dproactive.communication.protocol=" + protocol + " -Dpython.path=" + jythonPath +
                                 " -Dproactive.pamr.router.address=" + rmHostname + " -D" + instanceTagNodeProperty +
                                 "=" + instanceId + " " + additionalProperties + " -r " + rmUrlToUse + " -s " + nsName +
-                                nodeNamingOption + " -w " + numberOfNodesPerInstance;
+                                nodeNamingOption + " -v " + credentials + " -w " + numberOfNodesPerInstance;
 
-        return "nohup " + javaCommand + credentialsProperty + javaProperties + "  &";
+        return "nohup " + javaCommand + javaProperties + "  &";
     }
 
     public String generateDefaultIaasConnectorURL(String DefaultRMHostname) {
