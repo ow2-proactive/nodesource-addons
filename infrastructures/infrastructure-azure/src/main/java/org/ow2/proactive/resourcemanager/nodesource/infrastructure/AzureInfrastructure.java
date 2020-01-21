@@ -27,19 +27,25 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManagerProperties.RM_CLOUD_INFRASTRUCTURES_DESTROY_INSTANCES_ON_SHUTDOWN;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.security.KeyException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
+import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
+import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingCredentials;
+import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingException;
+import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingRateCard;
+import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingResourceUsage;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
 
@@ -63,9 +69,15 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_ADDITIONAL_PROPERTIES = "-Dproactive.useIPaddress=true -Dproactive.net.public_address=$(wget -qO- ipinfo.io/ip) -Dproactive.pnp.port=64738";
 
-    private final static int PARAMETERS_NUMBER = 24;
+    private static final String AZURE_VM_USAGE_COST_KEY = "azureVmUsageCost";
+
+    private static final String AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY = "azureResourceUsageInfosEndDateTime";
+
+    private static final String AZURE_VM_RATES_KEY = "AzureVmRates";
 
     // Indexes of parameters
+    private final static int PARAMETERS_NUMBER = 26;
+
     private final static int CLIENT_ID_INDEX = 0;
 
     private final static int SECRET_INDEX = 1;
@@ -113,6 +125,20 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     private final static int STATIC_PUBLIC_IP_INDEX = 22;
 
     private final static int ADDITIONAL_PROPERTIES_INDEX = 23;
+
+    private final static int RESOURCE_USAGE_UPDATE_DELAY_IN_MIN_INDEX = 24;
+
+    private final static int RATE_CARD_UPDATE_DELAY_IN_MIN_INDEX = 25;
+
+    private ScheduledExecutorService periodicallyResourceUsageGetter = Executors.newSingleThreadScheduledExecutor();
+
+    private ScheduledExecutorService periodicallyRateCardGetter = Executors.newSingleThreadScheduledExecutor();
+
+    private AzureBillingResourceUsage azureBillingResourceUsage = null;
+
+    private AzureBillingRateCard azureBillingRateCard = null;
+
+    private AzureBillingCredentials azureBillingCredentials = null;
 
     // Command lines patterns
     private static final CharSequence RM_HTTP_URL_PATTERN = "<RM_HTTP_URL>";
@@ -217,6 +243,12 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 7)
     protected String additionalProperties = DEFAULT_ADDITIONAL_PROPERTIES;
 
+    @Configurable(description = "Periodical resource usage retrieving delay in min.")
+    protected int resourceUsageGetterDelayInMin = 30;
+
+    @Configurable(description = "Periodical rate card retrieving delay in min.")
+    protected int rateCardGetterDelayInMin = 30;
+
     @Override
     public void configure(Object... parameters) {
 
@@ -247,8 +279,11 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         this.privateNetworkCIDR = getParameter(parameters, PRIVATE_NETWORK_CIDR_INDEX);
         this.staticPublicIP = Boolean.parseBoolean(getParameter(parameters, STATIC_PUBLIC_IP_INDEX));
         this.additionalProperties = getParameter(parameters, ADDITIONAL_PROPERTIES_INDEX);
+        this.resourceUsageGetterDelayInMin = Integer.parseInt(getParameter(parameters,
+                                                                           RESOURCE_USAGE_UPDATE_DELAY_IN_MIN_INDEX));
+        this.rateCardGetterDelayInMin = Integer.parseInt(getParameter(parameters, RATE_CARD_UPDATE_DELAY_IN_MIN_INDEX));
 
-        connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
+        this.connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
     private String getParameter(Object[] parameters, int index) {
@@ -296,8 +331,60 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
+    private void initBilling() {
+        // Azure billing instances
+        try {
+            LOGGER.debug("AzureInfrastructure initBilling new AzureBillingCredentials " + this.clientId + " " +
+                         this.domain + " " + this.secret);
+            this.azureBillingCredentials = new AzureBillingCredentials(this.clientId, this.domain, this.secret);
+            LOGGER.debug("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
+                         this.resourceGroup + " " + this.nodeSource.getName());
+            this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
+                                                                           this.resourceGroup,
+                                                                           this.nodeSource.getName());
+            LOGGER.debug("AzureInfrastructure initBilling new AzureBillingRateCard");
+            this.azureBillingRateCard = new AzureBillingRateCard();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Restore vm usage cost infos from persistedInfraVariables if it is possible
+        if (this.persistedInfraVariables.get(AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY) != null) {
+            LocalDateTime resourceUsageInfosEndDateTime = (LocalDateTime) this.persistedInfraVariables.get(AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY);
+            double vmUsageCost = (Double) this.persistedInfraVariables.get(AZURE_VM_USAGE_COST_KEY);
+            LOGGER.debug("AzureInfrastructure initBilling if retrieved from persistedInfraVariables " +
+                         resourceUsageInfosEndDateTime + " " + vmUsageCost);
+            this.azureBillingResourceUsage.setResourceUsageReportedEndDateTime(resourceUsageInfosEndDateTime);
+            this.azureBillingResourceUsage.setVmUsageCost(vmUsageCost);
+        }
+        // Restore vm rates from persistedInfraVariables if it is possible
+        if (this.persistedInfraVariables.get(AZURE_VM_RATES_KEY) != null) {
+            HashMap<String, Double> meterRates = (HashMap<String, Double>) this.persistedInfraVariables.get(AZURE_VM_RATES_KEY);
+            LOGGER.debug("AzureInfrastructure initBilling if meterRates retrieved from persistedInfraVariables");
+            this.azureBillingRateCard.setMeterRates(meterRates);
+        }
+
+        // Start a new thread to periodically retrieve resource usage
+        this.periodicallyResourceUsageGetter.scheduleAtFixedRate(this::getAndStoreVmUsageCostInfos,
+                                                                 this.resourceUsageGetterDelayInMin,
+                                                                 this.resourceUsageGetterDelayInMin,
+                                                                 TimeUnit.MINUTES);
+
+        // Start a new thread to periodically call getAndStoreRate
+        // initialDelay set to 0 to start before periodicallyResourceUsageGetter
+        periodicallyRateCardGetter.scheduleAtFixedRate(this::updateRates,
+                                                       0,
+                                                       this.rateCardGetterDelayInMin,
+                                                       TimeUnit.MINUTES);
+
+        LOGGER.debug("AzureInfrastructure initBilling after starting periodically processes");
+    }
+
     @Override
     public void acquireNode() {
+
+        // Init billing objects
+        initBilling();
 
         connectorIaasController.waitForConnectorIaasToBeUP();
 
@@ -508,4 +595,70 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         sectionDescriptions.put(7, "Node Configuration");
         return sectionDescriptions;
     }
+
+    @Override
+    public void shutDown() {
+        super.shutDown();
+
+        if (this.periodicallyResourceUsageGetter != null) {
+            this.periodicallyResourceUsageGetter.shutdownNow();
+        }
+        if (this.periodicallyRateCardGetter != null) {
+            this.periodicallyRateCardGetter.shutdownNow();
+        }
+    }
+
+    public void getAndStoreVmUsageCostInfos() {
+
+        LOGGER.debug("AzureInfrastructure getAndStoreVmUsageCostInfos");
+
+        try {
+            // Retrieve new vm usage cost infos
+            this.azureBillingResourceUsage.updateAndgetVmUsageCostInfos(this.subscriptionId,
+                                                                        this.azureBillingCredentials,
+                                                                        this.azureBillingRateCard);
+        } catch (IOException e) {
+            LOGGER.error(e.getMessage());
+            return;
+        } catch (AzureBillingException e) {
+            LOGGER.error(e.getMessage());
+            return;
+        }
+
+        // Persist result
+        LocalDateTime resourceUsageInfosEndDateTime = this.azureBillingResourceUsage.getResourceUsageReportedEndDateTime();
+        double vmUsageCost = this.azureBillingResourceUsage.getVmUsageCost();
+
+        LOGGER.debug("AzureInfrastructure getAndStoreVmUsageCostInfos " + resourceUsageInfosEndDateTime + " " +
+                     vmUsageCost);
+
+        this.persistedInfraVariables.put(AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY, resourceUsageInfosEndDateTime);
+        this.persistedInfraVariables.put(AZURE_VM_USAGE_COST_KEY, vmUsageCost);
+
+        // Update the node source infos
+        super.putAdditionalInfo(NodeSource.AdditionalInformation.ACTUAL_COST,
+                                "Total VM cost:" + vmUsageCost + " USD (reported end time: " +
+                                                                              resourceUsageInfosEndDateTime + ")");
+
+    }
+
+    public void updateRates() {
+
+        LOGGER.debug("AzureInfrastructure updateRates triggered");
+
+        try {
+            // Retrieve new rates
+            this.azureBillingRateCard.updateVmRates(this.subscriptionId, this.azureBillingCredentials);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        } catch (AzureBillingException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        // Persist results
+        this.persistedInfraVariables.put(AZURE_VM_RATES_KEY, this.azureBillingRateCard.getMeterRates());
+    }
+
 }

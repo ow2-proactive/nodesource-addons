@@ -11,8 +11,14 @@ targetCompatibility = JavaVersion.VERSION_1_8
 
 dependencies {
     compile project(':infrastructures:infrastructure-common')
-    compile "org.ow2.proactive:rm-server:${rmVersion}"
+    compile ("org.ow2.proactive:rm-server:${rmVersion}"){
+        exclude group: "com.fasterxml.jackson.core"
+        exclude group: "com.fasterxml.jackson.dataformat"
+        exclude group: "activeeon", module: "vfs-s3"
+    }
     compile "org.objectweb.proactive:programming-core:${programmingVersion}"
+
+    compile group: 'com.microsoft.azure', name: 'azure', version: '1.29.0'
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.hamcrest:hamcrest-junit:2.0.0.0'
@@ -28,6 +34,9 @@ configurations {
     runtime.exclude module: 'programming-core'
     runtime.exclude module: 'guava'
     runtime.exclude module: 'log4j'
+    runtime.exclude module: 'slf4j-api'
+    runtime.exclude module: 'slf4j-simple'
+    runtime.exclude module: 'slf4j-log4j12'
 
     testRuntime.extendsFrom = [testCompile]
 }

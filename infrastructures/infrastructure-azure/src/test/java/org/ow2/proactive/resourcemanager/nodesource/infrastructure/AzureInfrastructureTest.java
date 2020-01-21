@@ -149,7 +149,9 @@ public class AzureInfrastructureTest {
                                           "wget -nv test.activeeon.com/rest/node.jar",
                                           "192.168.1.0/24",
                                           true,
-                                          "-Dnew=value");
+                                          "-Dnew=value",
+                                          -1,
+                                          -1);
             Assert.assertTrue(Boolean.TRUE);
         } catch (IllegalArgumentException e) {
             fail("NPE not thrown");
@@ -194,7 +196,9 @@ public class AzureInfrastructureTest {
                                       "wget -nv test.activeeon.com/rest/node.jar",
                                       "192.168.1.0/24",
                                       true,
-                                      "-Dnew=value");
+                                      "-Dnew=value",
+                                      -1,
+                                      -1);
     }
 
     @Test
@@ -227,7 +231,9 @@ public class AzureInfrastructureTest {
                                       null,
                                       "192.168.1.0/24",
                                       true,
-                                      "-Dnew=value");
+                                      "-Dnew=value",
+                                      -1,
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -320,7 +326,9 @@ public class AzureInfrastructureTest {
                                       "wget -nv test.activeeon.com/rest/node.jar",
                                       "192.168.1.0/24",
                                       true,
-                                      "-Dnew=value");
+                                      "-Dnew=value",
+                                      -1,
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -372,7 +380,9 @@ public class AzureInfrastructureTest {
                                       "wget -nv test.activeeon.com/rest/node.jar",
                                       "192.168.1.0/24",
                                       true,
-                                      "-Dnew=value");
+                                      "-Dnew=value",
+                                      -1,
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
