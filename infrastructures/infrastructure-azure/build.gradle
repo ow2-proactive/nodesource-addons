@@ -11,7 +11,7 @@ targetCompatibility = JavaVersion.VERSION_1_8
 
 dependencies {
     compile project(':infrastructures:infrastructure-common')
-    compile ("org.ow2.proactive:rm-server:${rmVersion}")
+    compile "org.ow2.proactive:rm-server:${rmVersion}"
     compile "org.objectweb.proactive:programming-core:${programmingVersion}"
     compile group: 'com.microsoft.azure', name: 'azure', version: '1.29.0'
 
