@@ -26,6 +26,7 @@
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManagerProperties.RM_CLOUD_INFRASTRUCTURES_DESTROY_INSTANCES_ON_SHUTDOWN;
+import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -33,6 +34,8 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.security.KeyException;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -41,7 +44,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
-import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingCredentials;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingException;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingRateCard;
@@ -49,12 +51,17 @@ import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingResource
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
 
+import com.google.common.collect.Maps;
+
 import lombok.Getter;
 
 
 public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private static final Logger LOGGER = Logger.getLogger(AzureInfrastructure.class);
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+                                                                        .withZone(ZoneOffset.UTC);
 
     public static final String WINDOWS = "windows";
 
@@ -69,14 +76,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_ADDITIONAL_PROPERTIES = "-Dproactive.useIPaddress=true -Dproactive.net.public_address=$(wget -qO- ipinfo.io/ip) -Dproactive.pnp.port=64738";
 
-    private static final String AZURE_VM_USAGE_COST_KEY = "azureVmUsageCost";
-
-    private static final String AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY = "azureResourceUsageInfosEndDateTime";
-
-    private static final String AZURE_VM_RATES_KEY = "AzureVmRates";
-
     // Indexes of parameters
-    private final static int PARAMETERS_NUMBER = 26;
+    private final static int PARAMETERS_NUMBER = 31;
 
     private final static int CLIENT_ID_INDEX = 0;
 
@@ -126,9 +127,19 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private final static int ADDITIONAL_PROPERTIES_INDEX = 23;
 
-    private final static int RESOURCE_USAGE_UPDATE_DELAY_IN_MIN_INDEX = 24;
+    private final static int BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN_INDEX = 24;
 
-    private final static int RATE_CARD_UPDATE_DELAY_IN_MIN_INDEX = 25;
+    private final static int BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN_INDEX = 25;
+
+    private final static int BILLING_OFFER_ID = 26;
+
+    private final static int BILLING_CURRENCY = 27;
+
+    private final static int BILLING_LOCALE = 28;
+
+    private final static int BILLING_REGION_INFO = 29;
+
+    private final static int BILLING_BUDGET = 30;
 
     private ScheduledExecutorService periodicallyResourceUsageGetter = Executors.newSingleThreadScheduledExecutor();
 
@@ -243,11 +254,26 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 7)
     protected String additionalProperties = DEFAULT_ADDITIONAL_PROPERTIES;
 
-    @Configurable(description = "Periodical resource usage retrieving delay in min.")
-    protected int resourceUsageGetterDelayInMin = 30;
+    @Configurable(description = "Periodical resource usage retrieving delay in min.", sectionSelector = 1)
+    protected int billingResourceUsageRefreshFreqInMin = 30;
 
-    @Configurable(description = "Periodical rate card retrieving delay in min.")
-    protected int rateCardGetterDelayInMin = 30;
+    @Configurable(description = "Periodical rate card retrieving delay in min.", sectionSelector = 1)
+    protected int billingRateCardRefreshFreqInMin = 30;
+
+    @Configurable(description = "The Offer ID parameter consists of the “MS-AZR-“ prefix, plus the Offer ID number.", sectionSelector = 1)
+    protected String billingOfferId = "MS-AZR-0003p";
+
+    @Configurable(description = "The currency in which the resource rates need to be provided.", sectionSelector = 1)
+    protected String billingCurrency = "USD";
+
+    @Configurable(description = "The culture in which the resource metadata needs to be localized.", sectionSelector = 1)
+    protected String billingLocale = "en-US";
+
+    @Configurable(description = "The 2 letter ISO code where the offer was purchased.", sectionSelector = 1)
+    protected String billingRegionInfo = "US";
+
+    @Configurable(description = "Your budget for this node source related Azure resources. Will be used to compute your global cost in % budget.", sectionSelector = 1)
+    protected double billingBudget = 50;
 
     @Override
     public void configure(Object... parameters) {
@@ -279,10 +305,15 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         this.privateNetworkCIDR = getParameter(parameters, PRIVATE_NETWORK_CIDR_INDEX);
         this.staticPublicIP = Boolean.parseBoolean(getParameter(parameters, STATIC_PUBLIC_IP_INDEX));
         this.additionalProperties = getParameter(parameters, ADDITIONAL_PROPERTIES_INDEX);
-        this.resourceUsageGetterDelayInMin = Integer.parseInt(getParameter(parameters,
-                                                                           RESOURCE_USAGE_UPDATE_DELAY_IN_MIN_INDEX));
-        this.rateCardGetterDelayInMin = Integer.parseInt(getParameter(parameters, RATE_CARD_UPDATE_DELAY_IN_MIN_INDEX));
-
+        this.billingResourceUsageRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
+                                                                                  BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN_INDEX));
+        this.billingRateCardRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
+                                                                             BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN_INDEX));
+        this.billingOfferId = getParameter(parameters, BILLING_OFFER_ID);
+        this.billingCurrency = getParameter(parameters, BILLING_CURRENCY);
+        this.billingLocale = getParameter(parameters, BILLING_LOCALE);
+        this.billingRegionInfo = getParameter(parameters, BILLING_REGION_INFO);
+        this.billingBudget = Double.parseDouble(getParameter(parameters, BILLING_BUDGET));
         this.connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
@@ -331,53 +362,123 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
+    private void restoreBillingInformation() {
+
+        HashMap<String, String> additionalInformation = this.nodeSource.getAdditionalInformation();
+
+        LOGGER.info("AzureInfrastructure restoreBillingInformation additionalInformation " +
+                    Arrays.asList(additionalInformation));
+
+        if (additionalInformation != null && additionalInformation.get(CLOUD_COST_GLOBAL_COST) != null) {
+            this.azureBillingResourceUsage.setGlobalCost(Double.parseDouble(additionalInformation.get(CLOUD_COST_GLOBAL_COST)));
+            this.azureBillingResourceUsage.setCurrency(additionalInformation.get(CLOUD_COST_CURRENCY));
+            this.azureBillingResourceUsage.setBudgetPercentage(Double.parseDouble(additionalInformation.get(CLOUD_COST_BUDGET_PERCENTAGE)));
+            this.azureBillingResourceUsage.setResourceUsageReportedStartDateTime(LocalDateTime.parse(additionalInformation.get(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY),
+                                                                                                     formatter));
+            this.azureBillingResourceUsage.setResourceUsageReportedEndDateTime(LocalDateTime.parse(additionalInformation.get(CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY),
+                                                                                                   formatter));
+        }
+    }
+
     private void initBilling() {
         // Azure billing instances
         try {
-            LOGGER.debug("AzureInfrastructure initBilling new AzureBillingCredentials " + this.clientId + " " +
-                         this.domain + " " + this.secret);
+            LOGGER.info("AzureInfrastructure initBilling new AzureBillingCredentials " + this.clientId + " " +
+                        this.domain + " " + this.secret);
             this.azureBillingCredentials = new AzureBillingCredentials(this.clientId, this.domain, this.secret);
-            LOGGER.debug("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
-                         this.resourceGroup + " " + this.nodeSource.getName());
-            this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
-                                                                           this.resourceGroup,
-                                                                           this.nodeSource.getName());
-            LOGGER.debug("AzureInfrastructure initBilling new AzureBillingRateCard");
-            this.azureBillingRateCard = new AzureBillingRateCard();
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("AzureInfrastructure initBilling " + e.getMessage() + "? Will not start getter threads.");
+            return;
         }
+        LOGGER.info("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
+                    this.resourceGroup + " " + this.nodeSource.getName() + " " + this.billingCurrency + " " +
+                    this.billingBudget);
+        this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
+                                                                       this.resourceGroup,
+                                                                       this.nodeSource.getName(),
+                                                                       this.billingCurrency,
+                                                                       this.billingBudget);
 
-        // Restore vm usage cost infos from persistedInfraVariables if it is possible
-        if (this.persistedInfraVariables.get(AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY) != null) {
-            LocalDateTime resourceUsageInfosEndDateTime = (LocalDateTime) this.persistedInfraVariables.get(AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY);
-            double vmUsageCost = (Double) this.persistedInfraVariables.get(AZURE_VM_USAGE_COST_KEY);
-            LOGGER.debug("AzureInfrastructure initBilling if retrieved from persistedInfraVariables " +
-                         resourceUsageInfosEndDateTime + " " + vmUsageCost);
-            this.azureBillingResourceUsage.setResourceUsageReportedEndDateTime(resourceUsageInfosEndDateTime);
-            this.azureBillingResourceUsage.setVmUsageCost(vmUsageCost);
-        }
-        // Restore vm rates from persistedInfraVariables if it is possible
-        if (this.persistedInfraVariables.get(AZURE_VM_RATES_KEY) != null) {
-            HashMap<String, Double> meterRates = (HashMap<String, Double>) this.persistedInfraVariables.get(AZURE_VM_RATES_KEY);
-            LOGGER.debug("AzureInfrastructure initBilling if meterRates retrieved from persistedInfraVariables");
-            this.azureBillingRateCard.setMeterRates(meterRates);
-        }
+        LOGGER.info("AzureInfrastructure initBilling new AzureBillingRateCard " + this.subscriptionId + " " +
+                    this.billingOfferId + " " + this.billingCurrency + " " + this.billingLocale + " " +
+                    this.billingRegionInfo);
+        this.azureBillingRateCard = new AzureBillingRateCard(this.subscriptionId,
+                                                             this.billingOfferId,
+                                                             this.billingCurrency,
+                                                             this.billingLocale,
+                                                             this.billingRegionInfo);
 
-        // Start a new thread to periodically retrieve resource usage
-        this.periodicallyResourceUsageGetter.scheduleAtFixedRate(this::getAndStoreVmUsageCostInfos,
-                                                                 this.resourceUsageGetterDelayInMin,
-                                                                 this.resourceUsageGetterDelayInMin,
-                                                                 TimeUnit.MINUTES);
+        // Restore infos if possible
+        restoreBillingInformation();
 
         // Start a new thread to periodically call getAndStoreRate
-        // initialDelay set to 0 to start before periodicallyResourceUsageGetter
-        periodicallyRateCardGetter.scheduleAtFixedRate(this::updateRates,
-                                                       0,
-                                                       this.rateCardGetterDelayInMin,
-                                                       TimeUnit.MINUTES);
+        this.periodicallyRateCardGetter.scheduleAtFixedRate(this::updateMetersRates,
+                                                            0,
+                                                            this.billingRateCardRefreshFreqInMin,
+                                                            TimeUnit.MINUTES);
 
-        LOGGER.debug("AzureInfrastructure initBilling after starting periodically processes");
+        // Start a new thread to periodically retrieve resource usage
+        // Start it after periodicallyRateCardGetter (cf initial delay param) since rates are required
+        // to compute the global cost
+        this.periodicallyResourceUsageGetter.scheduleAtFixedRate(this::updateResourceUsage,
+                                                                 2,
+                                                                 this.billingResourceUsageRefreshFreqInMin,
+                                                                 TimeUnit.MINUTES);
+
+        LOGGER.info("AzureInfrastructure initBilling periodicallyResourceUsageGetter and periodicallyRateCardGetter started");
+    }
+
+    @Override
+    protected void unregisterNodeAndRemoveInstanceIfNeeded(final String instanceId, final String nodeName,
+            final String infrastructureId, final boolean terminateInstanceIfEmpty) {
+        setPersistedInfraVariable(() -> {
+            // first read from the runtime variables map
+            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
+            // make modifications to the nodesPerInstance map
+            if (nodesPerInstance.get(instanceId) != null) {
+                nodesPerInstance.get(instanceId).remove(nodeName);
+                LOGGER.info("Removed node: " + nodeName);
+                if (nodesPerInstance.get(instanceId).isEmpty()) {
+                    if (terminateInstanceIfEmpty) {
+                        connectorIaasController.terminateInstance(infrastructureId, instanceId);
+                        this.nodeSource.removeAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
+                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY,
+                                                                              CLOUD_COST_CURRENCY,
+                                                                              CLOUD_COST_GLOBAL_COST,
+                                                                              CLOUD_COST_BUDGET_PERCENTAGE);
+                        LOGGER.info("Instance terminated: " + instanceId);
+                    }
+                    nodesPerInstance.remove(instanceId);
+                    LOGGER.info("Removed instance : " + instanceId);
+                }
+                // finally write to the runtime variable map
+
+                persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
+
+            } else {
+                LOGGER.error("Cannot remove node " + nodeName + " because instance " + instanceId +
+                             " is not registered");
+            }
+            return null;
+        });
+    }
+
+    synchronized private void shutdownBillingGetters() {
+        LOGGER.info("AzureInfrastructure shutdownBillingGetters");
+        // Shutdown threads
+        if (this.periodicallyResourceUsageGetter != null) {
+            this.periodicallyResourceUsageGetter.shutdownNow();
+        }
+        if (this.periodicallyRateCardGetter != null) {
+            this.periodicallyRateCardGetter.shutdownNow();
+        }
+    }
+
+    @Override
+    public void shutDown() {
+        LOGGER.info("Shutting down");
+        super.shutDown();
+        shutdownBillingGetters();
     }
 
     @Override
@@ -596,69 +697,68 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         return sectionDescriptions;
     }
 
-    @Override
-    public void shutDown() {
-        super.shutDown();
+    public void updateResourceUsage() {
 
-        if (this.periodicallyResourceUsageGetter != null) {
-            this.periodicallyResourceUsageGetter.shutdownNow();
+        LOGGER.info("AzureInfrastructure updateResourceUsage");
+
+        try {
+
+            HashMap<String, LinkedHashMap<String, Double>> metersRates = azureBillingRateCard.updateOrGetMetersRates(null,
+                                                                                                                     null,
+                                                                                                                     false);
+
+            // Retrieve new resource usage cost infos
+            if (this.azureBillingResourceUsage.updateResourceUsageOrGetMetersIds(this.azureBillingCredentials,
+                                                                                 metersRates,
+                                                                                 true) == null) {
+                LOGGER.info("AzureInfrastructure updateResourceUsage no new resource usage infos");
+                return;
+            }
+        } catch (IOException | AzureBillingException e) {
+            LOGGER.error(e.getMessage());
+            shutdownBillingGetters();
         }
-        if (this.periodicallyRateCardGetter != null) {
-            this.periodicallyRateCardGetter.shutdownNow();
+
+        LocalDateTime resourceUsageReportedStartDateTime = this.azureBillingResourceUsage.getResourceUsageReportedStartDateTime();
+        LocalDateTime resourceUsageReportedEndDateTime = this.azureBillingResourceUsage.getResourceUsageReportedEndDateTime();
+        double globalCost = this.azureBillingResourceUsage.getGlobalCost();
+        double budgetPercentage = this.azureBillingResourceUsage.getBudgetPercentage();
+
+        LOGGER.info("AzureInfrastructure getAndStoreResourceUsageCostInfos resourceUsageReportedStartDateTime " +
+                    resourceUsageReportedStartDateTime + " resourceUsageReportedEndDateTime " +
+                    resourceUsageReportedEndDateTime + " globalCost " + globalCost);
+
+        // Make the usage cost available as an additional information
+        this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
+                                                           formatter.format(resourceUsageReportedStartDateTime));
+        this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY,
+                                                           formatter.format(resourceUsageReportedEndDateTime));
+        if (globalCost == 0) {
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST, "not available yet");
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_BUDGET_PERCENTAGE, "not available yet");
+        } else {
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST, globalCost + "");
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_CURRENCY, this.billingCurrency);
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_BUDGET_PERCENTAGE, budgetPercentage + "%");
         }
     }
 
-    public void getAndStoreVmUsageCostInfos() {
+    public void updateMetersRates() {
 
-        LOGGER.debug("AzureInfrastructure getAndStoreVmUsageCostInfos");
-
-        try {
-            // Retrieve new vm usage cost infos
-            this.azureBillingResourceUsage.updateAndgetVmUsageCostInfos(this.subscriptionId,
-                                                                        this.azureBillingCredentials,
-                                                                        this.azureBillingRateCard);
-        } catch (IOException e) {
-            LOGGER.error(e.getMessage());
-            return;
-        } catch (AzureBillingException e) {
-            LOGGER.error(e.getMessage());
-            return;
-        }
-
-        // Persist result
-        LocalDateTime resourceUsageInfosEndDateTime = this.azureBillingResourceUsage.getResourceUsageReportedEndDateTime();
-        double vmUsageCost = this.azureBillingResourceUsage.getVmUsageCost();
-
-        LOGGER.debug("AzureInfrastructure getAndStoreVmUsageCostInfos " + resourceUsageInfosEndDateTime + " " +
-                     vmUsageCost);
-
-        this.persistedInfraVariables.put(AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY, resourceUsageInfosEndDateTime);
-        this.persistedInfraVariables.put(AZURE_VM_USAGE_COST_KEY, vmUsageCost);
-
-        // Update the node source infos
-        super.putAdditionalInfo(NodeSource.AdditionalInformation.ACTUAL_COST,
-                                "Total VM cost:" + vmUsageCost + " USD (reported end time: " +
-                                                                              resourceUsageInfosEndDateTime + ")");
-
-    }
-
-    public void updateRates() {
-
-        LOGGER.debug("AzureInfrastructure updateRates triggered");
+        LOGGER.info("AzureInfrastructure updateMetersRates");
 
         try {
+            // Retrieve meterIdsSet if availables to store only needed rates
+            HashSet<String> metersIdsSet = this.azureBillingResourceUsage.updateResourceUsageOrGetMetersIds(null,
+                                                                                                            null,
+                                                                                                            false);
+
             // Retrieve new rates
-            this.azureBillingRateCard.updateVmRates(this.subscriptionId, this.azureBillingCredentials);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        } catch (AzureBillingException e) {
-            e.printStackTrace();
-            return;
+            this.azureBillingRateCard.updateOrGetMetersRates(this.azureBillingCredentials, metersIdsSet, true);
+        } catch (IOException | AzureBillingException e) {
+            LOGGER.error(e.getMessage());
+            // No need to keep getter threads alive
+            shutdownBillingGetters();
         }
-
-        // Persist results
-        this.persistedInfraVariables.put(AZURE_VM_RATES_KEY, this.azureBillingRateCard.getMeterRates());
     }
-
 }

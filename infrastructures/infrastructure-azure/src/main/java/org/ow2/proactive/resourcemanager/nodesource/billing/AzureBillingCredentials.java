@@ -36,26 +36,25 @@ public class AzureBillingCredentials {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingCredentials.class);
 
-    private static String accessToken = null;
+    private String accessToken = null;
 
-    private static ApplicationTokenCredentials applicationTokenCredentials = null;
+    private ApplicationTokenCredentials applicationTokenCredentials = null;
+
+    private static final String MANAGEMENT_AZURE_URL = "https://management.azure.com/";
 
     public AzureBillingCredentials(String clientId, String domain, String secret) throws IOException {
 
-        AzureBillingCredentials.applicationTokenCredentials = new ApplicationTokenCredentials(clientId,
-                                                                                              domain,
-                                                                                              secret,
-                                                                                              null);
-        AzureBillingCredentials.renewOrOnlyGetAccessToken(true);
+        this.applicationTokenCredentials = new ApplicationTokenCredentials(clientId, domain, secret, null);
+        renewOrOnlyGetAccessToken(true);
     }
 
-    synchronized public static String renewOrOnlyGetAccessToken(boolean renew) throws IOException {
+    public String renewOrOnlyGetAccessToken(boolean renew) throws IOException {
 
-        if (renew == true) {
-            LOGGER.debug("ApplicationTokenCredentials renewOrOnlyGetAccessToken accessToken recreated");
-            AzureBillingCredentials.accessToken = AzureBillingCredentials.applicationTokenCredentials.getToken("https://management.azure.com/");
+        if (renew) {
+            this.accessToken = this.applicationTokenCredentials.getToken(MANAGEMENT_AZURE_URL);
+            LOGGER.debug("ApplicationTokenCredentials renewOrOnlyGetAccessToken new token " + this.accessToken);
         }
-        return AzureBillingCredentials.accessToken;
+        return this.accessToken;
     }
 
 }

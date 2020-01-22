@@ -11,13 +11,8 @@ targetCompatibility = JavaVersion.VERSION_1_8
 
 dependencies {
     compile project(':infrastructures:infrastructure-common')
-    compile ("org.ow2.proactive:rm-server:${rmVersion}"){
-        exclude group: "com.fasterxml.jackson.core"
-        exclude group: "com.fasterxml.jackson.dataformat"
-        exclude group: "activeeon", module: "vfs-s3"
-    }
+    compile "org.ow2.proactive:rm-server:${rmVersion}"
     compile "org.objectweb.proactive:programming-core:${programmingVersion}"
-
     compile group: 'com.microsoft.azure', name: 'azure', version: '1.29.0'
 
     testCompile 'junit:junit:4.12'

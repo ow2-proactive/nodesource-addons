@@ -34,7 +34,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Iterator;
+import java.util.*;
 
 import org.apache.log4j.Logger;
 
@@ -48,40 +48,68 @@ public class AzureBillingResourceUsage {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingResourceUsage.class);
 
+    private static final JsonParser JSON_PARSER = new JsonParser();
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+                                                                        .withZone(ZoneOffset.UTC);
+
+    private String subscriptionId;
+
+    private LocalDateTime resourceUsageReportedStartDateTime = null;
+
     private LocalDateTime resourceUsageReportedEndDateTime = null;
 
-    private double vmUsageCost = 0;
+    private double globalCost = 0;
 
-    private String resourceUri = null;
+    private String currency;
 
-    public AzureBillingResourceUsage(String subscriptionId, String resourceGroup, String nodeSourceName) {
-        LOGGER.debug("AzureBillingResourceUsage contructor subscriptionId " + subscriptionId + " resourceGroup " +
-                     resourceGroup + " nodeSourceName " + nodeSourceName);
-        constructAndSetResourceUri(subscriptionId, resourceGroup, nodeSourceName);
+    private double budget;
+
+    private double budgetPercentage;
+
+    private String resourceUriRegex;
+
+    private HashSet<String> metersIds = null;
+
+    public AzureBillingResourceUsage(String subscriptionId, String resourceGroup, String nodeSourceName,
+            String currency, double budget) {
+
+        this.subscriptionId = subscriptionId;
+        this.currency = currency;
+        this.budget = budget;
+        this.metersIds = new HashSet<>();
+
+        // Since ResourceUtils.constructResourceId returns 'resourcegroups' against 'resourcesGroups' in the query result
+        // we replace "resourcegroups" by "resourceGroups"
+        this.resourceUriRegex = ResourceUtils.constructResourceId(subscriptionId,
+                                                                  "(?i)" + resourceGroup, // Ignore case since Azure mix upper with lower case in resourceGroupName
+                                                                  "Microsoft.Compute",
+                                                                  ".*", // Any resource type (vm, disk,..)
+                                                                  nodeSourceName + "[0-9]*(?:-[a-zA-Z0-9]+)?", // "<node source name><instance id>" followed (optional) by "-ipJHSdj82sd" for ip, disk, ...
+                                                                  "")
+                                             .replaceFirst("resourcegroups", "resourceGroups"); // bug in Azure API
+
+        LOGGER.debug("AzureBillingResourceUsage AzureBillingResourceUsage " + this.resourceUriRegex);
     }
 
-    private void constructAndSetResourceUri(String subscriptionId, String resourceGroup, String nodeSourceName) {
-
-        this.resourceUri = ResourceUtils.constructResourceId(subscriptionId,
-                                                             resourceGroup,
-                                                             "Microsoft.Compute",
-                                                             "virtualMachines",
-                                                             nodeSourceName,
-                                                             "");
-
-        LOGGER.debug("AzureBillingResourceUsage constructAndSetResourceUri " + this.resourceUri);
+    public void setResourceUsageReportedStartDateTime(LocalDateTime resourceUsageReportedStartDateTime) {
+        this.resourceUsageReportedStartDateTime = resourceUsageReportedStartDateTime;
     }
 
-    private String queryResourceUsageHistory(String subscriptionId, String reportedStartTime, String reportedEndTime,
-            String aggregationGranularity, String showDetails, String accessToken) throws IOException {
+    public void setResourceUsageReportedEndDateTime(LocalDateTime resourceUsageReportedEndDateTime) {
+        this.resourceUsageReportedEndDateTime = resourceUsageReportedEndDateTime;
+    }
+
+    private String queryResourceUsageHistory(String reportedStartTime, String reportedEndTime, String accessToken)
+            throws IOException {
 
         String endpoint = String.format("https://management.azure.com/subscriptions/%s/providers/Microsoft.Commerce/UsageAggregates?api-version=%s&reportedStartTime=%s&reportedEndTime=%s&aggregationGranularity=%s&showDetails=%s",
-                                        subscriptionId,
+                                        this.subscriptionId,
                                         "2015-06-01-preview",
                                         reportedStartTime,
                                         reportedEndTime,
-                                        aggregationGranularity,
-                                        showDetails)
+                                        "Hourly",
+                                        "true")
                                 .replaceAll(" ", "%20");
 
         HttpURLConnection conn = (HttpURLConnection) new URL(endpoint).openConnection();
@@ -105,7 +133,7 @@ public class AzureBillingResourceUsage {
         return builder.toString();
     }
 
-    String getLastResourceUsageHistory(String subscriptionId, AzureBillingCredentials azureBillingCredentials)
+    String getLastResourceUsageHistory(AzureBillingCredentials azureBillingCredentials)
             throws IOException, AzureBillingException {
 
         // Init start date time and end date time
@@ -114,147 +142,245 @@ public class AzureBillingResourceUsage {
         // To be sure to catch the first resource event, retrieve the resource usage history from yesterday
         // 2. With hourly granularity Azure only accept start and end date time with '00' set to minutes and seconds (i.e. truncated)
         // 3. Azure does not accept too recent end date time. Consequently we set end date time to now minus 1 hour.
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneOffset.UTC);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime nowTruncatedLastHour = now.truncatedTo(ChronoUnit.HOURS);
         LocalDateTime endDateTime = nowTruncatedLastHour.minusHours(1);
-        String startDateTimeStr = null;
+        LocalDateTime startDateTime;
         if (this.resourceUsageReportedEndDateTime == null) {
-            startDateTimeStr = formatter.format(nowTruncatedLastHour.minusDays(1));
+            // resourceUsageReportedStartDateTime is the start date of the period over which we estimate the resource usage cost.
+            // It is set only once.
+            this.resourceUsageReportedStartDateTime = nowTruncatedLastHour.minusDays(1);
+            startDateTime = this.resourceUsageReportedStartDateTime;
         } else { // Otherwise consider the period starting right after the previous one
-            startDateTimeStr = formatter.format(this.resourceUsageReportedEndDateTime);
+            startDateTime = this.resourceUsageReportedEndDateTime;
         }
 
-        // Get resources history by considering the max end date time
-        // If this latter is not processing yet, try again one hour before
-        // In case the end date time fall below the start date time, it will throw CannotGetResourceUsageException
+        // Find the max endDateTime with available resource usage history
         String lastResourceUsageHistory = null;
-        boolean infosNotAvailableYet = true;
-        while (infosNotAvailableYet) {
+        // while startDateTime < endDateTime
+        while (startDateTime.isBefore(endDateTime)) {
 
-            lastResourceUsageHistory = queryResourceUsageHistory(subscriptionId,
-                                                                 startDateTimeStr,
-                                                                 formatter.format(endDateTime),
-                                                                 "Hourly",
-                                                                 "true",
+            // Query the resource usage history over the current period
+            String startDateTimeStr = formatter.format(startDateTime);
+            String endDateTimeStr = formatter.format(endDateTime);
+            lastResourceUsageHistory = queryResourceUsageHistory(startDateTimeStr,
+                                                                 endDateTimeStr,
                                                                  azureBillingCredentials.renewOrOnlyGetAccessToken(false));
-
             LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory considering [" + startDateTimeStr +
-                         ";" + formatter.format(endDateTime) + "] = " + lastResourceUsageHistory);
+                         ";" + endDateTimeStr + "] = " + lastResourceUsageHistory);
 
-            JsonObject jsonObject = new JsonParser().parse(new String(lastResourceUsageHistory)).getAsJsonObject();
-            if (jsonObject.has("error")) {
+            JsonObject jsonObject = JSON_PARSER.parse(lastResourceUsageHistory).getAsJsonObject();
+
+            // HISTORY RETRIEVED !!
+            if (JSON_PARSER.parse(lastResourceUsageHistory).getAsJsonObject().has("value")) {
+                this.resourceUsageReportedEndDateTime = endDateTime;
+                LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory resource usage history is finally retrieved!");
+                return lastResourceUsageHistory;
+
+            } else if (jsonObject.has("error")) { // HISTORY NOT RETRIEVED BUT TRY AGAIN !!
 
                 String queryErrorCodeMessage = jsonObject.get("error").getAsJsonObject().get("code").getAsString();
 
-                if (queryErrorCodeMessage.equals("ProcessingNotCompleted")) {
-
-                    infosNotAvailableYet = true;
-                    endDateTime = endDateTime.minusHours(1);
-
-                    LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory ProcessingNotCompleted new endDateTime " +
-                                 endDateTime);
-
-                    continue;
-                } else if (queryErrorCodeMessage.equals("ExpiredAuthenticationToken")) {
+                if (queryErrorCodeMessage.equals("ExpiredAuthenticationToken")) {
                     LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory ExpiredAuthenticationToken");
-
                     azureBillingCredentials.renewOrOnlyGetAccessToken(true);
                     continue;
-                } else {
-                    LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory AzureBillingException " +
-                                 queryErrorCodeMessage);
-
-                    throw new AzureBillingException(queryErrorCodeMessage);
+                } else if (queryErrorCodeMessage.equals("ProcessingNotCompleted")) {
+                    endDateTime = endDateTime.minusHours(1);
+                    LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory ProcessingNotCompleted new endDateTime " +
+                                 endDateTime);
+                    continue;
                 }
-            } else {
-                infosNotAvailableYet = false;
-                continue;
             }
+
+            // HISTORY WILL NEVER BE RETRIEVED, throw an Exception to stop the periodical getter threads !!
+            LOGGER.error("AzureBillingResourceUsage getLastResourceUsageHistory AzureBillingException " +
+                         lastResourceUsageHistory);
+            throw new AzureBillingException(lastResourceUsageHistory);
         }
-
-        // Update lastEndDateTimeConsideredForCost
-        this.resourceUsageReportedEndDateTime = endDateTime;
-
-        LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory finally considering [" + startDateTimeStr +
-                     "," + formatter.format(endDateTime) + "]");
-
-        return lastResourceUsageHistory;
+        // DID NOT FIND AN ENDDATETIME TO GET THE HISTORY.. WILL TRY AT THE NEW PERIODICAL CALL !
+        LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory cannot find an history for this period since " +
+                     formatter.format(startDateTime) + " >= " + formatter.format(endDateTime));
+        return null;
     }
 
-    public void updateVmUsageInfos(String subscriptionId, AzureBillingCredentials azureBillingCredentials,
-            AzureBillingRateCard azureBillingRateCard) throws IOException, AzureBillingException {
+    private double computeCostInThatHour(double resourceQuantityInThatHour, LinkedHashMap<String, Double> meterRates) {
 
-        // Get the last resources usage history
-        String resourceUsageHistory = getLastResourceUsageHistory(subscriptionId, azureBillingCredentials);
+        LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour resourceQuantityInThatHour " +
+                     resourceQuantityInThatHour + " meterRates " + meterRates);
 
-        // Parse resourceUsageHistory to find the desired resource usage
-        Iterator<JsonElement> resourceUsageIterator = new JsonParser().parse(new String(resourceUsageHistory))
-                                                                      .getAsJsonObject()
-                                                                      .get("value")
-                                                                      .getAsJsonArray()
-                                                                      .iterator();
+        if (meterRates == null || meterRates.isEmpty()) {
+            return 0;
+        }
 
-        while (resourceUsageIterator.hasNext()) {
-            JsonElement resourceUsage = resourceUsageIterator.next();
-            JsonObject resourceProperties = resourceUsage.getAsJsonObject().get("properties").getAsJsonObject();
+        double costInThatHour = 0;
+        double quantityToPriceInThisStep;
+        double lowerStepQuantity = -1;
+        double lowerStepRate = -1;
+        double upperStepQuantity;
+        double upperStepRate;
 
-            // Only consider "Virtual Machines" type (do not consider IP, Disk,..)
-            if (!resourceProperties.get("meterCategory").getAsString().equalsIgnoreCase("Virtual Machines"))
-                continue;
+        for (Map.Entry<String, Double> meterRatesEntry : meterRates.entrySet()) {
+            upperStepQuantity = Double.parseDouble(meterRatesEntry.getKey());
+            upperStepRate = meterRatesEntry.getValue();
 
-            // We need to replace '\"' in "instanceData" property to avoid exception
-            String resourceInstanceData = resourceProperties.get("instanceData").getAsString().replaceAll("\\\\", "");
+            LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour step rate:[" + lowerStepRate + "," +
+                         upperStepRate + "]  step quantity:[" + lowerStepQuantity + "," + upperStepQuantity + "]");
 
-            String currentResourceUri = new JsonParser().parse(new String(resourceInstanceData))
-                                                        .getAsJsonObject()
-                                                        .get("Microsoft.Resources")
-                                                        .getAsJsonObject()
-                                                        .get("resourceUri")
-                                                        .getAsString();
+            // In [lowerStepQuantity, upperStepQuantity], it costs lowerStepRate
+            if (lowerStepQuantity != -1) {
 
-            LOGGER.debug("AzureBillingResourceUsage updateVmUsageInfos (in while)\ncurrentResourceUri:" +
-                         currentResourceUri + "\nthis.resourceUri " + this.resourceUri + "\nequals? " +
-                         currentResourceUri.equalsIgnoreCase(resourceUri));
-
-            // We ignore case since ResourceUtils.constructResourceId returns 'resourcegroups' (against 'resourcesGroups' in the query result)
-            // Here, we have a resource usage per hour (i.e.  (startDateTime) 8:00-9:00, 9:00-10:00, 10:00-11:00 (endDateTime))
-            if (currentResourceUri.equalsIgnoreCase(resourceUri)) {
-                double resourceQuantityInThatHour = resourceProperties.get("quantity").getAsDouble();
-                String meterId = resourceProperties.get("meterId").getAsString();
-                double meterRate = azureBillingRateCard.getMeterRate(meterId);
-                this.vmUsageCost += resourceQuantityInThatHour * meterRate;
-
-                LOGGER.debug("AzureBillingResourceUsage updateVmUsageInfos (in while) stored " +
-                             resourceQuantityInThatHour + " x " + meterRate + " = " +
-                             (resourceQuantityInThatHour * meterRate) + " (now this.vmUsageCost=" + this.vmUsageCost +
-                             ") for [" + resourceProperties.get("usageStartTime").getAsString() + ";" +
-                             resourceProperties.get("usageEndTime").getAsString() + "]");
+                // Which quantity to consider in this interval?
+                if (resourceQuantityInThatHour >= upperStepQuantity) {
+                    quantityToPriceInThisStep = upperStepQuantity - lowerStepQuantity;
+                } else if (resourceQuantityInThatHour > lowerStepQuantity) {
+                    quantityToPriceInThisStep = resourceQuantityInThatHour - lowerStepQuantity;
+                } else {
+                    break;
+                }
+                // Price it and add it to the global cost
+                costInThatHour += quantityToPriceInThisStep * lowerStepRate;
+                LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour added to costInThatHour: " +
+                             quantityToPriceInThisStep + " x " + lowerStepRate + " [new costInThatHour = " +
+                             costInThatHour + "]");
             }
+
+            // Update lowerStepQuantity & lowerStepRate
+            lowerStepQuantity = upperStepQuantity;
+            lowerStepRate = upperStepRate;
+        }
+
+        // The last quantity (without upperStepQuantity)
+        if (resourceQuantityInThatHour > lowerStepQuantity) {
+            quantityToPriceInThisStep = resourceQuantityInThatHour - lowerStepQuantity;
+            costInThatHour += quantityToPriceInThisStep * lowerStepRate;
+
+            LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour last added to costInThatHour: " +
+                         quantityToPriceInThisStep + " x " + lowerStepRate + " [new costInThatHour = " +
+                         costInThatHour + "]");
+        }
+
+        return costInThatHour;
+    }
+
+    // synchronized to ensure we dont try to use meter ids to get the meter rates while we are updating them
+    synchronized public HashSet<String> updateResourceUsageOrGetMetersIds(
+            AzureBillingCredentials azureBillingCredentials, HashMap<String, LinkedHashMap<String, Double>> metersRates,
+            boolean update) throws IOException, AzureBillingException {
+
+        if (update) {
+
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (update)");
+
+            // Get the last resources usage history
+            String resourceUsageHistory = getLastResourceUsageHistory(azureBillingCredentials);
+
+            // No available resource usage history
+            if (resourceUsageHistory == null)
+                return null;
+
+            // Parse resourceUsageHistory to find the desired resource usage
+            Iterator<JsonElement> resourceUsageIterator = JSON_PARSER.parse(resourceUsageHistory)
+                                                                     .getAsJsonObject()
+                                                                     .get("value")
+                                                                     .getAsJsonArray()
+                                                                     .iterator();
+
+            while (resourceUsageIterator.hasNext()) {
+                JsonElement resourceUsage = resourceUsageIterator.next();
+
+                JsonObject resourceProperties = resourceUsage.getAsJsonObject().get("properties").getAsJsonObject();
+
+                // We need to replace '\"' in "instanceData" property to avoid exception
+                String resourceInstanceData = resourceProperties.get("instanceData").getAsString().replaceAll("\\\\",
+                                                                                                              "");
+
+                String currentResourceUri = JSON_PARSER.parse(resourceInstanceData)
+                                                       .getAsJsonObject()
+                                                       .get("Microsoft.Resources")
+                                                       .getAsJsonObject()
+                                                       .get("resourceUri")
+                                                       .getAsString();
+
+                LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) " +
+                             currentResourceUri + " matches " + this.resourceUriRegex + " ? " +
+                             currentResourceUri.matches(this.resourceUriRegex));
+
+                // Here, we have a resource usage per hour (i.e.  (startDateTime) [8:00,9:00], [9:00,10:00], [10:00,11:00] (endDateTime))
+                // In case of multiple VM deployed, VM names = <node source name><number>
+                if (currentResourceUri.matches(this.resourceUriRegex)) {
+
+                    LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) considering resource " +
+                                 resourceProperties);
+
+                    double resourceQuantityInThatHour = resourceProperties.get("quantity").getAsDouble();
+                    String meterId = resourceProperties.get("meterId").getAsString();
+
+                    // Store meterId to make AzureBillingRateCard store meter rates with ids in meterIdsSet
+                    this.metersIds.add(meterId);
+
+                    // Get the meter rates of meterId
+                    LinkedHashMap<String, Double> meterRates = metersRates.get(meterId);
+
+                    if (meterRates == null) {
+                        // It should never happens but in that case do not consider this resource consumption in that period for the global cost
+                        LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) cannot retrieve meter rate for " +
+                                     meterId + ". The global usage cost will not include the resource " +
+                                     currentResourceUri + " at this period.");
+                        continue;
+                    } else {
+                        LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) retrieved meter rate for meterId " +
+                                     meterId + " meterRates " + meterRates);
+                    }
+
+                    double costInThatHour = computeCostInThatHour(resourceQuantityInThatHour, meterRates);
+                    this.globalCost += costInThatHour;
+                    this.budgetPercentage = this.globalCost * 100 / this.budget;
+
+                    LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) (in while) currentResourceUri " +
+                                 currentResourceUri + " costInThatHour " + costInThatHour + " (now this.globalCost=" +
+                                 this.globalCost + ") for [" + resourceProperties.get("usageStartTime").getAsString() +
+                                 ";" + resourceProperties.get("usageEndTime").getAsString() + "]");
+
+                } // if (currentResourceUri.matches(this.resourceUriRegex))
+            } // while (resourceUsageIterator.hasNext())
+
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (update) before return");
+            return new HashSet<>();
+
+        } else {
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (get)");
+            HashSet<String> metersIdsCopy = new HashSet<>(this.metersIds);
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (get) before return");
+            return metersIdsCopy;
         }
     }
 
-    public void updateAndgetVmUsageCostInfos(String subscriptionId, AzureBillingCredentials azureBillingCredentials,
-            AzureBillingRateCard azureBillingRateCard) throws IOException, AzureBillingException {
-
-        // Update vm usage infos
-        updateVmUsageInfos(subscriptionId, azureBillingCredentials, azureBillingRateCard);
+    public LocalDateTime getResourceUsageReportedStartDateTime() {
+        return this.resourceUsageReportedStartDateTime;
     }
 
     public LocalDateTime getResourceUsageReportedEndDateTime() {
         return this.resourceUsageReportedEndDateTime;
     }
 
-    public void setResourceUsageReportedEndDateTime(LocalDateTime resourceUsageReportedEndDateTime) {
-        this.resourceUsageReportedEndDateTime = resourceUsageReportedEndDateTime;
+    public double getGlobalCost() {
+        return this.globalCost;
     }
 
-    public double getVmUsageCost() {
-        return this.vmUsageCost;
+    public double getBudgetPercentage() {
+        return this.budgetPercentage;
     }
 
-    public void setVmUsageCost(double vmUsageCost) {
-        this.vmUsageCost = vmUsageCost;
+    public void setGlobalCost(double globalCost) {
+        this.globalCost = globalCost;
     }
 
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    public void setBudgetPercentage(double budgetPercentage) {
+        this.budgetPercentage = budgetPercentage;
+    }
 }
