@@ -42,6 +42,8 @@ public class AzureBillingRateCardTest {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingRateCardTest.class);
 
+    private static final GsonBuilder gsonBuilder = new GsonBuilder();
+
     private String subscriptionId = null;
 
     private AzureBillingRateCard azureBillingRateCard = null;
@@ -68,7 +70,7 @@ public class AzureBillingRateCardTest {
 
             Assert.assertTrue("Succeeded in retrieving the rate card", rateCardReceived);
 
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Gson gson = gsonBuilder.setPrettyPrinting().create();
             com.google.gson.JsonParser jp = new JsonParser();
             JsonElement je = jp.parse(rateCardJson);
             String prettyJsonString = gson.toJson(je);

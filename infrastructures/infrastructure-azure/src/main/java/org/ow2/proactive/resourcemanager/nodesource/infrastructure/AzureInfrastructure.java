@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
-import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingCredentials;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingException;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingRateCard;
@@ -74,6 +73,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     private static final String AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY = "azureResourceUsageInfosEndDateTime";
 
     private static final String AZURE_VM_RATES_KEY = "AzureVmRates";
+
+    private static final String ACTUAL_GLOBAL_COST = "actual_global_cost";
 
     // Indexes of parameters
     private final static int PARAMETERS_NUMBER = 26;
@@ -365,13 +366,14 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         }
 
         // Start a new thread to periodically retrieve resource usage
+        // Start it after periodicallyRateCardGetter (cf initial delay param) since rates are required
+        // to compute the global cost
         this.periodicallyResourceUsageGetter.scheduleAtFixedRate(this::getAndStoreVmUsageCostInfos,
                                                                  this.resourceUsageGetterDelayInMin,
                                                                  this.resourceUsageGetterDelayInMin,
                                                                  TimeUnit.MINUTES);
 
         // Start a new thread to periodically call getAndStoreRate
-        // initialDelay set to 0 to start before periodicallyResourceUsageGetter
         periodicallyRateCardGetter.scheduleAtFixedRate(this::updateRates,
                                                        0,
                                                        this.rateCardGetterDelayInMin,
@@ -600,12 +602,18 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     public void shutDown() {
         super.shutDown();
 
+        // Shutdown threads
         if (this.periodicallyResourceUsageGetter != null) {
             this.periodicallyResourceUsageGetter.shutdownNow();
         }
         if (this.periodicallyRateCardGetter != null) {
             this.periodicallyRateCardGetter.shutdownNow();
         }
+
+        // Remove persisted data
+        this.persistedInfraVariables.remove(AZURE_VM_RATES_KEY);
+        this.persistedInfraVariables.remove(AZURE_VM_USAGE_COST_KEY);
+        this.persistedInfraVariables.remove(AZURE_RESOURCE_USAGE_INFOS_END_DATE_TIME_KEY);
     }
 
     public void getAndStoreVmUsageCostInfos() {
@@ -636,10 +644,9 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         this.persistedInfraVariables.put(AZURE_VM_USAGE_COST_KEY, vmUsageCost);
 
         // Update the node source infos
-        super.putAdditionalInfo(NodeSource.AdditionalInformation.ACTUAL_COST,
+        super.putAdditionalInfo(ACTUAL_GLOBAL_COST,
                                 "Total VM cost:" + vmUsageCost + " USD (reported end time: " +
-                                                                              resourceUsageInfosEndDateTime + ")");
-
+                                                    resourceUsageInfosEndDateTime + ")");
     }
 
     public void updateRates() {

@@ -42,6 +42,8 @@ public class AzureBillingResourceUsageTest {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingResourceUsage.class);
 
+    private static final GsonBuilder gsonBuilder = new GsonBuilder();
+
     private String subscriptionId = null;
 
     private AzureBillingResourceUsage azureBillingResourceUsage = null;
@@ -73,7 +75,7 @@ public class AzureBillingResourceUsageTest {
 
             Assert.assertTrue("Succeeded in retrieving the resource usage history", resourceUsageHistoryReceived);
 
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Gson gson = gsonBuilder.setPrettyPrinting().create();
             com.google.gson.JsonParser jp = new JsonParser();
             JsonElement je = jp.parse(resourceUsageHistoryJson);
             String prettyJsonString = gson.toJson(je);
