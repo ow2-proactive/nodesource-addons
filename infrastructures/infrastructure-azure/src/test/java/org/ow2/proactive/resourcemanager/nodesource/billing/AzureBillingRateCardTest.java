@@ -44,7 +44,15 @@ public class AzureBillingRateCardTest {
 
     private static final GsonBuilder gsonBuilder = new GsonBuilder();
 
-    private String subscriptionId = null;
+    private final String subscriptionId = "cdd4aa9d-1927-42f2-aea3-3b52122c1b5f";
+
+    private final String offerId = "MS-AZR-0003p";
+
+    private final String currency = "USD";
+
+    private final String locale = "en-US";
+
+    private final String regionInfo = "US";
 
     private AzureBillingRateCard azureBillingRateCard = null;
 
@@ -52,8 +60,11 @@ public class AzureBillingRateCardTest {
 
     @Before
     public void init() throws IOException {
-        this.subscriptionId = "cdd4aa9d-1927-42f2-aea3-3b52122c1b5f";
-        this.azureBillingRateCard = new AzureBillingRateCard();
+        this.azureBillingRateCard = new AzureBillingRateCard(this.subscriptionId,
+                                                             this.offerId,
+                                                             this.currency,
+                                                             this.locale,
+                                                             this.regionInfo);
         this.azureBillingCredentials = new AzureBillingCredentials("4665a602-72aa-4f8b-b7c6-279b2cb88ba7",
                                                                    "d8f5e423-7970-412c-a1ae-f76e405ba980",
                                                                    "4cfebd9c-cad1-4285-8b66-e4736311004d");
@@ -63,8 +74,7 @@ public class AzureBillingRateCardTest {
     public void testGetRateCard() throws Exception {
         try {
 
-            String rateCardJson = this.azureBillingRateCard.getRateCard(this.subscriptionId,
-                                                                        this.azureBillingCredentials);
+            String rateCardJson = this.azureBillingRateCard.getRateCard(this.azureBillingCredentials);
 
             boolean rateCardReceived = new JsonParser().parse(rateCardJson).getAsJsonObject().has("Meters");
 

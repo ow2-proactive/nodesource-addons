@@ -66,8 +66,7 @@ public class AzureBillingResourceUsageTest {
     public void testGetLastResourceUsageHistory() throws AzureBillingException {
         try {
 
-            String resourceUsageHistoryJson = this.azureBillingResourceUsage.getLastResourceUsageHistory(this.subscriptionId,
-                                                                                                         this.azureBillingCredentials);
+            String resourceUsageHistoryJson = this.azureBillingResourceUsage.getLastResourceUsageHistory(this.azureBillingCredentials);
 
             boolean resourceUsageHistoryReceived = new JsonParser().parse(resourceUsageHistoryJson)
                                                                    .getAsJsonObject()

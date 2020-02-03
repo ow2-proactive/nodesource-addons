@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -45,22 +44,38 @@ public class AzureBillingRateCard {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingRateCard.class);
 
-    private HashMap<String, Double> meterRates = null;
+    private String subscriptionId;
 
-    public AzureBillingRateCard() {
+    private String offerId;
+
+    private String currency;
+
+    private String locale;
+
+    private String regionInfo;
+
+    private HashMap<String, Double> meterRates;
+
+    public AzureBillingRateCard(String subscriptionId, String offerId, String currency, String locale,
+            String regionInfo) {
         LOGGER.debug("AzureBillingRateCard constructor");
-        this.meterRates = new HashMap<String, Double>();
+        this.subscriptionId = subscriptionId;
+        this.offerId = offerId;
+        this.currency = currency;
+        this.locale = locale;
+        this.regionInfo = regionInfo;
+        this.meterRates = new HashMap<>();
     }
 
-    private String queryRateCard(String subscriptionId, String accessToken) throws IOException {
+    private String queryRateCard(String accessToken) throws IOException {
 
         String endpoint = String.format("https://management.azure.com/subscriptions/%s/providers/Microsoft.Commerce/RateCard?api-version=%s&$filter=OfferDurableId eq '%s' and Currency eq '%s' and Locale eq '%s' and RegionInfo eq '%s'",
-                                        subscriptionId,
+                                        this.subscriptionId,
                                         "2016-08-31-preview",
-                                        "MS-AZR-0003p",
-                                        "USD",
-                                        "en-US",
-                                        "US")
+                                        this.offerId,
+                                        this.currency,
+                                        this.locale,
+                                        this.regionInfo)
                                 .replaceAll(" ", "%20");
 
         HttpURLConnection conn = (HttpURLConnection) new URL(endpoint).openConnection();
@@ -84,11 +99,10 @@ public class AzureBillingRateCard {
         return builder.toString();
     }
 
-    String getRateCard(String subscriptionId, AzureBillingCredentials azureBillingCredentials)
-            throws IOException, AzureBillingException {
+    String getRateCard(AzureBillingCredentials azureBillingCredentials) throws IOException, AzureBillingException {
 
         // Get a new rate card
-        String rateCard = queryRateCard(subscriptionId, azureBillingCredentials.renewOrOnlyGetAccessToken(false));
+        String rateCard = queryRateCard(azureBillingCredentials.renewOrOnlyGetAccessToken(false));
 
         // Renew the access token if required
         JsonObject jsonObject = new JsonParser().parse(new String(rateCard)).getAsJsonObject();
@@ -102,12 +116,10 @@ public class AzureBillingRateCard {
 
             if (queryErrorCodeMessage.equals("ExpiredAuthenticationToken")) {
                 LOGGER.debug("AzureBillingRateCard getRateCard ExpiredAuthenticationToken");
-
                 azureBillingCredentials.renewOrOnlyGetAccessToken(true);
-                getRateCard(subscriptionId, azureBillingCredentials);
+                getRateCard(azureBillingCredentials);
             } else {
                 LOGGER.debug("AzureBillingRateCard getRateCard AzureBillingException " + queryErrorCodeMessage);
-
                 throw new AzureBillingException(queryErrorCodeMessage);
             }
         }
@@ -116,13 +128,13 @@ public class AzureBillingRateCard {
         return rateCard;
     }
 
-    public void updateVmRates(String subscriptionId, AzureBillingCredentials azureBillingCredentials)
+    public void updateVmRates(AzureBillingCredentials azureBillingCredentials)
             throws IOException, AzureBillingException {
 
         LOGGER.debug("AzureBillingRateCard updateVmRates");
 
         // Get a new rate card
-        String rateCardJson = getRateCard(subscriptionId, azureBillingCredentials);
+        String rateCardJson = getRateCard(azureBillingCredentials);
 
         // Parse the json rate card
         Iterator<JsonElement> rateIterator = new JsonParser().parse(rateCardJson)
@@ -151,14 +163,6 @@ public class AzureBillingRateCard {
                 this.meterRates.put(meterId, meterRate);
             }
         }
-    }
-
-    public void setMeterRates(HashMap<String, Double> meterRates) {
-        this.meterRates = new HashMap<>(meterRates);
-    }
-
-    public HashMap<String, Double> getMeterRates() {
-        return this.meterRates;
     }
 
     public double getMeterRate(String meterId) {
