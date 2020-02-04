@@ -384,7 +384,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                          this.domain + " " + this.secret);
             this.azureBillingCredentials = new AzureBillingCredentials(this.clientId, this.domain, this.secret);
         } catch (IOException e) {
-            LOGGER.error("AzureInfrastructure initBilling " + e.getMessage());
+            LOGGER.error("AzureInfrastructure initBilling " + e.getMessage() + "? Will not start getter threads.");
             return;
         }
         LOGGER.debug("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
@@ -455,11 +455,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         });
     }
 
-    @Override
-    public void shutDown() {
-        LOGGER.info("Shutting down");
-        super.shutDown();
-
+    synchronized private void shutdownBillingGetters() {
+        LOGGER.info("AzureInfrastructure shutdownBillingGetters");
         // Shutdown threads
         if (this.periodicallyResourceUsageGetter != null) {
             this.periodicallyResourceUsageGetter.shutdownNow();
@@ -467,6 +464,13 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         if (this.periodicallyRateCardGetter != null) {
             this.periodicallyRateCardGetter.shutdownNow();
         }
+    }
+
+    @Override
+    public void shutDown() {
+        LOGGER.info("Shutting down");
+        super.shutDown();
+        shutdownBillingGetters();
     }
 
     @Override
@@ -687,27 +691,28 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     public void getAndStoreVmUsageCostInfos() {
 
-        LOGGER.debug("AzureInfrastructure getAndStoreVmUsageCostInfos");
+        LOGGER.info("AzureInfrastructure getAndStoreVmUsageCostInfos");
 
         try {
             // Retrieve new vm usage cost infos
-            this.azureBillingResourceUsage.updateAndgetVmUsageCostInfos(this.azureBillingCredentials,
-                                                                        this.azureBillingRateCard);
-        } catch (IOException e) {
+            boolean isUpdated = this.azureBillingResourceUsage.updateVmUsageInfos(this.azureBillingCredentials,
+                                                                                  this.azureBillingRateCard);
+            if (!isUpdated) {
+                LOGGER.info("AzureInfrastructure getAndStoreVmUsageCostInfos no new vm usage infos");
+                return;
+            }
+        } catch (IOException | AzureBillingException e) {
             LOGGER.error(e.getMessage());
-            return;
-        } catch (AzureBillingException e) {
-            LOGGER.error(e.getMessage());
-            return;
+            shutdownBillingGetters();
         }
 
         LocalDateTime resourceUsageReportedStartDateTime = this.azureBillingResourceUsage.getResourceUsageReportedStartDateTime();
         LocalDateTime resourceUsageReportedEndDateTime = this.azureBillingResourceUsage.getResourceUsageReportedEndDateTime();
         double vmUsageCost = this.azureBillingResourceUsage.getVmGlobalCost();
 
-        LOGGER.debug("AzureInfrastructure getAndStoreVmUsageCostInfos resourceUsageReportedStartDateTime " +
-                     resourceUsageReportedStartDateTime + " resourceUsageReportedEndDateTime " +
-                     resourceUsageReportedEndDateTime + " vmUsageCost " + vmUsageCost);
+        LOGGER.info("AzureInfrastructure getAndStoreVmUsageCostInfos resourceUsageReportedStartDateTime " +
+                    resourceUsageReportedStartDateTime + " resourceUsageReportedEndDateTime " +
+                    resourceUsageReportedEndDateTime + " vmUsageCost " + vmUsageCost);
 
         // Make the usage cost available as an additional information
         this.nodeSource.putAndPersistAdditionalInformation(AZURE_BILLING_RESOURCE_USAGE_REPORTED_START_DATE_TIME_KEY,
@@ -723,17 +728,15 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     public void updateRates() {
 
-        LOGGER.debug("AzureInfrastructure updateRates");
+        LOGGER.info("AzureInfrastructure updateRates");
 
         try {
             // Retrieve new rates
             this.azureBillingRateCard.updateVmRates(this.azureBillingCredentials);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        } catch (AzureBillingException e) {
-            e.printStackTrace();
-            return;
+        } catch (IOException | AzureBillingException e) {
+            LOGGER.error(e.getMessage());
+            // No need to keep getter threads alive
+            shutdownBillingGetters();
         }
     }
 }

@@ -42,7 +42,9 @@ public class AzureBillingResourceUsageTest {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingResourceUsage.class);
 
-    private static final GsonBuilder gsonBuilder = new GsonBuilder();
+    private static final JsonParser JSON_PARSER = new JsonParser();
+
+    private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
 
     private String subscriptionId = null;
 
@@ -53,9 +55,7 @@ public class AzureBillingResourceUsageTest {
     @Before
     public void init() throws IOException {
         this.subscriptionId = "cdd4aa9d-1927-42f2-aea3-3b52122c1b5f";
-        this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
-                                                                       "ACTIVEEON-DEV",
-                                                                       "azurestatic");
+        this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId, "", "");
         this.azureBillingCredentials = new AzureBillingCredentials("4665a602-72aa-4f8b-b7c6-279b2cb88ba7",
                                                                    "d8f5e423-7970-412c-a1ae-f76e405ba980",
                                                                    "4cfebd9c-cad1-4285-8b66-e4736311004d");
@@ -68,15 +68,14 @@ public class AzureBillingResourceUsageTest {
 
             String resourceUsageHistoryJson = this.azureBillingResourceUsage.getLastResourceUsageHistory(this.azureBillingCredentials);
 
-            boolean resourceUsageHistoryReceived = new JsonParser().parse(resourceUsageHistoryJson)
-                                                                   .getAsJsonObject()
-                                                                   .has("value");
+            boolean resourceUsageHistoryReceived = JSON_PARSER.parse(resourceUsageHistoryJson)
+                                                              .getAsJsonObject()
+                                                              .has("value");
 
             Assert.assertTrue("Succeeded in retrieving the resource usage history", resourceUsageHistoryReceived);
 
-            Gson gson = gsonBuilder.setPrettyPrinting().create();
-            com.google.gson.JsonParser jp = new JsonParser();
-            JsonElement je = jp.parse(resourceUsageHistoryJson);
+            Gson gson = GSON_BUILDER.setPrettyPrinting().create();
+            JsonElement je = JSON_PARSER.parse(resourceUsageHistoryJson);
             String prettyJsonString = gson.toJson(je);
             LOGGER.debug(prettyJsonString);
 

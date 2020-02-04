@@ -42,7 +42,9 @@ public class AzureBillingRateCardTest {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingRateCardTest.class);
 
-    private static final GsonBuilder gsonBuilder = new GsonBuilder();
+    private static final JsonParser JSON_PARSER = new JsonParser();
+
+    private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
 
     private final String subscriptionId = "cdd4aa9d-1927-42f2-aea3-3b52122c1b5f";
 
@@ -76,15 +78,13 @@ public class AzureBillingRateCardTest {
 
             String rateCardJson = this.azureBillingRateCard.getRateCard(this.azureBillingCredentials);
 
-            boolean rateCardReceived = new JsonParser().parse(rateCardJson).getAsJsonObject().has("Meters");
-
-            Assert.assertTrue("Succeeded in retrieving the rate card", rateCardReceived);
-
-            Gson gson = gsonBuilder.setPrettyPrinting().create();
-            com.google.gson.JsonParser jp = new JsonParser();
-            JsonElement je = jp.parse(rateCardJson);
+            Gson gson = GSON_BUILDER.setPrettyPrinting().create();
+            JsonElement je = JSON_PARSER.parse(rateCardJson);
             String prettyJsonString = gson.toJson(je);
             LOGGER.debug(prettyJsonString);
+
+            boolean rateCardReceived = JSON_PARSER.parse(rateCardJson).getAsJsonObject().has("Meters");
+            Assert.assertTrue("Succeeded in retrieving the rate card", rateCardReceived);
 
         } catch (IOException e) {
             Assert.assertTrue("Failed to get the rate card", false);

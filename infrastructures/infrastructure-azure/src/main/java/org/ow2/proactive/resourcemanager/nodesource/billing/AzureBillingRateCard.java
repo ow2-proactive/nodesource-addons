@@ -44,6 +44,8 @@ public class AzureBillingRateCard {
 
     private static final Logger LOGGER = Logger.getLogger(AzureBillingRateCard.class);
 
+    private static final JsonParser JSON_PARSER = new JsonParser();
+
     private String subscriptionId;
 
     private String offerId;
@@ -102,30 +104,26 @@ public class AzureBillingRateCard {
     String getRateCard(AzureBillingCredentials azureBillingCredentials) throws IOException, AzureBillingException {
 
         // Get a new rate card
-        String rateCard = queryRateCard(azureBillingCredentials.renewOrOnlyGetAccessToken(false));
+        String queryResult = queryRateCard(azureBillingCredentials.renewOrOnlyGetAccessToken(false));
 
-        // Renew the access token if required
-        JsonObject jsonObject = new JsonParser().parse(new String(rateCard)).getAsJsonObject();
-        if (jsonObject.has("error")) {
-            String queryErrorCodeMessage = new JsonParser().parse(new String(rateCard))
-                                                           .getAsJsonObject()
-                                                           .get("error")
-                                                           .getAsJsonObject()
-                                                           .get("code")
-                                                           .getAsString();
-
-            if (queryErrorCodeMessage.equals("ExpiredAuthenticationToken")) {
-                LOGGER.debug("AzureBillingRateCard getRateCard ExpiredAuthenticationToken");
-                azureBillingCredentials.renewOrOnlyGetAccessToken(true);
-                getRateCard(azureBillingCredentials);
-            } else {
-                LOGGER.debug("AzureBillingRateCard getRateCard AzureBillingException " + queryErrorCodeMessage);
-                throw new AzureBillingException(queryErrorCodeMessage);
-            }
+        JsonObject jsonObject = JSON_PARSER.parse(queryResult).getAsJsonObject();
+        if (jsonObject.has("Meters")) {
+            LOGGER.debug("AzureBillingRateCard getRateCard rateCard is retrieved");
+            return queryResult;
+        } else if (jsonObject.has("error") &&
+                   jsonObject.get("error")
+                             .getAsJsonObject()
+                             .get("code")
+                             .getAsString()
+                             .equals("ExpiredAuthenticationToken")) {
+            LOGGER.debug("AzureBillingRateCard getRateCard ExpiredAuthenticationToken");
+            azureBillingCredentials.renewOrOnlyGetAccessToken(true);
+            getRateCard(azureBillingCredentials);
+        } else {
+            LOGGER.error("AzureBillingRateCard getRateCard AzureBillingException " + queryResult);
+            throw new AzureBillingException(queryResult);
         }
-        LOGGER.debug("AzureBillingRateCard getRateCard rateCard is retrieved");
-
-        return rateCard;
+        return null;
     }
 
     public void updateVmRates(AzureBillingCredentials azureBillingCredentials)
@@ -137,11 +135,11 @@ public class AzureBillingRateCard {
         String rateCardJson = getRateCard(azureBillingCredentials);
 
         // Parse the json rate card
-        Iterator<JsonElement> rateIterator = new JsonParser().parse(rateCardJson)
-                                                             .getAsJsonObject()
-                                                             .get("Meters")
-                                                             .getAsJsonArray()
-                                                             .iterator();
+        Iterator<JsonElement> rateIterator = JSON_PARSER.parse(rateCardJson)
+                                                        .getAsJsonObject()
+                                                        .get("Meters")
+                                                        .getAsJsonArray()
+                                                        .iterator();
 
         // Update the vm meter rates map
         while (rateIterator.hasNext()) {
