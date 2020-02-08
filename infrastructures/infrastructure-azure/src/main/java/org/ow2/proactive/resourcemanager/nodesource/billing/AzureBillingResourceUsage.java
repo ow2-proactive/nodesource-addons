@@ -61,11 +61,15 @@ public class AzureBillingResourceUsage {
 
     private double vmGlobalCost = 0;
 
+    private String currency;
+
     private String resourceUri;
 
-    public AzureBillingResourceUsage(String subscriptionId, String resourceGroup, String nodeSourceName) {
+    public AzureBillingResourceUsage(String subscriptionId, String resourceGroup, String nodeSourceName,
+            String currency) {
 
         this.subscriptionId = subscriptionId;
+        this.currency = currency;
 
         // Since ResourceUtils.constructResourceId returns 'resourcegroups' against 'resourcesGroups' in the query result
         // we replace "resourcegroups" by "resourceGroups"
@@ -269,5 +273,9 @@ public class AzureBillingResourceUsage {
 
     public void setVmGlobalCost(double vmGlobalCost) {
         this.vmGlobalCost = vmGlobalCost;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 }

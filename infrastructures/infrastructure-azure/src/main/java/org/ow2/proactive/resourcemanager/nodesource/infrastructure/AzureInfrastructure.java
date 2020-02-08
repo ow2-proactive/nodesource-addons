@@ -26,6 +26,7 @@
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManagerProperties.RM_CLOUD_INFRASTRUCTURES_DESTROY_INSTANCES_ON_SHUTDOWN;
+import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_CURRENCY;
 import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_RESOURCE_USAGE_REPORTED_END_DATE_TIME_KEY;
 import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_RESOURCE_USAGE_REPORTED_START_DATE_TIME_KEY;
 import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_VM_GLOBAL_COST;
@@ -358,18 +359,19 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    private void restoreBillingInformationFromDB() {
+    private void restoreBillingInformation() {
 
-        this.nodeSource.recoverAdditionalInformation();
         HashMap<String, String> additionalInformation = this.nodeSource.getAdditionalInformation();
 
-        LOGGER.info("AzureInfrastructure restoreBillingInformationFromDB additionalInformation " +
+        LOGGER.info("AzureInfrastructure restoreBillingInformation additionalInformation " +
                     Arrays.asList(additionalInformation));
-        if (additionalInformation == null) {
+        if (additionalInformation == null || additionalInformation.isEmpty()) {
+            this.nodeSource.putAndPersistAdditionalInformation(AZURE_BILLING_CURRENCY, this.billingCurrency);
             return;
         }
         if (additionalInformation.get(AZURE_BILLING_VM_GLOBAL_COST) != null) {
             this.azureBillingResourceUsage.setVmGlobalCost(Double.parseDouble(additionalInformation.get(AZURE_BILLING_VM_GLOBAL_COST)));
+            this.azureBillingResourceUsage.setCurrency(additionalInformation.get(AZURE_BILLING_CURRENCY));
             this.azureBillingResourceUsage.setResourceUsageReportedStartDateTime(LocalDateTime.parse(additionalInformation.get(AZURE_BILLING_RESOURCE_USAGE_REPORTED_START_DATE_TIME_KEY),
                                                                                                      formatter));
             this.azureBillingResourceUsage.setResourceUsageReportedEndDateTime(LocalDateTime.parse(additionalInformation.get(AZURE_BILLING_RESOURCE_USAGE_REPORTED_END_DATE_TIME_KEY),
@@ -380,22 +382,23 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     private void initBilling() {
         // Azure billing instances
         try {
-            LOGGER.debug("AzureInfrastructure initBilling new AzureBillingCredentials " + this.clientId + " " +
-                         this.domain + " " + this.secret);
+            LOGGER.info("AzureInfrastructure initBilling new AzureBillingCredentials " + this.clientId + " " +
+                        this.domain + " " + this.secret);
             this.azureBillingCredentials = new AzureBillingCredentials(this.clientId, this.domain, this.secret);
         } catch (IOException e) {
             LOGGER.error("AzureInfrastructure initBilling " + e.getMessage() + "? Will not start getter threads.");
             return;
         }
-        LOGGER.debug("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
-                     this.resourceGroup + " " + this.nodeSource.getName());
+        LOGGER.info("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
+                    this.resourceGroup + " " + this.nodeSource.getName());
         this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
                                                                        this.resourceGroup,
-                                                                       this.nodeSource.getName());
+                                                                       this.nodeSource.getName(),
+                                                                       this.billingCurrency);
 
-        LOGGER.debug("AzureInfrastructure initBilling new AzureBillingRateCard " + this.subscriptionId + " " +
-                     this.billingOfferId + " " + this.billingCurrency + " " + this.billingLocale + " " +
-                     this.billingRegionInfo);
+        LOGGER.info("AzureInfrastructure initBilling new AzureBillingRateCard " + this.subscriptionId + " " +
+                    this.billingOfferId + " " + this.billingCurrency + " " + this.billingLocale + " " +
+                    this.billingRegionInfo);
         this.azureBillingRateCard = new AzureBillingRateCard(this.subscriptionId,
                                                              this.billingOfferId,
                                                              this.billingCurrency,
@@ -403,7 +406,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                                              this.billingRegionInfo);
 
         // Restore vm usage cost infos if possible
-        restoreBillingInformationFromDB();
+        restoreBillingInformation();
 
         // Start a new thread to periodically retrieve resource usage
         // Start it after periodicallyRateCardGetter (cf initial delay param) since rates are required
