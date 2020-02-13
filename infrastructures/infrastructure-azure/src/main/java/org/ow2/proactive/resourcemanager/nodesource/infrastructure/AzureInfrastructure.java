@@ -26,10 +26,7 @@
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManagerProperties.RM_CLOUD_INFRASTRUCTURES_DESTROY_INSTANCES_ON_SHUTDOWN;
-import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_CURRENCY;
-import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_RESOURCE_USAGE_REPORTED_END_DATE_TIME_KEY;
-import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_RESOURCE_USAGE_REPORTED_START_DATE_TIME_KEY;
-import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.AZURE_BILLING_VM_GLOBAL_COST;
+import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -365,11 +362,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
         LOGGER.info("AzureInfrastructure restoreBillingInformation additionalInformation " +
                     Arrays.asList(additionalInformation));
-        if (additionalInformation == null || additionalInformation.isEmpty()) {
-            this.nodeSource.putAndPersistAdditionalInformation(AZURE_BILLING_CURRENCY, this.billingCurrency);
-            return;
-        }
-        if (additionalInformation.get(AZURE_BILLING_VM_GLOBAL_COST) != null) {
+
+        if (additionalInformation != null && additionalInformation.get(AZURE_BILLING_VM_GLOBAL_COST) != null) {
             this.azureBillingResourceUsage.setVmGlobalCost(Double.parseDouble(additionalInformation.get(AZURE_BILLING_VM_GLOBAL_COST)));
             this.azureBillingResourceUsage.setCurrency(additionalInformation.get(AZURE_BILLING_CURRENCY));
             this.azureBillingResourceUsage.setResourceUsageReportedStartDateTime(LocalDateTime.parse(additionalInformation.get(AZURE_BILLING_RESOURCE_USAGE_REPORTED_START_DATE_TIME_KEY),
@@ -440,6 +434,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                         connectorIaasController.terminateInstance(infrastructureId, instanceId);
                         this.nodeSource.removeAndPersistAdditionalInformation(AZURE_BILLING_RESOURCE_USAGE_REPORTED_START_DATE_TIME_KEY,
                                                                               AZURE_BILLING_RESOURCE_USAGE_REPORTED_END_DATE_TIME_KEY,
+                                                                              AZURE_BILLING_CURRENCY,
                                                                               AZURE_BILLING_VM_GLOBAL_COST);
                         LOGGER.info("Instance terminated: " + instanceId);
                     }
@@ -726,6 +721,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             this.nodeSource.putAndPersistAdditionalInformation(AZURE_BILLING_VM_GLOBAL_COST, "not available yet");
         } else {
             this.nodeSource.putAndPersistAdditionalInformation(AZURE_BILLING_VM_GLOBAL_COST, vmUsageCost + "");
+            this.nodeSource.putAndPersistAdditionalInformation(AZURE_BILLING_CURRENCY, this.billingCurrency);
         }
     }
 

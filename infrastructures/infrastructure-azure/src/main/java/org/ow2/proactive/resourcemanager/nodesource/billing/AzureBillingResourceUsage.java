@@ -235,15 +235,17 @@ public class AzureBillingResourceUsage {
             // In case of multiple VM deployed, VM names = <node source name><number>
             if (currentResourceUri.matches(this.resourceUri + "[0-9]*$")) {
 
+                LOGGER.debug("AzureBillingResourceUsage updateVmUsageInfos currentResourceUri " + currentResourceUri);
+
                 double resourceQuantityInThatHour = resourceProperties.get("quantity").getAsDouble();
                 String meterId = resourceProperties.get("meterId").getAsString();
                 Double meterRate = azureBillingRateCard.getMeterRate(meterId);
 
                 if (meterRate == null) {
                     // It should never happens but in that case do not consider this resource consumption in that period for the vm global cost
-                    LOGGER.debug("Cannot retrieve meter rate for " + meterId +
-                                 ". The global Vm usage cost will not include the resource " + currentResourceUri +
-                                 " at this period.");
+                    LOGGER.debug("AzureBillingResourceUsage updateVmUsageInfos cannot retrieve meter rate for " +
+                                 meterId + ". The global Vm usage cost will not include the resource " +
+                                 currentResourceUri + " at this period.");
                     continue;
                 }
 
