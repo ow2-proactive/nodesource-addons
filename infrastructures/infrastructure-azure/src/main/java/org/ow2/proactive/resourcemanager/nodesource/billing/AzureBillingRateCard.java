@@ -116,7 +116,7 @@ public class AzureBillingRateCard {
                              .get("code")
                              .getAsString()
                              .equals("ExpiredAuthenticationToken")) {
-            LOGGER.debug("AzureBillingRateCard getRateCard ExpiredAuthenticationToken");
+            LOGGER.debug("AzureBillingRateCard getRateCard ExpiredAuthenticationToken, renewing it.");
             azureBillingCredentials.renewOrOnlyGetAccessToken(true);
             getRateCard(azureBillingCredentials);
         } else {

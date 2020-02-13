@@ -40,6 +40,8 @@ public class AzureBillingCredentials {
 
     private ApplicationTokenCredentials applicationTokenCredentials = null;
 
+    private static final String MANAGEMENT_AZURE_URL = "https://management.azure.com/";
+
     public AzureBillingCredentials(String clientId, String domain, String secret) throws IOException {
 
         this.applicationTokenCredentials = new ApplicationTokenCredentials(clientId, domain, secret, null);
@@ -48,9 +50,9 @@ public class AzureBillingCredentials {
 
     public String renewOrOnlyGetAccessToken(boolean renew) throws IOException {
 
-        if (renew == true) {
-            LOGGER.debug("ApplicationTokenCredentials renewOrOnlyGetAccessToken accessToken recreated");
-            this.accessToken = this.applicationTokenCredentials.getToken("https://management.azure.com/");
+        if (renew) {
+            this.accessToken = this.applicationTokenCredentials.getToken(MANAGEMENT_AZURE_URL);
+            LOGGER.debug("ApplicationTokenCredentials renewOrOnlyGetAccessToken new token " + this.accessToken);
         }
         return this.accessToken;
     }

@@ -241,7 +241,7 @@ public class AzureBillingResourceUsage {
 
                 if (meterRate == null) {
                     // It should never happens but in that case do not consider this resource consumption in that period for the vm global cost
-                    LOGGER.error("Cannot retrieve meter rate for " + meterId +
+                    LOGGER.debug("Cannot retrieve meter rate for " + meterId +
                                  ". The global Vm usage cost will not include the resource " + currentResourceUri +
                                  " at this period.");
                     continue;
