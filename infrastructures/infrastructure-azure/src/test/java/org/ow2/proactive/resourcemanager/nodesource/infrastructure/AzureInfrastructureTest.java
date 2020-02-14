@@ -151,7 +151,11 @@ public class AzureInfrastructureTest {
                                           true,
                                           "-Dnew=value",
                                           -1,
-                                          -1);
+                                          -1,
+                                          "",
+                                          "",
+                                          "",
+                                          "");
             Assert.assertTrue(Boolean.TRUE);
         } catch (IllegalArgumentException e) {
             fail("NPE not thrown");
@@ -198,7 +202,11 @@ public class AzureInfrastructureTest {
                                       true,
                                       "-Dnew=value",
                                       -1,
-                                      -1);
+                                      -1,
+                                      "",
+                                      "",
+                                      "",
+                                      "");
     }
 
     @Test
@@ -233,7 +241,11 @@ public class AzureInfrastructureTest {
                                       true,
                                       "-Dnew=value",
                                       -1,
-                                      -1);
+                                      -1,
+                                      "",
+                                      "",
+                                      "",
+                                      "");
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -328,7 +340,11 @@ public class AzureInfrastructureTest {
                                       true,
                                       "-Dnew=value",
                                       -1,
-                                      -1);
+                                      -1,
+                                      "",
+                                      "",
+                                      "",
+                                      "");
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -382,7 +398,11 @@ public class AzureInfrastructureTest {
                                       true,
                                       "-Dnew=value",
                                       -1,
-                                      -1);
+                                      -1,
+                                      "",
+                                      "",
+                                      "",
+                                      "");
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
