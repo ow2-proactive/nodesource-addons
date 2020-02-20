@@ -55,7 +55,7 @@ public class AzureBillingResourceUsageTest {
     @Before
     public void init() throws IOException {
         this.subscriptionId = "cdd4aa9d-1927-42f2-aea3-3b52122c1b5f";
-        this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId, "", "", "USD");
+        this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId, "", "", "USD", -1);
         this.azureBillingCredentials = new AzureBillingCredentials("4665a602-72aa-4f8b-b7c6-279b2cb88ba7",
                                                                    "d8f5e423-7970-412c-a1ae-f76e405ba980",
                                                                    "4cfebd9c-cad1-4285-8b66-e4736311004d");

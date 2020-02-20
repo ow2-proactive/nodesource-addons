@@ -28,14 +28,10 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.security.KeyException;
 
@@ -155,7 +151,8 @@ public class AzureInfrastructureTest {
                                           "",
                                           "",
                                           "",
-                                          "");
+                                          "",
+                                          -1);
             Assert.assertTrue(Boolean.TRUE);
         } catch (IllegalArgumentException e) {
             fail("NPE not thrown");
@@ -206,7 +203,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
     }
 
     @Test
@@ -245,7 +243,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -344,7 +343,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -402,7 +402,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 

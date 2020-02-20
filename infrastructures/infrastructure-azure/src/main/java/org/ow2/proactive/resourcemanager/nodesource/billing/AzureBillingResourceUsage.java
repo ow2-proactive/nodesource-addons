@@ -34,7 +34,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Iterator;
+import java.util.*;
 
 import org.apache.log4j.Logger;
 
@@ -59,29 +59,37 @@ public class AzureBillingResourceUsage {
 
     private LocalDateTime resourceUsageReportedEndDateTime = null;
 
-    private double vmGlobalCost = 0;
+    private double globalCost = 0;
 
     private String currency;
 
-    private String resourceUri;
+    private double budget;
+
+    private double budgetPercentage;
+
+    private String resourceUriRegex;
+
+    private HashSet<String> metersIds = null;
 
     public AzureBillingResourceUsage(String subscriptionId, String resourceGroup, String nodeSourceName,
-            String currency) {
+            String currency, double budget) {
 
         this.subscriptionId = subscriptionId;
         this.currency = currency;
+        this.budget = budget;
+        this.metersIds = new HashSet<>();
 
         // Since ResourceUtils.constructResourceId returns 'resourcegroups' against 'resourcesGroups' in the query result
         // we replace "resourcegroups" by "resourceGroups"
-        this.resourceUri = ResourceUtils.constructResourceId(subscriptionId,
-                                                             resourceGroup,
-                                                             "Microsoft.Compute",
-                                                             "virtualMachines",
-                                                             nodeSourceName,
-                                                             "")
-                                        .replaceFirst("resourcegroups", "resourceGroups");
+        this.resourceUriRegex = ResourceUtils.constructResourceId(subscriptionId,
+                                                                  "(?i)" + resourceGroup, // Ignore case since Azure mix upper with lower case in resourceGroupName
+                                                                  "Microsoft.Compute",
+                                                                  ".*", // Any resource type (vm, disk,..)
+                                                                  nodeSourceName + "[0-9]*(?:-[a-zA-Z0-9]+)?", // "<node source name><instance id>" followed (optional) by "-ipJHSdj82sd" for ip, disk, ...
+                                                                  "")
+                                             .replaceFirst("resourcegroups", "resourceGroups"); // bug in Azure API
 
-        LOGGER.debug("AzureBillingResourceUsage AzureBillingResourceUsage " + this.resourceUri);
+        LOGGER.debug("AzureBillingResourceUsage AzureBillingResourceUsage " + this.resourceUriRegex);
     }
 
     public void setResourceUsageReportedStartDateTime(LocalDateTime resourceUsageReportedStartDateTime) {
@@ -139,7 +147,7 @@ public class AzureBillingResourceUsage {
         LocalDateTime endDateTime = nowTruncatedLastHour.minusHours(1);
         LocalDateTime startDateTime;
         if (this.resourceUsageReportedEndDateTime == null) {
-            // resourceUsageReportedStartDateTime is the start date of the period over which we estimate the vm usage cost.
+            // resourceUsageReportedStartDateTime is the start date of the period over which we estimate the resource usage cost.
             // It is set only once.
             this.resourceUsageReportedStartDateTime = nowTruncatedLastHour.minusDays(1);
             startDateTime = this.resourceUsageReportedStartDateTime;
@@ -196,69 +204,156 @@ public class AzureBillingResourceUsage {
         return null;
     }
 
-    public boolean updateVmUsageInfos(AzureBillingCredentials azureBillingCredentials,
-            AzureBillingRateCard azureBillingRateCard) throws IOException, AzureBillingException {
+    private double computeCostInThatHour(double resourceQuantityInThatHour, LinkedHashMap<String, Double> meterRates) {
 
-        // Get the last resources usage history
-        String resourceUsageHistory = getLastResourceUsageHistory(azureBillingCredentials);
+        LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour resourceQuantityInThatHour " +
+                     resourceQuantityInThatHour + " meterRates " + meterRates);
 
-        // No available resource usage history
-        if (resourceUsageHistory == null)
-            return false;
-
-        // Parse resourceUsageHistory to find the desired resource usage
-        Iterator<JsonElement> resourceUsageIterator = JSON_PARSER.parse(resourceUsageHistory)
-                                                                 .getAsJsonObject()
-                                                                 .get("value")
-                                                                 .getAsJsonArray()
-                                                                 .iterator();
-
-        while (resourceUsageIterator.hasNext()) {
-            JsonElement resourceUsage = resourceUsageIterator.next();
-            JsonObject resourceProperties = resourceUsage.getAsJsonObject().get("properties").getAsJsonObject();
-
-            // Only consider "Virtual Machines" type (do not consider IP, Disk,..)
-            if (!resourceProperties.get("meterCategory").getAsString().equalsIgnoreCase("Virtual Machines"))
-                continue;
-
-            // We need to replace '\"' in "instanceData" property to avoid exception
-            String resourceInstanceData = resourceProperties.get("instanceData").getAsString().replaceAll("\\\\", "");
-
-            String currentResourceUri = JSON_PARSER.parse(new String(resourceInstanceData))
-                                                   .getAsJsonObject()
-                                                   .get("Microsoft.Resources")
-                                                   .getAsJsonObject()
-                                                   .get("resourceUri")
-                                                   .getAsString();
-
-            // Here, we have a resource usage per hour (i.e.  (startDateTime) [8:00,9:00], [9:00,10:00], [10:00,11:00] (endDateTime))
-            // In case of multiple VM deployed, VM names = <node source name><number>
-            if (currentResourceUri.matches(this.resourceUri + "[0-9]*$")) {
-
-                LOGGER.debug("AzureBillingResourceUsage updateVmUsageInfos currentResourceUri " + currentResourceUri);
-
-                double resourceQuantityInThatHour = resourceProperties.get("quantity").getAsDouble();
-                String meterId = resourceProperties.get("meterId").getAsString();
-                Double meterRate = azureBillingRateCard.getMeterRate(meterId);
-
-                if (meterRate == null) {
-                    // It should never happens but in that case do not consider this resource consumption in that period for the vm global cost
-                    LOGGER.debug("AzureBillingResourceUsage updateVmUsageInfos cannot retrieve meter rate for " +
-                                 meterId + ". The global Vm usage cost will not include the resource " +
-                                 currentResourceUri + " at this period.");
-                    continue;
-                }
-
-                this.vmGlobalCost += resourceQuantityInThatHour * meterRate;
-
-                LOGGER.debug("AzureBillingResourceUsage updateVmUsageInfos (in while) for currentResourceUri " +
-                             currentResourceUri + " => " + resourceQuantityInThatHour + " x " + meterRate + " = " +
-                             (resourceQuantityInThatHour * meterRate) + " (now this.vmUsageCost=" + this.vmGlobalCost +
-                             ") for [" + resourceProperties.get("usageStartTime").getAsString() + ";" +
-                             resourceProperties.get("usageEndTime").getAsString() + "]");
-            }
+        if (meterRates == null || meterRates.isEmpty()) {
+            return 0;
         }
-        return true;
+
+        double costInThatHour = 0;
+        double quantityToPriceInThisStep;
+        double lowerStepQuantity = -1;
+        double lowerStepRate = -1;
+        double upperStepQuantity;
+        double upperStepRate;
+
+        for (Map.Entry<String, Double> meterRatesEntry : meterRates.entrySet()) {
+            upperStepQuantity = Double.parseDouble(meterRatesEntry.getKey());
+            upperStepRate = meterRatesEntry.getValue();
+
+            LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour step rate:[" + lowerStepRate + "," +
+                         upperStepRate + "]  step quantity:[" + lowerStepQuantity + "," + upperStepQuantity + "]");
+
+            // In [lowerStepQuantity, upperStepQuantity], it costs lowerStepRate
+            if (lowerStepQuantity != -1) {
+
+                // Which quantity to consider in this interval?
+                if (resourceQuantityInThatHour >= upperStepQuantity) {
+                    quantityToPriceInThisStep = upperStepQuantity - lowerStepQuantity;
+                } else if (resourceQuantityInThatHour > lowerStepQuantity) {
+                    quantityToPriceInThisStep = resourceQuantityInThatHour - lowerStepQuantity;
+                } else {
+                    break;
+                }
+                // Price it and add it to the global cost
+                costInThatHour += quantityToPriceInThisStep * lowerStepRate;
+                LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour added to costInThatHour: " +
+                             quantityToPriceInThisStep + " x " + lowerStepRate + " [new costInThatHour = " +
+                             costInThatHour + "]");
+            }
+
+            // Update lowerStepQuantity & lowerStepRate
+            lowerStepQuantity = upperStepQuantity;
+            lowerStepRate = upperStepRate;
+        }
+
+        // The last quantity (without upperStepQuantity)
+        if (resourceQuantityInThatHour > lowerStepQuantity) {
+            quantityToPriceInThisStep = resourceQuantityInThatHour - lowerStepQuantity;
+            costInThatHour += quantityToPriceInThisStep * lowerStepRate;
+
+            LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour last added to costInThatHour: " +
+                         quantityToPriceInThisStep + " x " + lowerStepRate + " [new costInThatHour = " +
+                         costInThatHour + "]");
+        }
+
+        return costInThatHour;
+    }
+
+    // synchronized to ensure we dont try to use meter ids to get the meter rates while we are updating them
+    synchronized public HashSet<String> updateResourceUsageOrGetMetersIds(
+            AzureBillingCredentials azureBillingCredentials, HashMap<String, LinkedHashMap<String, Double>> metersRates,
+            boolean update) throws IOException, AzureBillingException {
+
+        if (update) {
+
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (update)");
+
+            // Get the last resources usage history
+            String resourceUsageHistory = getLastResourceUsageHistory(azureBillingCredentials);
+
+            // No available resource usage history
+            if (resourceUsageHistory == null)
+                return null;
+
+            // Parse resourceUsageHistory to find the desired resource usage
+            Iterator<JsonElement> resourceUsageIterator = JSON_PARSER.parse(resourceUsageHistory)
+                                                                     .getAsJsonObject()
+                                                                     .get("value")
+                                                                     .getAsJsonArray()
+                                                                     .iterator();
+
+            while (resourceUsageIterator.hasNext()) {
+                JsonElement resourceUsage = resourceUsageIterator.next();
+
+                JsonObject resourceProperties = resourceUsage.getAsJsonObject().get("properties").getAsJsonObject();
+
+                // We need to replace '\"' in "instanceData" property to avoid exception
+                String resourceInstanceData = resourceProperties.get("instanceData").getAsString().replaceAll("\\\\",
+                                                                                                              "");
+
+                String currentResourceUri = JSON_PARSER.parse(resourceInstanceData)
+                                                       .getAsJsonObject()
+                                                       .get("Microsoft.Resources")
+                                                       .getAsJsonObject()
+                                                       .get("resourceUri")
+                                                       .getAsString();
+
+                LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) " +
+                             currentResourceUri + " matches " + this.resourceUriRegex + " ? " +
+                             currentResourceUri.matches(this.resourceUriRegex));
+
+                // Here, we have a resource usage per hour (i.e.  (startDateTime) [8:00,9:00], [9:00,10:00], [10:00,11:00] (endDateTime))
+                // In case of multiple VM deployed, VM names = <node source name><number>
+                if (currentResourceUri.matches(this.resourceUriRegex)) {
+
+                    LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) considering resource " +
+                                 resourceProperties);
+
+                    double resourceQuantityInThatHour = resourceProperties.get("quantity").getAsDouble();
+                    String meterId = resourceProperties.get("meterId").getAsString();
+
+                    // Store meterId to make AzureBillingRateCard store meter rates with ids in meterIdsSet
+                    this.metersIds.add(meterId);
+
+                    // Get the meter rates of meterId
+                    LinkedHashMap<String, Double> meterRates = metersRates.get(meterId);
+
+                    if (meterRates == null) {
+                        // It should never happens but in that case do not consider this resource consumption in that period for the global cost
+                        LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) cannot retrieve meter rate for " +
+                                     meterId + ". The global usage cost will not include the resource " +
+                                     currentResourceUri + " at this period.");
+                        continue;
+                    } else {
+                        LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) retrieved meter rate for meterId " +
+                                     meterId + " meterRates " + meterRates);
+                    }
+
+                    double costInThatHour = computeCostInThatHour(resourceQuantityInThatHour, meterRates);
+                    this.globalCost += costInThatHour;
+                    this.budgetPercentage = this.globalCost * 100 / this.budget;
+
+                    LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) (in while) currentResourceUri " +
+                                 currentResourceUri + " costInThatHour " + costInThatHour + " (now this.globalCost=" +
+                                 this.globalCost + ") for [" + resourceProperties.get("usageStartTime").getAsString() +
+                                 ";" + resourceProperties.get("usageEndTime").getAsString() + "]");
+
+                } // if (currentResourceUri.matches(this.resourceUriRegex))
+            } // while (resourceUsageIterator.hasNext())
+
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (update) before return");
+            return new HashSet<>();
+
+        } else {
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (get)");
+            HashSet<String> metersIdsCopy = new HashSet<>(this.metersIds);
+            LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (get) before return");
+            return metersIdsCopy;
+        }
     }
 
     public LocalDateTime getResourceUsageReportedStartDateTime() {
@@ -269,15 +364,23 @@ public class AzureBillingResourceUsage {
         return this.resourceUsageReportedEndDateTime;
     }
 
-    public double getVmGlobalCost() {
-        return this.vmGlobalCost;
+    public double getGlobalCost() {
+        return this.globalCost;
     }
 
-    public void setVmGlobalCost(double vmGlobalCost) {
-        this.vmGlobalCost = vmGlobalCost;
+    public double getBudgetPercentage() {
+        return this.budgetPercentage;
+    }
+
+    public void setGlobalCost(double globalCost) {
+        this.globalCost = globalCost;
     }
 
     public void setCurrency(String currency) {
         this.currency = currency;
+    }
+
+    public void setBudgetPercentage(double budgetPercentage) {
+        this.budgetPercentage = budgetPercentage;
     }
 }

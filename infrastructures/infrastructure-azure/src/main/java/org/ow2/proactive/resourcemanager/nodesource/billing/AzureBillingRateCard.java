@@ -30,11 +30,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 
 import org.apache.log4j.Logger;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -56,7 +56,7 @@ public class AzureBillingRateCard {
 
     private String regionInfo;
 
-    private HashMap<String, Double> meterRates;
+    private HashMap<String, LinkedHashMap<String, Double>> metersRates;
 
     public AzureBillingRateCard(String subscriptionId, String offerId, String currency, String locale,
             String regionInfo) {
@@ -66,7 +66,7 @@ public class AzureBillingRateCard {
         this.currency = currency;
         this.locale = locale;
         this.regionInfo = regionInfo;
-        this.meterRates = new HashMap<>();
+        this.metersRates = new HashMap<>();
     }
 
     private String queryRateCard(String accessToken) throws IOException {
@@ -126,45 +126,59 @@ public class AzureBillingRateCard {
         return null;
     }
 
-    public void updateVmRates(AzureBillingCredentials azureBillingCredentials)
+    // synchronized to ensure we dont try to use meter rates to compute the resources cost while we are updating them
+    synchronized public HashMap<String, LinkedHashMap<String, Double>> updateOrGetMetersRates(
+            AzureBillingCredentials azureBillingCredentials, HashSet<String> metersIdsSet, boolean update)
             throws IOException, AzureBillingException {
 
-        LOGGER.debug("AzureBillingRateCard updateVmRates");
+        if (update) {
 
-        // Get a new rate card
-        String rateCardJson = getRateCard(azureBillingCredentials);
+            LOGGER.debug("AzureBillingRateCard synchronized updateOrGetMetersRates (update)");
 
-        // Parse the json rate card
-        Iterator<JsonElement> rateIterator = JSON_PARSER.parse(rateCardJson)
-                                                        .getAsJsonObject()
-                                                        .get("Meters")
-                                                        .getAsJsonArray()
-                                                        .iterator();
+            // Get a new rate card
+            String rateCardJson = getRateCard(azureBillingCredentials);
 
-        // Update the vm meter rates map
-        while (rateIterator.hasNext()) {
-            JsonObject rate = rateIterator.next().getAsJsonObject();
+            // Parse the json rate card
+            JsonArray rateJsonArray = JSON_PARSER.parse(rateCardJson).getAsJsonObject().get("Meters").getAsJsonArray();
 
-            // Only consider VM rates
-            if (rate.get("MeterCategory").getAsString().equals("Virtual Machines")) {
-                // Get the meter id
-                String meterId = rate.get("MeterId").getAsString();
-                // Get the meter rate
-                JsonObject meterRates = rate.get("MeterRates").getAsJsonObject();
+            LOGGER.debug("AzureBillingRateCard synchronized updateOrGetMetersRates (update) nb rates queried " +
+                         rateJsonArray.size());
 
-                if (meterRates.entrySet().size() != 1) {
-                    LOGGER.debug("AzureBillingRateCard updateVmRates AzureBillingException meterRates size() != 1");
-                    throw new AzureBillingException("Multiple meter rates not supported for resources cost estimation");
+            // Clear all rates
+            this.metersRates.clear();
+
+            // Update the meter rates map
+            Iterator<JsonElement> rateIterator = rateJsonArray.iterator();
+            while (rateIterator.hasNext()) {
+                JsonObject rate = rateIterator.next().getAsJsonObject();
+                String currentMeterId = rate.get("MeterId").getAsString();
+
+                // Store all meter rates or only required ones according to metersIdsSet param
+                boolean mustStoreRate = (metersIdsSet == null || metersIdsSet.isEmpty() ||
+                                         metersIdsSet.contains(currentMeterId));
+
+                if (mustStoreRate) {
+
+                    LOGGER.debug("AzureBillingRateCard updateOrGetMetersRates (update) storing rate: " + rate);
+
+                    // Get the meter rate(s)
+                    JsonObject meterRates = rate.get("MeterRates").getAsJsonObject();
+
+                    this.metersRates.put(currentMeterId, new LinkedHashMap<>());
+                    for (Map.Entry<String, JsonElement> meterRatesEntry : meterRates.entrySet()) {
+                        this.metersRates.get(currentMeterId).put(meterRatesEntry.getKey(),
+                                                                 meterRatesEntry.getValue().getAsDouble());
+                    }
                 }
-
-                double meterRate = meterRates.get("0").getAsDouble();
-                this.meterRates.put(meterId, meterRate);
             }
+            LOGGER.debug("AzureBillingRateCard synchronized updateOrGetMetersRates (update) before return");
+            return null;
+        } else {
+            LOGGER.debug("AzureBillingRateCard synchronized updateOrGetMetersRates (get)");
+            HashMap<String, LinkedHashMap<String, Double>> metersRatesCopy = new HashMap<>(this.metersRates);
+            LOGGER.debug("AzureBillingRateCard synchronized updateOrGetMetersRates (get) before return");
+            return metersRatesCopy;
         }
-    }
-
-    public double getMeterRate(String meterId) {
-        return this.meterRates.get(meterId);
     }
 
 }
