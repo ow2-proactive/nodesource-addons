@@ -155,7 +155,8 @@ public class AzureInfrastructureTest {
                                           "",
                                           "",
                                           "",
-                                          "");
+                                          "",
+                                          -1);
             Assert.assertTrue(Boolean.TRUE);
         } catch (IllegalArgumentException e) {
             fail("NPE not thrown");
@@ -206,7 +207,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
     }
 
     @Test
@@ -245,7 +247,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -344,7 +347,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -402,7 +406,8 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      "");
+                                      "",
+                                      -1);
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
