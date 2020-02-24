@@ -75,71 +75,6 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_ADDITIONAL_PROPERTIES = "-Dproactive.useIPaddress=true -Dproactive.net.public_address=$(wget -qO- ipinfo.io/ip) -Dproactive.pnp.port=64738";
 
-    // Indexes of parameters
-    private final static int PARAMETERS_NUMBER = 31;
-
-    private final static int CLIENT_ID_INDEX = 0;
-
-    private final static int SECRET_INDEX = 1;
-
-    private final static int DOMAIN_INDEX = 2;
-
-    private final static int SUBSCRIPTION_ID_INDEX = 3;
-
-    private final static int AUTHENTICATION_ENDPOINT_INDEX = 4;
-
-    private final static int MANAGEMENT_ENDPOINT_INDEX = 5;
-
-    private final static int RESOURCE_MANAGER_ENDPOINT_INDEX = 6;
-
-    private final static int GRAPH_ENDPOINT_INDEX = 7;
-
-    private final static int RM_HOSTNAME_INDEX = 8;
-
-    private final static int CONNECTOR_IAAS_URL_INDEX = 9;
-
-    private final static int IMAGE_INDEX = 10;
-
-    private final static int IMAGE_OS_TYPE_INDEX = 11;
-
-    private final static int VM_SIZE_TYPE_INDEX = 12;
-
-    private final static int VM_USERNAME_INDEX = 13;
-
-    private final static int VM_PASSWORD_INDEX = 14;
-
-    private final static int VM_PUBLIC_KEY_INDEX = 15;
-
-    private final static int RESOURCE_GROUP_INDEX = 16;
-
-    private final static int REGION_INDEX = 17;
-
-    private final static int NUMBER_OF_INSTANCES_INDEX = 18;
-
-    private final static int NUMBER_OF_NODES_PER_INSTANCE_INDEX = 19;
-
-    private final static int NODE_JAR_URL_INDEX = 20;
-
-    private final static int PRIVATE_NETWORK_CIDR_INDEX = 21;
-
-    private final static int STATIC_PUBLIC_IP_INDEX = 22;
-
-    private final static int ADDITIONAL_PROPERTIES_INDEX = 23;
-
-    private final static int BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN_INDEX = 24;
-
-    private final static int BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN_INDEX = 25;
-
-    private final static int BILLING_OFFER_ID = 26;
-
-    private final static int BILLING_CURRENCY = 27;
-
-    private final static int BILLING_LOCALE = 28;
-
-    private final static int BILLING_REGION_INFO = 29;
-
-    private final static int BILLING_BUDGET = 30;
-
     private ScheduledExecutorService periodicallyResourceUsageGetter = Executors.newSingleThreadScheduledExecutor();
 
     private ScheduledExecutorService periodicallyRateCardGetter = Executors.newSingleThreadScheduledExecutor();
@@ -181,6 +116,47 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
 
+    // The index of the infrastructure configurable parameters.
+    private enum Indexes {
+        CLIENT_ID(0),
+        SECRET(1),
+        DOMAIN(2),
+        SUBSCRIPTION_ID(3),
+        AUTHENTICATION_ENDPOINT(4),
+        MANAGEMENT_ENDPOINT(5),
+        RESOURCE_MANAGER_ENDPOINT(6),
+        GRAPH_ENDPOINT(7),
+        RM_HOSTNAME(8),
+        CONNECTOR_IAAS_URL(9),
+        IMAGE(10),
+        IMAGE_OS_TYPE(11),
+        VM_SIZE_TYPE(12),
+        VM_USERNAME(13),
+        VM_PASSWORD(14),
+        VM_PUBLIC_KEY(15),
+        RESOURCE_GROUP(16),
+        REGION(17),
+        NUMBER_OF_INSTANCES(18),
+        NUMBER_OF_NODES_PER_INSTANCE(19),
+        NODE_JAR_URL(20),
+        PRIVATE_NETWORK_CIDR(21),
+        STATIC_PUBLIC_IP(22),
+        ADDITIONAL_PROPERTIES(23),
+        BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN(24),
+        BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN(25),
+        BILLING_OFFER_ID(26),
+        BILLING_CURRENCY(27),
+        BILLING_LOCALE(28),
+        BILLING_REGION_INFO(29),
+        BILLING_BUDGET(30);
+
+        protected int index;
+
+        Indexes(int index) {
+            this.index = index;
+        }
+    }
+
     @Configurable(description = "The Azure clientId", sectionSelector = 1, important = true)
     protected String clientId = null;
 
@@ -193,90 +169,90 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "The Azure subscriptionId to use (if not specified, it will try to use the default one)", sectionSelector = 1, important = true)
     protected String subscriptionId = null;
 
-    @Configurable(description = "Optional authentication endpoint from specific Azure environment", sectionSelector = 2)
+    @Configurable(description = "Optional authentication endpoint from specific Azure environment", sectionSelector = 3)
     protected String authenticationEndpoint = null;
 
-    @Configurable(description = "Optional management endpoint from specific Azure environment", sectionSelector = 2)
+    @Configurable(description = "Optional management endpoint from specific Azure environment", sectionSelector = 3)
     protected String managementEndpoint = null;
 
-    @Configurable(description = "Optional resource manager endpoint from specific Azure environment", sectionSelector = 2)
+    @Configurable(description = "Optional resource manager endpoint from specific Azure environment", sectionSelector = 3)
     protected String resourceManagerEndpoint = null;
 
-    @Configurable(description = "Optional graph endpoint from specific Azure environment", sectionSelector = 2)
+    @Configurable(description = "Optional graph endpoint from specific Azure environment", sectionSelector = 3)
     protected String graphEndpoint = null;
 
-    @Configurable(description = "Resource manager hostname or ip address (must be accessible from nodes)", sectionSelector = 3)
+    @Configurable(description = "Resource manager hostname or ip address (must be accessible from nodes)", sectionSelector = 4)
     protected String rmHostname = generateDefaultRMHostname();
 
-    @Configurable(description = "Connector-iaas URL", sectionSelector = 3)
+    @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
     protected String connectorIaasURL = LinuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
-    @Configurable(description = "Image (name or key)", sectionSelector = 5, important = true)
+    @Configurable(description = "Image (name or key)", sectionSelector = 6, important = true)
     protected String image = null;
 
-    @Configurable(description = "Image OS type (choose between 'linux' and 'windows', default: 'linux')", sectionSelector = 5, important = true)
+    @Configurable(description = "Image OS type (choose between 'linux' and 'windows', default: 'linux')", sectionSelector = 6, important = true)
     protected String imageOSType = LINUX;
 
-    @Configurable(description = "Azure virtual machine size type (by default: 'Standard_D1_v2')", sectionSelector = 5, important = true)
+    @Configurable(description = "Azure virtual machine size type (by default: 'Standard_D1_v2')", sectionSelector = 6, important = true)
     protected String vmSizeType = null;
 
-    @Configurable(description = "The virtual machine Username", sectionSelector = 5, important = true)
+    @Configurable(description = "The virtual machine Username", sectionSelector = 6, important = true)
     protected String vmUsername = null;
 
-    @Configurable(description = "The virtual machine Password", password = true, sectionSelector = 5, important = true)
+    @Configurable(description = "The virtual machine Password", password = true, sectionSelector = 6, important = true)
     protected String vmPassword = null;
 
-    @Configurable(description = "A public key to allow SSH connection to the VM", sectionSelector = 5)
+    @Configurable(description = "A public key to allow SSH connection to the VM", sectionSelector = 6)
     protected String vmPublicKey = null;
 
-    @Configurable(description = "The Azure resourceGroup to use (if not specified, the one from the image will be used)", sectionSelector = 5, important = true)
+    @Configurable(description = "The Azure resourceGroup to use (if not specified, the one from the image will be used)", sectionSelector = 6, important = true)
     protected String resourceGroup = null;
 
-    @Configurable(description = "The Azure Region to use (if not specified, the one from the image will be used)", sectionSelector = 5)
+    @Configurable(description = "The Azure Region to use (if not specified, the one from the image will be used)", sectionSelector = 6)
     protected String region = null;
 
-    @Configurable(description = "Total instance to create", sectionSelector = 4, important = true)
+    @Configurable(description = "Total instance to create", sectionSelector = 5, important = true)
     protected int numberOfInstances = 1;
 
-    @Configurable(description = "Total nodes to create per instance", sectionSelector = 4, important = true)
+    @Configurable(description = "Total nodes to create per instance", sectionSelector = 5, important = true)
     protected int numberOfNodesPerInstance = 1;
 
     //    @Configurable(description = "Command used to download the worker jar (a default command will be generated for the specified image OS type)", sectionSelector = 7)
     // The variable is not longer effectively used, but it's kept temporarily to facilitate future support of deploying nodes on windows os VM
     protected String downloadCommand = null;
 
-    @Configurable(description = "URL used to download the node jar on the VM", sectionSelector = 7)
+    @Configurable(description = "URL used to download the node jar on the VM", sectionSelector = 8)
     protected String nodeJarURL = LinuxInitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
-    @Configurable(description = "Optional network CIDR to attach with new VM(s) (by default: '10.0.0.0/24')", sectionSelector = 6)
+    @Configurable(description = "Optional network CIDR to attach with new VM(s) (by default: '10.0.0.0/24')", sectionSelector = 7)
     protected String privateNetworkCIDR = null;
 
-    @Configurable(description = "Optional flag to specify if the public IP(s) of the new VM(s) must be static ('true' by default)", checkbox = true, sectionSelector = 6)
+    @Configurable(description = "Optional flag to specify if the public IP(s) of the new VM(s) must be static ('true' by default)", checkbox = true, sectionSelector = 7)
     protected boolean staticPublicIP = true;
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 7)
+    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 8)
     protected String additionalProperties = DEFAULT_ADDITIONAL_PROPERTIES;
 
-    @Configurable(description = "Periodical resource usage retrieving delay in min.", sectionSelector = 1)
-    protected int billingResourceUsageRefreshFreqInMin = 30;
+    @Configurable(description = "Periodical resource usage retrieving delay in min.", sectionSelector = 2)
+    protected int resourceUsageRefreshFreqInMin = 30;
 
-    @Configurable(description = "Periodical rate card retrieving delay in min.", sectionSelector = 1)
-    protected int billingRateCardRefreshFreqInMin = 30;
+    @Configurable(description = "Periodical rate card retrieving delay in min.", sectionSelector = 2)
+    protected int rateCardRefreshFreqInMin = 30;
 
-    @Configurable(description = "The Offer ID parameter consists of the “MS-AZR-“ prefix, plus the Offer ID number.", sectionSelector = 1)
-    protected String billingOfferId = "MS-AZR-0003p";
+    @Configurable(description = "The Offer ID parameter consists of the 'MS-AZR-' prefix, plus the Offer ID number.", sectionSelector = 2)
+    protected String offerId = "MS-AZR-0003p";
 
-    @Configurable(description = "The currency in which the resource rates need to be provided.", sectionSelector = 1)
-    protected String billingCurrency = "USD";
+    @Configurable(description = "The currency in which the resource rates need to be provided.", sectionSelector = 2)
+    protected String currency = "USD";
 
-    @Configurable(description = "The culture in which the resource metadata needs to be localized.", sectionSelector = 1)
-    protected String billingLocale = "en-US";
+    @Configurable(description = "The culture in which the resource metadata needs to be localized.", sectionSelector = 2)
+    protected String locale = "en-US";
 
-    @Configurable(description = "The 2 letter ISO code where the offer was purchased.", sectionSelector = 1)
-    protected String billingRegionInfo = "US";
+    @Configurable(description = "The 2 letter ISO code where the offer was purchased.", sectionSelector = 2)
+    protected String regionInfo = "US";
 
-    @Configurable(description = "Your budget for this node source related Azure resources. Will be used to compute your global cost in % budget.", sectionSelector = 1)
-    protected double billingBudget = 50;
+    @Configurable(description = "Your budget for this node source related Azure resources. Will be used to compute your global cost in % budget.", sectionSelector = 2)
+    protected double maxBudget = 50;
 
     @Override
     public void configure(Object... parameters) {
@@ -284,39 +260,40 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         LOGGER.info("Validating parameters : " + Arrays.toString(parameters));
         validate(parameters);
 
-        this.clientId = getParameter(parameters, CLIENT_ID_INDEX);
-        this.secret = getParameter(parameters, SECRET_INDEX);
-        this.domain = getParameter(parameters, DOMAIN_INDEX);
-        this.subscriptionId = getParameter(parameters, SUBSCRIPTION_ID_INDEX);
-        this.authenticationEndpoint = getParameter(parameters, AUTHENTICATION_ENDPOINT_INDEX);
-        this.managementEndpoint = getParameter(parameters, MANAGEMENT_ENDPOINT_INDEX);
-        this.resourceManagerEndpoint = getParameter(parameters, RESOURCE_MANAGER_ENDPOINT_INDEX);
-        this.graphEndpoint = getParameter(parameters, GRAPH_ENDPOINT_INDEX);
-        this.rmHostname = getParameter(parameters, RM_HOSTNAME_INDEX);
-        this.connectorIaasURL = getParameter(parameters, CONNECTOR_IAAS_URL_INDEX);
-        this.image = getParameter(parameters, IMAGE_INDEX);
-        this.imageOSType = getParameter(parameters, IMAGE_OS_TYPE_INDEX).toLowerCase();
-        this.vmSizeType = getParameter(parameters, VM_SIZE_TYPE_INDEX);
-        this.vmUsername = getParameter(parameters, VM_USERNAME_INDEX);
-        this.vmPassword = getParameter(parameters, VM_PASSWORD_INDEX);
-        this.vmPublicKey = getParameter(parameters, VM_PUBLIC_KEY_INDEX);
-        this.resourceGroup = getParameter(parameters, RESOURCE_GROUP_INDEX);
-        this.region = getParameter(parameters, REGION_INDEX);
-        this.numberOfInstances = Integer.parseInt(getParameter(parameters, NUMBER_OF_INSTANCES_INDEX));
-        this.numberOfNodesPerInstance = Integer.parseInt(getParameter(parameters, NUMBER_OF_NODES_PER_INSTANCE_INDEX));
-        this.nodeJarURL = getParameter(parameters, NODE_JAR_URL_INDEX);
-        this.privateNetworkCIDR = getParameter(parameters, PRIVATE_NETWORK_CIDR_INDEX);
-        this.staticPublicIP = Boolean.parseBoolean(getParameter(parameters, STATIC_PUBLIC_IP_INDEX));
-        this.additionalProperties = getParameter(parameters, ADDITIONAL_PROPERTIES_INDEX);
-        this.billingResourceUsageRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
-                                                                                  BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN_INDEX));
-        this.billingRateCardRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
-                                                                             BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN_INDEX));
-        this.billingOfferId = getParameter(parameters, BILLING_OFFER_ID);
-        this.billingCurrency = getParameter(parameters, BILLING_CURRENCY);
-        this.billingLocale = getParameter(parameters, BILLING_LOCALE);
-        this.billingRegionInfo = getParameter(parameters, BILLING_REGION_INFO);
-        this.billingBudget = Double.parseDouble(getParameter(parameters, BILLING_BUDGET));
+        this.clientId = getParameter(parameters, Indexes.CLIENT_ID.index);
+        this.secret = getParameter(parameters, Indexes.SECRET.index);
+        this.domain = getParameter(parameters, Indexes.DOMAIN.index);
+        this.subscriptionId = getParameter(parameters, Indexes.SUBSCRIPTION_ID.index);
+        this.authenticationEndpoint = getParameter(parameters, Indexes.AUTHENTICATION_ENDPOINT.index);
+        this.managementEndpoint = getParameter(parameters, Indexes.MANAGEMENT_ENDPOINT.index);
+        this.resourceManagerEndpoint = getParameter(parameters, Indexes.RESOURCE_MANAGER_ENDPOINT.index);
+        this.graphEndpoint = getParameter(parameters, Indexes.GRAPH_ENDPOINT.index);
+        this.rmHostname = getParameter(parameters, Indexes.RM_HOSTNAME.index);
+        this.connectorIaasURL = getParameter(parameters, Indexes.CONNECTOR_IAAS_URL.index);
+        this.image = getParameter(parameters, Indexes.IMAGE.index);
+        this.imageOSType = getParameter(parameters, Indexes.IMAGE_OS_TYPE.index).toLowerCase();
+        this.vmSizeType = getParameter(parameters, Indexes.VM_SIZE_TYPE.index);
+        this.vmUsername = getParameter(parameters, Indexes.VM_USERNAME.index);
+        this.vmPassword = getParameter(parameters, Indexes.VM_PASSWORD.index);
+        this.vmPublicKey = getParameter(parameters, Indexes.VM_PUBLIC_KEY.index);
+        this.resourceGroup = getParameter(parameters, Indexes.RESOURCE_GROUP.index);
+        this.region = getParameter(parameters, Indexes.REGION.index);
+        this.numberOfInstances = Integer.parseInt(getParameter(parameters, Indexes.NUMBER_OF_INSTANCES.index));
+        this.numberOfNodesPerInstance = Integer.parseInt(getParameter(parameters,
+                                                                      Indexes.NUMBER_OF_NODES_PER_INSTANCE.index));
+        this.nodeJarURL = getParameter(parameters, Indexes.NODE_JAR_URL.index);
+        this.privateNetworkCIDR = getParameter(parameters, Indexes.PRIVATE_NETWORK_CIDR.index);
+        this.staticPublicIP = Boolean.parseBoolean(getParameter(parameters, Indexes.STATIC_PUBLIC_IP.index));
+        this.additionalProperties = getParameter(parameters, Indexes.ADDITIONAL_PROPERTIES.index);
+        this.resourceUsageRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
+                                                                           Indexes.BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN.index));
+        this.rateCardRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
+                                                                      Indexes.BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN.index));
+        this.offerId = getParameter(parameters, Indexes.BILLING_OFFER_ID.index);
+        this.currency = getParameter(parameters, Indexes.BILLING_CURRENCY.index);
+        this.locale = getParameter(parameters, Indexes.BILLING_LOCALE.index);
+        this.regionInfo = getParameter(parameters, Indexes.BILLING_REGION_INFO.index);
+        this.maxBudget = Double.parseDouble(getParameter(parameters, Indexes.BILLING_BUDGET.index));
         this.connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
@@ -325,40 +302,42 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     }
 
     private void validate(Object[] parameters) {
-        if (parameters == null || parameters.length < PARAMETERS_NUMBER) {
+        if (parameters == null || parameters.length < Indexes.values().length) {
             throw new IllegalArgumentException("Invalid parameters for AzureInfrastructure creation");
         }
 
-        throwIllegalArgumentExceptionIfNull(parameters[CLIENT_ID_INDEX], "Azure clientId must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[SECRET_INDEX], "Azure secret key must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[DOMAIN_INDEX], "Azure domain or tenantId must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[RM_HOSTNAME_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.CLIENT_ID.index], "Azure clientId must be specified");
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.SECRET.index], "Azure secret key must be specified");
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.DOMAIN.index],
+                                            "Azure domain or tenantId must be specified");
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.RM_HOSTNAME.index],
                                             "The Resource manager hostname must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[CONNECTOR_IAAS_URL_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.CONNECTOR_IAAS_URL.index],
                                             "The connector-iaas URL must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[IMAGE_INDEX], "The image id must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[IMAGE_OS_TYPE_INDEX], "The image OS type must be specified");
-        if (!getParameter(parameters, IMAGE_OS_TYPE_INDEX).equalsIgnoreCase(WINDOWS) &&
-            !getParameter(parameters, IMAGE_OS_TYPE_INDEX).equalsIgnoreCase(LINUX)) {
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.IMAGE.index], "The image id must be specified");
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.IMAGE_OS_TYPE.index],
+                                            "The image OS type must be specified");
+        if (!getParameter(parameters, Indexes.IMAGE_OS_TYPE.index).equalsIgnoreCase(WINDOWS) &&
+            !getParameter(parameters, Indexes.IMAGE_OS_TYPE.index).equalsIgnoreCase(LINUX)) {
             throw new IllegalArgumentException("The image OS type is not recognized, it must be 'windows' or 'linux'");
         }
-        throwIllegalArgumentExceptionIfNull(parameters[VM_USERNAME_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.VM_USERNAME.index],
                                             "The virtual machine username must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[VM_PASSWORD_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.VM_PASSWORD.index],
                                             "The virtual machine password must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[NUMBER_OF_INSTANCES_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.NUMBER_OF_INSTANCES.index],
                                             "The number of instances to create must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[NUMBER_OF_NODES_PER_INSTANCE_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index],
                                             "The number of nodes per instance to deploy must be specified");
         // The variable downloadCommand is not longer effectively used, but it's kept temporarily to facilitate future support of deploying nodes on windows os VM
-        //        if (parameters[DOWNLOAD_COMMAND_INDEX] == null || getParameter(parameters, DOWNLOAD_COMMAND_INDEX).isEmpty()) {
-        //            parameters[DOWNLOAD_COMMAND_INDEX] = generateDefaultDownloadCommand((String) parameters[IMAGE_OS_TYPE_INDEX],
-        //                                                                                (String) parameters[RM_HTTP_URL_INDEX]);
+        //        if (parameters[Indexes.DOWNLOAD_COMMAND.index] == null || getParameter(parameters, Indexes.DOWNLOAD_COMMAND.index).isEmpty()) {
+        //            parameters[Indexes.DOWNLOAD_COMMAND.index] = generateDefaultDownloadCommand((String) parameters[Indexes.IMAGE_OS_TYPE.index],
+        //                                                                                (String) parameters[Indexes.RM_HTTP_URL.index]);
         //        }
-        throwIllegalArgumentExceptionIfNull(parameters[NODE_JAR_URL_INDEX],
+        throwIllegalArgumentExceptionIfNull(parameters[Indexes.NODE_JAR_URL.index],
                                             "URL used to download the node jar must be specified");
-        if (parameters[ADDITIONAL_PROPERTIES_INDEX] == null) {
-            parameters[ADDITIONAL_PROPERTIES_INDEX] = "";
+        if (parameters[Indexes.ADDITIONAL_PROPERTIES.index] == null) {
+            parameters[Indexes.ADDITIONAL_PROPERTIES.index] = "";
         }
     }
 
@@ -378,7 +357,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         if (additionalInformation != null && additionalInformation.get(CLOUD_COST_GLOBAL_COST) != null) {
             this.azureBillingResourceUsage.setGlobalCost(Double.parseDouble(additionalInformation.get(CLOUD_COST_GLOBAL_COST)));
             this.azureBillingResourceUsage.setCurrency(additionalInformation.get(CLOUD_COST_CURRENCY));
-            this.azureBillingResourceUsage.setBudgetPercentage(Double.parseDouble(additionalInformation.get(CLOUD_COST_BUDGET_PERCENTAGE)));
+            this.azureBillingResourceUsage.setBudget(Double.parseDouble(additionalInformation.get(CLOUD_COST_MAX_BUDGET)));
+            this.azureBillingResourceUsage.setBudgetPercentage(Double.parseDouble(additionalInformation.get(CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE)));
             this.azureBillingResourceUsage.setResourceUsageReportedStartDateTime(LocalDateTime.parse(additionalInformation.get(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY),
                                                                                                      formatter));
             this.azureBillingResourceUsage.setResourceUsageReportedEndDateTime(LocalDateTime.parse(additionalInformation.get(CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY),
@@ -397,22 +377,20 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             return;
         }
         LOGGER.info("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
-                    this.resourceGroup + " " + this.nodeSource.getName() + " " + this.billingCurrency + " " +
-                    this.billingBudget);
+                    this.resourceGroup + " " + this.nodeSource.getName() + " " + this.currency + " " + this.maxBudget);
         this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
                                                                        this.resourceGroup,
                                                                        this.nodeSource.getName(),
-                                                                       this.billingCurrency,
-                                                                       this.billingBudget);
+                                                                       this.currency,
+                                                                       this.maxBudget);
 
         LOGGER.info("AzureInfrastructure initBilling new AzureBillingRateCard " + this.subscriptionId + " " +
-                    this.billingOfferId + " " + this.billingCurrency + " " + this.billingLocale + " " +
-                    this.billingRegionInfo);
+                    this.offerId + " " + this.currency + " " + this.locale + " " + this.regionInfo);
         this.azureBillingRateCard = new AzureBillingRateCard(this.subscriptionId,
-                                                             this.billingOfferId,
-                                                             this.billingCurrency,
-                                                             this.billingLocale,
-                                                             this.billingRegionInfo);
+                                                             this.offerId,
+                                                             this.currency,
+                                                             this.locale,
+                                                             this.regionInfo);
 
         // Restore infos if possible
         restoreBillingInformation();
@@ -420,7 +398,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         // Start a new thread to periodically call getAndStoreRate
         this.periodicallyRateCardGetter.scheduleAtFixedRate(this::updateMetersRates,
                                                             0,
-                                                            this.billingRateCardRefreshFreqInMin,
+                                                            this.rateCardRefreshFreqInMin,
                                                             TimeUnit.MINUTES);
 
         // Start a new thread to periodically retrieve resource usage
@@ -428,7 +406,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         // to compute the global cost
         this.periodicallyResourceUsageGetter.scheduleAtFixedRate(this::updateResourceUsage,
                                                                  2,
-                                                                 this.billingResourceUsageRefreshFreqInMin,
+                                                                 this.resourceUsageRefreshFreqInMin,
                                                                  TimeUnit.MINUTES);
 
         LOGGER.info("AzureInfrastructure initBilling periodicallyResourceUsageGetter and periodicallyRateCardGetter started");
@@ -447,11 +425,12 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                 if (nodesPerInstance.get(instanceId).isEmpty()) {
                     if (terminateInstanceIfEmpty) {
                         connectorIaasController.terminateInstance(infrastructureId, instanceId);
-                        this.nodeSource.removeAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
-                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY,
+                        this.nodeSource.removeAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST,
                                                                               CLOUD_COST_CURRENCY,
-                                                                              CLOUD_COST_GLOBAL_COST,
-                                                                              CLOUD_COST_BUDGET_PERCENTAGE);
+                                                                              CLOUD_COST_MAX_BUDGET,
+                                                                              CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE,
+                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
+                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY);
                         LOGGER.info("Instance terminated: " + instanceId);
                     }
                     nodesPerInstance.remove(instanceId);
@@ -694,12 +673,13 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     public Map<Integer, String> getSectionDescriptions() {
         Map<Integer, String> sectionDescriptions = super.getSectionDescriptions();
         sectionDescriptions.put(1, "Azure Configuration");
-        sectionDescriptions.put(2, "Endpoints");
-        sectionDescriptions.put(3, "PA Server Configuration");
-        sectionDescriptions.put(4, "Deployment Configuration");
-        sectionDescriptions.put(5, "VM Configuration");
-        sectionDescriptions.put(6, "Network Configuration");
-        sectionDescriptions.put(7, "Node Configuration");
+        sectionDescriptions.put(2, "Azure Billing Configuration");
+        sectionDescriptions.put(3, "Endpoints");
+        sectionDescriptions.put(4, "PA Server Configuration");
+        sectionDescriptions.put(5, "Deployment Configuration");
+        sectionDescriptions.put(6, "VM Configuration");
+        sectionDescriptions.put(7, "Network Configuration");
+        sectionDescriptions.put(8, "Node Configuration");
         return sectionDescriptions;
     }
 
@@ -736,17 +716,20 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                     budgetPercentage);
 
         // Make the usage cost available as an additional information
+        this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_MAX_BUDGET, this.maxBudget + "");
         this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
                                                            formatter.format(resourceUsageReportedStartDateTime));
         this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY,
                                                            formatter.format(resourceUsageReportedEndDateTime));
         if (globalCost == 0) {
             this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST, "not available yet");
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_BUDGET_PERCENTAGE, "not available yet");
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE,
+                                                               "not available yet");
         } else {
             this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST, globalCost + "");
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_CURRENCY, this.billingCurrency);
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_BUDGET_PERCENTAGE, budgetPercentage + "%");
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_CURRENCY, this.currency);
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE,
+                                                               budgetPercentage + "%");
         }
     }
 

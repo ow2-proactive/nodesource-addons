@@ -43,6 +43,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.microsoft.azure.management.resources.fluentcore.arm.ResourceUtils;
 
+import lombok.Getter;
+import lombok.Setter;
+
 
 public class AzureBillingResourceUsage {
 
@@ -55,16 +58,26 @@ public class AzureBillingResourceUsage {
 
     private String subscriptionId;
 
+    @Getter
+    @Setter
     private LocalDateTime resourceUsageReportedStartDateTime = null;
 
+    @Getter
+    @Setter
     private LocalDateTime resourceUsageReportedEndDateTime = null;
 
+    @Getter
+    @Setter
     private double globalCost = 0;
 
+    @Setter
     private String currency;
 
+    @Setter
     private double budget;
 
+    @Getter
+    @Setter
     private double budgetPercentage;
 
     private String resourceUriRegex;
@@ -90,14 +103,6 @@ public class AzureBillingResourceUsage {
                                              .replaceFirst("resourcegroups", "resourceGroups"); // bug in Azure API
 
         LOGGER.debug("AzureBillingResourceUsage AzureBillingResourceUsage " + this.resourceUriRegex);
-    }
-
-    public void setResourceUsageReportedStartDateTime(LocalDateTime resourceUsageReportedStartDateTime) {
-        this.resourceUsageReportedStartDateTime = resourceUsageReportedStartDateTime;
-    }
-
-    public void setResourceUsageReportedEndDateTime(LocalDateTime resourceUsageReportedEndDateTime) {
-        this.resourceUsageReportedEndDateTime = resourceUsageReportedEndDateTime;
     }
 
     private String queryResourceUsageHistory(String reportedStartTime, String reportedEndTime, String accessToken)
@@ -342,8 +347,8 @@ public class AzureBillingResourceUsage {
                                  this.globalCost + ") for [" + resourceProperties.get("usageStartTime").getAsString() +
                                  ";" + resourceProperties.get("usageEndTime").getAsString() + "]");
 
-                } // if (currentResourceUri.matches(this.resourceUriRegex))
-            } // while (resourceUsageIterator.hasNext())
+                } // END OF if (currentResourceUri.matches(this.resourceUriRegex))
+            } // END OF while (resourceUsageIterator.hasNext())
 
             LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (update) before return");
             return new HashSet<>();
@@ -354,33 +359,5 @@ public class AzureBillingResourceUsage {
             LOGGER.debug("AzureBillingResourceUsage synchronized updateResourceUsageInfosOrGetMetersIds (get) before return");
             return metersIdsCopy;
         }
-    }
-
-    public LocalDateTime getResourceUsageReportedStartDateTime() {
-        return this.resourceUsageReportedStartDateTime;
-    }
-
-    public LocalDateTime getResourceUsageReportedEndDateTime() {
-        return this.resourceUsageReportedEndDateTime;
-    }
-
-    public double getGlobalCost() {
-        return this.globalCost;
-    }
-
-    public double getBudgetPercentage() {
-        return this.budgetPercentage;
-    }
-
-    public void setGlobalCost(double globalCost) {
-        this.globalCost = globalCost;
-    }
-
-    public void setCurrency(String currency) {
-        this.currency = currency;
-    }
-
-    public void setBudgetPercentage(double budgetPercentage) {
-        this.budgetPercentage = budgetPercentage;
     }
 }
