@@ -130,29 +130,29 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Total nodes to create per instance", sectionSelector = 2, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    @Configurable(description = "(optional) The virtual machine username", sectionSelector = 3)
+    @Configurable(description = "The virtual machine username (optional)", sectionSelector = 3)
     protected String vmUsername = null;
 
-    @Configurable(fileBrowser = true, description = "(optional) The public key for accessing the virtual machine", sectionSelector = 3)
+    @Configurable(fileBrowser = true, description = "The public key for accessing the virtual machine (optional)", sectionSelector = 3)
     protected String vmPublicKey = null;
 
-    @Configurable(fileBrowser = true, description = "(optional) The private key for accessing the virtual machine", sectionSelector = 3)
+    @Configurable(fileBrowser = true, description = "The private key for accessing the virtual machine (optional)", sectionSelector = 3)
     protected String vmPrivateKey = null;
 
-    @Configurable(description = "(optional, default value: " + DEFAULT_IMAGE +
-                                ") The image of the virtual machine", sectionSelector = 3)
+    @Configurable(description = "The image of the virtual machine (optional, default value: " + DEFAULT_IMAGE +
+                                ")", sectionSelector = 3, important = true)
     protected String image = DEFAULT_IMAGE;
 
-    @Configurable(description = "(optional, default value: " + DEFAULT_REGION +
-                                ") The region of the virtual machine", sectionSelector = 3)
+    @Configurable(description = "The region of the virtual machine (optional, default value: " + DEFAULT_REGION +
+                                ")", sectionSelector = 3, important = true)
     protected String region = DEFAULT_REGION;
 
-    @Configurable(description = "(optional, default value: " + DEFAULT_RAM +
-                                ") The minimum RAM required (in Mega Bytes) for each virtual machine", sectionSelector = 3)
+    @Configurable(description = "The minimum RAM required (in Mega Bytes) for each virtual machine (optional, default value: " +
+                                DEFAULT_RAM + ")", sectionSelector = 3, important = true)
     protected int ram = DEFAULT_RAM;
 
-    @Configurable(description = "(optional, default value: " + DEFAULT_CORES +
-                                ") The minimum number of CPU cores required for each virtual machine", sectionSelector = 3)
+    @Configurable(description = "The minimum number of CPU cores required for each virtual machine (optional, default value: " +
+                                DEFAULT_CORES + ")", sectionSelector = 3, important = true)
     protected int cores = DEFAULT_CORES;
 
     @Configurable(description = "Resource manager hostname or ip address (must be accessible from nodes)", sectionSelector = 4)
@@ -164,11 +164,11 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "URL used to download the node jar on the virtual machine", sectionSelector = 4)
     protected String nodeJarURL = LinuxInitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
-    @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 5)
+    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\") (optional)", sectionSelector = 5)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
-    @Configurable(description = "(optional, default value: " + DEFAULT_NODE_TIMEOUT +
-                                ")Node timeout in ms. After this timeout expired, the node is considered to be lost", sectionSelector = 5)
+    @Configurable(description = "Node timeout in ms. After this timeout expired, the node is considered to be lost (optional, default value: " +
+                                DEFAULT_NODE_TIMEOUT + ")", sectionSelector = 5)
     protected int nodeTimeout = DEFAULT_NODE_TIMEOUT;
 
     private Map<String, String> meta = new HashMap<>();
