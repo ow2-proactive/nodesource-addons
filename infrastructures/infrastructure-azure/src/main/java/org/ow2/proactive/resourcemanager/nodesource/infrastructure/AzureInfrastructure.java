@@ -62,6 +62,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
                                                                         .withZone(ZoneOffset.UTC);
 
+    private static final String ADDITIONAL_INFORMATION_NOT_AVAILABLE_YET = "not available yet";
+
     public static final String WINDOWS = "windows";
 
     public static final String LINUX = "linux";
@@ -354,15 +356,22 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         LOGGER.info("AzureInfrastructure restoreBillingInformation additionalInformation " +
                     Arrays.asList(additionalInformation));
 
-        if (additionalInformation != null && additionalInformation.get(CLOUD_COST_GLOBAL_COST) != null) {
-            this.azureBillingResourceUsage.setGlobalCost(Double.parseDouble(additionalInformation.get(CLOUD_COST_GLOBAL_COST)));
-            this.azureBillingResourceUsage.setCurrency(additionalInformation.get(CLOUD_COST_CURRENCY));
-            this.azureBillingResourceUsage.setBudget(Double.parseDouble(additionalInformation.get(CLOUD_COST_MAX_BUDGET)));
-            this.azureBillingResourceUsage.setBudgetPercentage(Double.parseDouble(additionalInformation.get(CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE)));
+        if (additionalInformation != null && additionalInformation.get(CLOUD_COST_GLOBAL_COST_KEY) != null) {
             this.azureBillingResourceUsage.setResourceUsageReportedStartDateTime(LocalDateTime.parse(additionalInformation.get(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY),
                                                                                                      formatter));
             this.azureBillingResourceUsage.setResourceUsageReportedEndDateTime(LocalDateTime.parse(additionalInformation.get(CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY),
                                                                                                    formatter));
+            this.azureBillingResourceUsage.setCurrency(additionalInformation.get(CLOUD_COST_CURRENCY_KEY));
+            this.azureBillingResourceUsage.setBudget(Double.parseDouble(additionalInformation.get(CLOUD_COST_MAX_BUDGET_KEY)));
+
+            if (additionalInformation.get(CLOUD_COST_GLOBAL_COST_KEY)
+                                     .equals(ADDITIONAL_INFORMATION_NOT_AVAILABLE_YET)) {
+                this.azureBillingResourceUsage.setGlobalCost(0);
+                this.azureBillingResourceUsage.setBudgetPercentage(0);
+            } else {
+                this.azureBillingResourceUsage.setGlobalCost(Double.parseDouble(additionalInformation.get(CLOUD_COST_GLOBAL_COST_KEY)));
+                this.azureBillingResourceUsage.setBudgetPercentage(Double.parseDouble(additionalInformation.get(CLOUD_COST_GLOBAL_COST_IN_MAX_BUDGET_PERCENTAGE_KEY)));
+            }
         }
     }
 
@@ -425,12 +434,12 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                 if (nodesPerInstance.get(instanceId).isEmpty()) {
                     if (terminateInstanceIfEmpty) {
                         connectorIaasController.terminateInstance(infrastructureId, instanceId);
-                        this.nodeSource.removeAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST,
-                                                                              CLOUD_COST_CURRENCY,
-                                                                              CLOUD_COST_MAX_BUDGET,
-                                                                              CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE,
-                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
-                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY);
+                        this.nodeSource.removeAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
+                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY,
+                                                                              CLOUD_COST_GLOBAL_COST_KEY,
+                                                                              CLOUD_COST_CURRENCY_KEY,
+                                                                              CLOUD_COST_MAX_BUDGET_KEY,
+                                                                              CLOUD_COST_GLOBAL_COST_IN_MAX_BUDGET_PERCENTAGE_KEY);
                         LOGGER.info("Instance terminated: " + instanceId);
                     }
                     nodesPerInstance.remove(instanceId);
@@ -716,20 +725,22 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                     budgetPercentage);
 
         // Make the usage cost available as an additional information
-        this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_MAX_BUDGET, this.maxBudget + "");
         this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
                                                            formatter.format(resourceUsageReportedStartDateTime));
         this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY,
                                                            formatter.format(resourceUsageReportedEndDateTime));
+        this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_CURRENCY_KEY, this.currency);
+        this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_MAX_BUDGET_KEY, this.maxBudget + "");
+
         if (globalCost == 0) {
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST, "not available yet");
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE,
-                                                               "not available yet");
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST_KEY,
+                                                               ADDITIONAL_INFORMATION_NOT_AVAILABLE_YET);
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST_IN_MAX_BUDGET_PERCENTAGE_KEY,
+                                                               ADDITIONAL_INFORMATION_NOT_AVAILABLE_YET);
         } else {
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST, globalCost + "");
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_CURRENCY, this.currency);
-            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_COST_IN_MAX_BUDGET_PERCENTAGE,
-                                                               budgetPercentage + "%");
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST_KEY, globalCost + "");
+            this.nodeSource.putAndPersistAdditionalInformation(CLOUD_COST_GLOBAL_COST_IN_MAX_BUDGET_PERCENTAGE_KEY,
+                                                               budgetPercentage + "");
         }
     }
 
