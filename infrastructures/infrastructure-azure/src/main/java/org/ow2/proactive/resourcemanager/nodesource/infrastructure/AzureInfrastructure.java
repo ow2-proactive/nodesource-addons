@@ -77,15 +77,17 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_ADDITIONAL_PROPERTIES = "-Dproactive.useIPaddress=true -Dproactive.net.public_address=$(wget -qO- ipinfo.io/ip) -Dproactive.pnp.port=64738";
 
-    private ScheduledExecutorService periodicallyResourceUsageGetter = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService periodicallyResourceUsageGetter = null;
 
-    private ScheduledExecutorService periodicallyRateCardGetter = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService periodicallyRateCardGetter = null;
 
     private AzureBillingResourceUsage azureBillingResourceUsage = null;
 
     private AzureBillingRateCard azureBillingRateCard = null;
 
     private AzureBillingCredentials azureBillingCredentials = null;
+
+    private boolean initBillingIsDone = false;
 
     // Command lines patterns
     private static final CharSequence RM_HTTP_URL_PATTERN = "<RM_HTTP_URL>";
@@ -376,49 +378,62 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     }
 
     private void initBilling() {
-        // Azure billing instances
-        try {
-            LOGGER.info("AzureInfrastructure initBilling new AzureBillingCredentials " + this.clientId + " " +
-                        this.domain + " " + this.secret);
-            this.azureBillingCredentials = new AzureBillingCredentials(this.clientId, this.domain, this.secret);
-        } catch (IOException e) {
-            LOGGER.error("AzureInfrastructure initBilling " + e.getMessage() + "? Will not start getter threads.");
-            return;
+
+        if (!this.initBillingIsDone) {
+
+            // Azure billing instances
+            try {
+                LOGGER.info("AzureInfrastructure initBilling new AzureBillingCredentials " + this.clientId + " " +
+                            this.domain + " " + this.secret);
+                this.azureBillingCredentials = new AzureBillingCredentials(this.clientId, this.domain, this.secret);
+            } catch (IOException e) {
+                LOGGER.error("AzureInfrastructure initBilling " + e.getMessage() + "? Will not start getter threads.");
+                return;
+            }
+            LOGGER.info("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
+                        this.resourceGroup + " " + this.nodeSource.getName() + " " + this.currency + " " +
+                        this.maxBudget);
+            this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
+                                                                           this.resourceGroup,
+                                                                           this.nodeSource.getName(),
+                                                                           this.currency,
+                                                                           this.maxBudget);
+
+            LOGGER.info("AzureInfrastructure initBilling new AzureBillingRateCard " + this.subscriptionId + " " +
+                        this.offerId + " " + this.currency + " " + this.locale + " " + this.regionInfo);
+            this.azureBillingRateCard = new AzureBillingRateCard(this.subscriptionId,
+                                                                 this.offerId,
+                                                                 this.currency,
+                                                                 this.locale,
+                                                                 this.regionInfo);
+
+            // Restore infos if possible
+            restoreBillingInformation();
+
+            // Start a new thread to periodically call getAndStoreRate
+            // In case of already having a running tread, i.e. which was not shut down, no need create a new thread
+            if (this.periodicallyRateCardGetter == null) {
+                this.periodicallyRateCardGetter = Executors.newSingleThreadScheduledExecutor();
+            }
+            this.periodicallyRateCardGetter.scheduleAtFixedRate(this::updateMetersRates,
+                                                                0,
+                                                                this.rateCardRefreshFreqInMin,
+                                                                TimeUnit.MINUTES);
+
+            // Start a new thread to periodically retrieve resource usage
+            // Start it after periodicallyRateCardGetter (cf initial delay param) since rates are required
+            // to compute the global cost
+            if (this.periodicallyResourceUsageGetter == null) {
+                this.periodicallyResourceUsageGetter = Executors.newSingleThreadScheduledExecutor();
+            }
+            this.periodicallyResourceUsageGetter.scheduleAtFixedRate(this::updateResourceUsage,
+                                                                     2,
+                                                                     this.resourceUsageRefreshFreqInMin,
+                                                                     TimeUnit.MINUTES);
+
+            LOGGER.info("AzureInfrastructure initBilling periodicallyResourceUsageGetter and periodicallyRateCardGetter started");
+            this.initBillingIsDone = true;
         }
-        LOGGER.info("AzureInfrastructure initBilling new AzureBillingResourceUsage " + this.subscriptionId + " " +
-                    this.resourceGroup + " " + this.nodeSource.getName() + " " + this.currency + " " + this.maxBudget);
-        this.azureBillingResourceUsage = new AzureBillingResourceUsage(this.subscriptionId,
-                                                                       this.resourceGroup,
-                                                                       this.nodeSource.getName(),
-                                                                       this.currency,
-                                                                       this.maxBudget);
-
-        LOGGER.info("AzureInfrastructure initBilling new AzureBillingRateCard " + this.subscriptionId + " " +
-                    this.offerId + " " + this.currency + " " + this.locale + " " + this.regionInfo);
-        this.azureBillingRateCard = new AzureBillingRateCard(this.subscriptionId,
-                                                             this.offerId,
-                                                             this.currency,
-                                                             this.locale,
-                                                             this.regionInfo);
-
-        // Restore infos if possible
-        restoreBillingInformation();
-
-        // Start a new thread to periodically call getAndStoreRate
-        this.periodicallyRateCardGetter.scheduleAtFixedRate(this::updateMetersRates,
-                                                            0,
-                                                            this.rateCardRefreshFreqInMin,
-                                                            TimeUnit.MINUTES);
-
-        // Start a new thread to periodically retrieve resource usage
-        // Start it after periodicallyRateCardGetter (cf initial delay param) since rates are required
-        // to compute the global cost
-        this.periodicallyResourceUsageGetter.scheduleAtFixedRate(this::updateResourceUsage,
-                                                                 2,
-                                                                 this.resourceUsageRefreshFreqInMin,
-                                                                 TimeUnit.MINUTES);
-
-        LOGGER.info("AzureInfrastructure initBilling periodicallyResourceUsageGetter and periodicallyRateCardGetter started");
     }
 
     @Override
