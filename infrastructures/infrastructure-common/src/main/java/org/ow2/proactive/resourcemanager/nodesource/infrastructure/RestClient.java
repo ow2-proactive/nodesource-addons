@@ -29,6 +29,8 @@ import java.net.HttpURLConnection;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -100,6 +102,16 @@ public class RestClient {
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
                                                  "/keypairs");
         Response response = target.request().post(Entity.entity(instanceJson, MediaType.APPLICATION_JSON_TYPE));
+        return checkAndGetResponse(response);
+    }
+
+    public String deleteKeyPair(String infrastructureId, String keyPairName, String region) {
+        ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
+                                                 "/keypairs");
+        final MultivaluedMap<String, Object> queryParams = new MultivaluedHashMap<>();
+        queryParams.add("keyPairName", keyPairName);
+        queryParams.add("region", region);
+        Response response = target.queryParams(queryParams).request(MediaType.APPLICATION_JSON_TYPE).delete();
         return checkAndGetResponse(response);
     }
 

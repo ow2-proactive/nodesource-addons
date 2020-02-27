@@ -334,4 +334,8 @@ public class ConnectorIaasController {
         return connectorIaasClient.createAwsEc2KeyPair(infrastructureId, instanceJson);
     }
 
+    public void deleteKeyPair(String infrastructureId, String keyPairName, String region) {
+        connectorIaasClient.deleteKeyPair(infrastructureId, keyPairName, region);
+    }
+
 }

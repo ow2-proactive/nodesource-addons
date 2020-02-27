@@ -147,6 +147,10 @@ public class ConnectorIaasClient {
         }
     }
 
+    public void deleteKeyPair(String infrastructureId, String keyPairName, String region) {
+        restClient.deleteKeyPair(infrastructureId, keyPairName, region);
+    }
+
     public void terminateInfrastructure(String infrastructureId, boolean deleteInstances) {
         restClient.deleteInfrastructure(infrastructureId, deleteInstances);
     }
