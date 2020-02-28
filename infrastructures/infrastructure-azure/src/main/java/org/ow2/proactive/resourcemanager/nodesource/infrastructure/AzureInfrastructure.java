@@ -727,6 +727,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         } catch (IOException | AzureBillingException e) {
             LOGGER.error(e.getMessage());
             shutdownBillingGetters();
+            return;
         }
 
         LocalDateTime resourceUsageReportedStartDateTime = this.azureBillingResourceUsage.getResourceUsageReportedStartDateTime();
@@ -775,6 +776,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             LOGGER.error(e.getMessage());
             // No need to keep getter threads alive
             shutdownBillingGetters();
+            return;
         }
     }
 }
