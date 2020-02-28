@@ -69,6 +69,8 @@ public class AWSEC2InfrastructureTest {
 
     private static final String IMAGE = "region/ami-image";
 
+    private static final String REGION = "region";
+
     private static final String VM_USERNAME = "admin";
 
     private static final String VM_KEY_PAIR_NAME = "keyname";
@@ -273,6 +275,7 @@ public class AWSEC2InfrastructureTest {
                                                              AWS_KEY,
                                                              AWS_SECRET_KEY,
                                                              null,
+                                                             REGION,
                                                              DESTROY_INSTANCES_ON_SHUTDOWN);
 
         verify(connectorIaasController).createAwsEc2InstancesWithOptions(INFRASTRUCTURE_ID,
@@ -373,6 +376,7 @@ public class AWSEC2InfrastructureTest {
                                                              AWS_KEY,
                                                              AWS_SECRET_KEY,
                                                              null,
+                                                             REGION,
                                                              DESTROY_INSTANCES_ON_SHUTDOWN);
 
         verify(connectorIaasController).createAwsEc2InstancesWithOptions(INFRASTRUCTURE_ID,

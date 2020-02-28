@@ -311,6 +311,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                          awsKey,
                                                          awsSecretKey,
                                                          null,
+                                                         getRegionFromImage(),
                                                          DESTROY_INSTANCES_ON_SHUTDOWN);
             isCreatedInfrastructure = true;
         }

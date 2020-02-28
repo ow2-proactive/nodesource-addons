@@ -76,6 +76,26 @@ public class ConnectorIaasController {
         return infrastructureId;
     }
 
+    public String createInfrastructure(String infrastructureId, String username, String password, String endPoint,
+            String region, boolean destroyOnShutdown) {
+
+        String infrastructureJson = ConnectorIaasJSONTransformer.getInfrastructureJSONWithEndPoint(infrastructureId,
+                                                                                                   infrastructureType,
+                                                                                                   username,
+                                                                                                   password,
+                                                                                                   endPoint,
+                                                                                                   region,
+                                                                                                   destroyOnShutdown);
+
+        logger.info("Creating infrastructure : " + infrastructureJson);
+
+        connectorIaasClient.createInfrastructure(infrastructureId, infrastructureJson);
+
+        logger.info("Infrastructure created");
+
+        return infrastructureId;
+    }
+
     public String createOpenstackInfrastructure(String infrastructureId, String username, String password,
             String domain, String scopePrefix, String scopeValue, String region, String identityVersion,
             String endPoint, boolean destroyOnShutdown) {
