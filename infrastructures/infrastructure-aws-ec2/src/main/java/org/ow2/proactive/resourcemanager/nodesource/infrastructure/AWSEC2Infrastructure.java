@@ -514,6 +514,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
      * @return instanceId with AWS format (e.g., region/instance-id)
      */
     private static String parseInstanceIdFromNodeName(final String nodeName) {
+        // instanceId with node index example: region/instance-id_1 or region/instance-id
         String instanceIdWithNodeIndex = getInstanceIdFromBaseNodeName(nodeName);
         int indexNodeSeparator = instanceIdWithNodeIndex.lastIndexOf(NODE_INDEX_DELIMITER);
         // when nodeName contains no NODE_INDEX_DELIMITER, baseNodeName is same as nodeName, otherwise it's the part before NODE_INDEX_DELIMITER

@@ -245,11 +245,10 @@ public class AWSEC2InfrastructureTest {
             return null;
         }).when(nodeSource).executeInParallel(any(Runnable.class));
 
-        doReturn(new ArrayList<>()).when(awsec2Infrastructure)
-                                   .addMultipleDeployingNodes(anyListOf(String.class),
-                                                              anyString(),
-                                                              anyString(),
-                                                              anyLong());
+        doReturn(new ArrayList<>()).when(awsec2Infrastructure).addMultipleDeployingNodes(anyListOf(String.class),
+                                                                                         anyString(),
+                                                                                         anyString(),
+                                                                                         anyLong());
 
         when(connectorIaasController.createInfrastructure(INFRASTRUCTURE_ID,
                                                           AWS_KEY,
@@ -346,11 +345,10 @@ public class AWSEC2InfrastructureTest {
             return null;
         }).when(nodeSource).executeInParallel(any(Runnable.class));
 
-        doReturn(new ArrayList<>()).when(awsec2Infrastructure)
-                                   .addMultipleDeployingNodes(anyListOf(String.class),
-                                                              anyString(),
-                                                              anyString(),
-                                                              anyLong());
+        doReturn(new ArrayList<>()).when(awsec2Infrastructure).addMultipleDeployingNodes(anyListOf(String.class),
+                                                                                         anyString(),
+                                                                                         anyString(),
+                                                                                         anyLong());
 
         when(connectorIaasController.createInfrastructure(INFRASTRUCTURE_ID,
                                                           AWS_KEY,
