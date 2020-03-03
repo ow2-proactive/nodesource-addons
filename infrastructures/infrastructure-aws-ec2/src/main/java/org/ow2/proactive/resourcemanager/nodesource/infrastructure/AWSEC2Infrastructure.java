@@ -514,10 +514,12 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
      * @return instanceId with AWS format (e.g., region/instance-id)
      */
     private static String parseInstanceIdFromNodeName(final String nodeName) {
-        int indexNodeSeparator = nodeName.lastIndexOf(NODE_INDEX_DELIMITER);
+        String instanceIdWithNodeIndex = getInstanceIdFromBaseNodeName(nodeName);
+        int indexNodeSeparator = instanceIdWithNodeIndex.lastIndexOf(NODE_INDEX_DELIMITER);
         // when nodeName contains no NODE_INDEX_DELIMITER, baseNodeName is same as nodeName, otherwise it's the part before NODE_INDEX_DELIMITER
-        String baseNodeName = (indexNodeSeparator == -1) ? nodeName : nodeName.substring(0, indexNodeSeparator);
-        return getInstanceIdFromBaseNodeName(baseNodeName);
+        String instanceId = (indexNodeSeparator == -1) ? instanceIdWithNodeIndex
+                                                       : instanceIdWithNodeIndex.substring(0, indexNodeSeparator);
+        return instanceId;
     }
 
     private static String getInstanceIdFromBaseNodeName(final String baseNodeName) {

@@ -36,6 +36,7 @@ import static org.mockito.Mockito.*;
 import java.security.KeyException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.Before;
@@ -54,6 +55,7 @@ import org.ow2.proactive.resourcemanager.authentication.Client;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
+import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.python.google.common.collect.Sets;
 
 
@@ -67,9 +69,9 @@ public class AWSEC2InfrastructureTest {
 
     private static final int NUMBER_OF_NODES_PER_INSTANCE = 3;
 
-    private static final String IMAGE = "region/ami-image";
+    private static final String REGION = "aws-region";
 
-    private static final String REGION = "region";
+    private static final String IMAGE = REGION + "/ami-image";
 
     private static final String VM_USERNAME = "admin";
 
@@ -243,10 +245,11 @@ public class AWSEC2InfrastructureTest {
             return null;
         }).when(nodeSource).executeInParallel(any(Runnable.class));
 
-        doReturn(new ArrayList<>()).when(awsec2Infrastructure).addMultipleDeployingNodes(anyListOf(String.class),
-                                                                                         anyString(),
-                                                                                         anyString(),
-                                                                                         anyLong());
+        doReturn(new ArrayList<>()).when(awsec2Infrastructure)
+                                   .addMultipleDeployingNodes(anyListOf(String.class),
+                                                              anyString(),
+                                                              anyString(),
+                                                              anyLong());
 
         when(connectorIaasController.createInfrastructure(INFRASTRUCTURE_ID,
                                                           AWS_KEY,
@@ -343,10 +346,11 @@ public class AWSEC2InfrastructureTest {
             return null;
         }).when(nodeSource).executeInParallel(any(Runnable.class));
 
-        doReturn(new ArrayList<>()).when(awsec2Infrastructure).addMultipleDeployingNodes(anyListOf(String.class),
-                                                                                         anyString(),
-                                                                                         anyString(),
-                                                                                         anyLong());
+        doReturn(new ArrayList<>()).when(awsec2Infrastructure)
+                                   .addMultipleDeployingNodes(anyListOf(String.class),
+                                                              anyString(),
+                                                              anyString(),
+                                                              anyLong());
 
         when(connectorIaasController.createInfrastructure(INFRASTRUCTURE_ID,
                                                           AWS_KEY,
@@ -402,8 +406,8 @@ public class AWSEC2InfrastructureTest {
     @Test
     public void testRemoveNode() throws ProActiveException, RMException {
         final String instanceId = "instance-id";
-        final String nodeName = "region__" + instanceId + "_0";
-        final String instanceIdWithRegion = "region/" + instanceId;
+        final String nodeName = REGION + "__" + instanceId + "_0";
+        final String instanceIdWithRegion = REGION + "/" + instanceId;
 
         awsec2Infrastructure.configure(AWS_KEY,
                                        AWS_SECRET_KEY,
@@ -482,6 +486,50 @@ public class AWSEC2InfrastructureTest {
         assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").size(), is(1));
         assertThat(awsec2Infrastructure.getNodesPerInstancesMapCopy().get("123").contains("nodename"), is(true));
 
+    }
+
+    @Test
+    public void testNotifyLostSingleNode() {
+        // the instance has only one node
+        final String awsInstanceId = REGION + "/i-instanceid";
+        final String nodeName = REGION + "__i-instanceid";
+        final String deployingNodeUrl = String.format("deploying://%s/%s", INFRASTRUCTURE_ID, nodeName);
+
+        awsec2Infrastructure.connectorIaasController = connectorIaasController;
+        when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
+        RMDeployingNode mockDeployingNode = new RMDeployingNode(nodeName, nodeSource, "cmd", null);
+        when(awsec2Infrastructure.getDeployingOrLostNode(deployingNodeUrl)).thenReturn(mockDeployingNode);
+
+        awsec2Infrastructure.notifyDeployingNodeLost(deployingNodeUrl);
+
+        verify(connectorIaasController).terminateInstance(INFRASTRUCTURE_ID, awsInstanceId);
+    }
+
+    @Test
+    public void testNotifyLostMultiNodes() {
+        // the instance has two nodes
+        final String awsInstanceId = REGION + "/i-instanceid";
+        final String nodeName1 = REGION + "__i-instanceid_0";
+        final String nodeName2 = REGION + "__i-instanceid_1";
+        final String deployingNodeUrl1 = String.format("deploying://%s/%s", INFRASTRUCTURE_ID, nodeName1);
+        final String deployingNodeUrl2 = String.format("deploying://%s/%s", INFRASTRUCTURE_ID, nodeName2);
+
+        awsec2Infrastructure.connectorIaasController = connectorIaasController;
+        when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
+        RMDeployingNode deployingNode1 = new RMDeployingNode(nodeName1, nodeSource, "cmd", null);
+        when(awsec2Infrastructure.getDeployingOrLostNode(deployingNodeUrl1)).thenReturn(deployingNode1);
+        RMDeployingNode deployingNode2 = new RMDeployingNode(nodeName2, nodeSource, "cmd", null);
+        when(awsec2Infrastructure.getDeployingOrLostNode(deployingNodeUrl2)).thenReturn(deployingNode2);
+
+        // when only remove 1 node while existing 2 deploying nodes for the instance, the instance should not be removed
+        when(awsec2Infrastructure.getDeployingAndLostNodes()).thenReturn(Arrays.asList(deployingNode1, deployingNode2));
+        awsec2Infrastructure.notifyDeployingNodeLost(deployingNodeUrl1);
+        verify(connectorIaasController, times(0)).terminateInstance(INFRASTRUCTURE_ID, awsInstanceId);
+
+        // when the removed deploying node are the last node of the instance, the instance should be removed
+        when(awsec2Infrastructure.getDeployingAndLostNodes()).thenReturn(Collections.singletonList(deployingNode2));
+        awsec2Infrastructure.notifyDeployingNodeLost(deployingNodeUrl2);
+        verify(connectorIaasController).terminateInstance(INFRASTRUCTURE_ID, awsInstanceId);
     }
 
     @Test
