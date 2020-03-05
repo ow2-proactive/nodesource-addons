@@ -436,42 +436,6 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    @Override
-    protected void unregisterNodeAndRemoveInstanceIfNeeded(final String instanceId, final String nodeName,
-            final String infrastructureId, final boolean terminateInstanceIfEmpty) {
-        setPersistedInfraVariable(() -> {
-            // first read from the runtime variables map
-            nodesPerInstance = (Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY);
-            // make modifications to the nodesPerInstance map
-            if (nodesPerInstance.get(instanceId) != null) {
-                nodesPerInstance.get(instanceId).remove(nodeName);
-                LOGGER.info("Removed node: " + nodeName);
-                if (nodesPerInstance.get(instanceId).isEmpty()) {
-                    if (terminateInstanceIfEmpty) {
-                        connectorIaasController.terminateInstance(infrastructureId, instanceId);
-                        this.nodeSource.removeAndPersistAdditionalInformation(CLOUD_COST_RESOURCE_USAGE_REPORTED_AT_KEY,
-                                                                              CLOUD_COST_RESOURCE_USAGE_REPORTED_UNTIL_KEY,
-                                                                              CLOUD_COST_GLOBAL_COST_KEY,
-                                                                              CLOUD_COST_CURRENCY_KEY,
-                                                                              CLOUD_COST_MAX_BUDGET_KEY,
-                                                                              CLOUD_COST_GLOBAL_COST_IN_MAX_BUDGET_PERCENTAGE_KEY);
-                        LOGGER.info("Instance terminated: " + instanceId);
-                    }
-                    nodesPerInstance.remove(instanceId);
-                    LOGGER.info("Removed instance : " + instanceId);
-                }
-                // finally write to the runtime variable map
-
-                persistedInfraVariables.put(NODES_PER_INSTANCES_KEY, Maps.newHashMap(nodesPerInstance));
-
-            } else {
-                LOGGER.error("Cannot remove node " + nodeName + " because instance " + instanceId +
-                             " is not registered");
-            }
-            return null;
-        });
-    }
-
     synchronized private void shutdownBillingGetters() {
         LOGGER.info("AzureInfrastructure shutdownBillingGetters");
         // Shutdown threads
