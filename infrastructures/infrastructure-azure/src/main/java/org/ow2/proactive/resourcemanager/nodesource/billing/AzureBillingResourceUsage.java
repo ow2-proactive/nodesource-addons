@@ -95,10 +95,10 @@ public class AzureBillingResourceUsage {
         // Since ResourceUtils.constructResourceId returns 'resourcegroups' against 'resourcesGroups' in the query result
         // we replace "resourcegroups" by "resourceGroups"
         this.resourceUriRegex = ResourceUtils.constructResourceId(subscriptionId,
-                                                                  "(?i)" + resourceGroup, // Ignore case since Azure mix upper with lower case in resourceGroupName
+                                                                  "(?i)" + resourceGroup, // Ignore case
                                                                   "Microsoft.Compute",
                                                                   ".*", // Any resource type (vm, disk,..)
-                                                                  nodeSourceName + "[0-9]*(?:-[a-zA-Z0-9]+)?", // "<node source name><instance id>" followed (optional) by "-ipJHSdj82sd" for ip, disk, ...
+                                                                  "(?i)" + nodeSourceName + "[0-9]*(?:-[a-zA-Z0-9]+)?", // "<node source name><instance id>" followed (optional) by "-ipJHSdj82sd" for ip, disk, ...
                                                                   "")
                                              .replaceFirst("resourcegroups", "resourceGroups"); // bug in Azure API
 
@@ -209,16 +209,17 @@ public class AzureBillingResourceUsage {
         return null;
     }
 
-    private double computeCostInThatHour(double resourceQuantityInThatHour, LinkedHashMap<String, Double> meterRates) {
+    private double computeResourceCostInThatHour(double resourceQuantityInThatHour,
+            LinkedHashMap<String, Double> meterRates) {
 
-        LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour resourceQuantityInThatHour " +
+        LOGGER.debug("AzureBillingResourceUsage computeResourceCostInThatHour resourceQuantityInThatHour " +
                      resourceQuantityInThatHour + " meterRates " + meterRates);
 
         if (meterRates == null || meterRates.isEmpty()) {
             return 0;
         }
 
-        double costInThatHour = 0;
+        double resourceCostInThatHour = 0;
         double quantityToPriceInThisStep;
         double lowerStepQuantity = -1;
         double lowerStepRate = -1;
@@ -229,7 +230,7 @@ public class AzureBillingResourceUsage {
             upperStepQuantity = Double.parseDouble(meterRatesEntry.getKey());
             upperStepRate = meterRatesEntry.getValue();
 
-            LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour step rate:[" + lowerStepRate + "," +
+            LOGGER.debug("AzureBillingResourceUsage computeResourceCostInThatHour step rate:[" + lowerStepRate + "," +
                          upperStepRate + "]  step quantity:[" + lowerStepQuantity + "," + upperStepQuantity + "]");
 
             // In [lowerStepQuantity, upperStepQuantity], it costs lowerStepRate
@@ -244,10 +245,10 @@ public class AzureBillingResourceUsage {
                     break;
                 }
                 // Price it and add it to the global cost
-                costInThatHour += quantityToPriceInThisStep * lowerStepRate;
-                LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour added to costInThatHour: " +
-                             quantityToPriceInThisStep + " x " + lowerStepRate + " [new costInThatHour = " +
-                             costInThatHour + "]");
+                resourceCostInThatHour += quantityToPriceInThisStep * lowerStepRate;
+                LOGGER.debug("AzureBillingResourceUsage computeResourceCostInThatHour added to resourceCostInThatHour: " +
+                             quantityToPriceInThisStep + " x " + lowerStepRate + " [new resourceCostInThatHour = " +
+                             resourceCostInThatHour + "]");
             }
 
             // Update lowerStepQuantity & lowerStepRate
@@ -258,14 +259,14 @@ public class AzureBillingResourceUsage {
         // The last quantity (without upperStepQuantity)
         if (resourceQuantityInThatHour > lowerStepQuantity) {
             quantityToPriceInThisStep = resourceQuantityInThatHour - lowerStepQuantity;
-            costInThatHour += quantityToPriceInThisStep * lowerStepRate;
+            resourceCostInThatHour += quantityToPriceInThisStep * lowerStepRate;
 
-            LOGGER.debug("AzureBillingResourceUsage computeCostInThatHour last added to costInThatHour: " +
-                         quantityToPriceInThisStep + " x " + lowerStepRate + " [new costInThatHour = " +
-                         costInThatHour + "]");
+            LOGGER.debug("AzureBillingResourceUsage computeResourceCostInThatHour last added to resourceCostInThatHour: " +
+                         quantityToPriceInThisStep + " x " + lowerStepRate + " [new resourceCostInThatHour = " +
+                         resourceCostInThatHour + "]");
         }
 
-        return costInThatHour;
+        return resourceCostInThatHour;
     }
 
     // synchronized to ensure we dont try to use meter ids to get the meter rates while we are updating them
@@ -338,14 +339,16 @@ public class AzureBillingResourceUsage {
                                      meterId + " meterRates " + meterRates);
                     }
 
-                    double costInThatHour = computeCostInThatHour(resourceQuantityInThatHour, meterRates);
-                    this.globalCost += costInThatHour;
+                    double resourceCostInThatHour = computeResourceCostInThatHour(resourceQuantityInThatHour,
+                                                                                  meterRates);
+                    this.globalCost += resourceCostInThatHour;
                     this.budgetPercentage = this.globalCost * 100 / this.budget;
 
                     LOGGER.debug("AzureBillingResourceUsage updateResourceUsageInfosOrGetMetersIds (update) (in while) currentResourceUri " +
-                                 currentResourceUri + " costInThatHour " + costInThatHour + " (now this.globalCost=" +
-                                 this.globalCost + ") for [" + resourceProperties.get("usageStartTime").getAsString() +
-                                 ";" + resourceProperties.get("usageEndTime").getAsString() + "]");
+                                 currentResourceUri + " resourceCostInThatHour " + resourceCostInThatHour +
+                                 " (now this.globalCost=" + this.globalCost + ") for [" +
+                                 resourceProperties.get("usageStartTime").getAsString() + ";" +
+                                 resourceProperties.get("usageEndTime").getAsString() + "]");
 
                 } // END OF if (currentResourceUri.matches(this.resourceUriRegex))
             } // END OF while (resourceUsageIterator.hasNext())
