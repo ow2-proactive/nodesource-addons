@@ -141,22 +141,23 @@ public class AzureBillingResourceUsage {
     String getLastResourceUsageHistory(AzureBillingCredentials azureBillingCredentials)
             throws IOException, AzureBillingException {
 
-        // Init start date time and end date time
-        // 1. The resource usage start time (the watch time)  will probably not fit
-        // with the "reported date time" (local API server time) since Azure has 19 Data Centers around the world.
-        // To be sure to catch the first resource event, retrieve the resource usage history from yesterday
-        // 2. With hourly granularity Azure only accept start and end date time with '00' set to minutes and seconds (i.e. truncated)
-        // 3. Azure does not accept too recent end date time. Consequently we set end date time to now minus 1 hour.
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime nowTruncatedLastHour = now.truncatedTo(ChronoUnit.HOURS);
-        LocalDateTime endDateTime = nowTruncatedLastHour.minusHours(1);
+        // With hourly granularity Azure only accept date times with '00' set to minutes and seconds (i.e. truncated)
+
+        // [startDateTime, endDateTime] is the longest period we found over which we query the resource usage.
+        // 1) startDateTime is set to the previous period end date time.
+        // 2) endDateTime is set to the last hour from now, and decreased 1 by 1 hour until the query returns an history (Azure does not accept too recent end date time).
+
+        // [resourceUsageReportedStartDateTime, resourceUsageReportedEndDateTime] is the global period over which we estimate the resource usage cost.
+        // 1) resourceUsageReportedStartDateTime is set only once.
+        // 2) resourceUsageReportedEndDateTime is set to the max endDateTime found which returns an history.
+
+        LocalDateTime nowTruncatedLastHour = LocalDateTime.now().truncatedTo(ChronoUnit.HOURS);
+        LocalDateTime endDateTime = nowTruncatedLastHour;
         LocalDateTime startDateTime;
         if (this.resourceUsageReportedEndDateTime == null) {
-            // resourceUsageReportedStartDateTime is the start date of the period over which we estimate the resource usage cost.
-            // It is set only once.
-            this.resourceUsageReportedStartDateTime = nowTruncatedLastHour.minusDays(1);
+            this.resourceUsageReportedStartDateTime = nowTruncatedLastHour;
             startDateTime = this.resourceUsageReportedStartDateTime;
-        } else { // Otherwise consider the period starting right after the previous one
+        } else {
             startDateTime = this.resourceUsageReportedEndDateTime;
         }
 
