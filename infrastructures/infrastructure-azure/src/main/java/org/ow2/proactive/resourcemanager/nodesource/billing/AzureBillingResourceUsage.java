@@ -141,24 +141,26 @@ public class AzureBillingResourceUsage {
     String getLastResourceUsageHistory(AzureBillingCredentials azureBillingCredentials)
             throws IOException, AzureBillingException {
 
-        // Init start date time and end date time
-        // 1. The resource usage start time (the watch time)  will probably not fit
-        // with the "reported date time" (local API server time) since Azure has 19 Data Centers around the world.
-        // To be sure to catch the first resource event, retrieve the resource usage history from yesterday
-        // 2. With hourly granularity Azure only accept start and end date time with '00' set to minutes and seconds (i.e. truncated)
-        // 3. Azure does not accept too recent end date time. Consequently we set end date time to now minus 1 hour.
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime nowTruncatedLastHour = now.truncatedTo(ChronoUnit.HOURS);
-        LocalDateTime endDateTime = nowTruncatedLastHour.minusHours(1);
+        // With hourly granularity Azure only accept date times with '00' set to minutes and seconds (i.e. truncated)
+        LocalDateTime nowTruncatedLastHour = LocalDateTime.now().truncatedTo(ChronoUnit.HOURS);
+
+        // [resourceUsageReportedStartDateTime, resourceUsageReportedEndDateTime] is the global period over which we estimate the resource usage cost.
+        // 1) resourceUsageReportedStartDateTime is set only once.
+        // 2) resourceUsageReportedEndDateTime is set to the max endDateTime found which returns an history.
+        if (this.resourceUsageReportedStartDateTime == null) {
+            this.resourceUsageReportedStartDateTime = nowTruncatedLastHour;
+        }
+
+        // [startDateTime, endDateTime] are the query parameters to get the resource usage history (periodically called).
+        // 1) startDateTime is set to the previous period end date time (resourceUsageReportedEndDateTime) which returned an history.
+        // 2) endDateTime is set to the current truncated hour and is decreased 1 hour by 1 hour until the query returns an history (Azure does not accept too recent end date time).
         LocalDateTime startDateTime;
         if (this.resourceUsageReportedEndDateTime == null) {
-            // resourceUsageReportedStartDateTime is the start date of the period over which we estimate the resource usage cost.
-            // It is set only once.
-            this.resourceUsageReportedStartDateTime = nowTruncatedLastHour.minusDays(1);
             startDateTime = this.resourceUsageReportedStartDateTime;
-        } else { // Otherwise consider the period starting right after the previous one
+        } else {
             startDateTime = this.resourceUsageReportedEndDateTime;
         }
+        LocalDateTime endDateTime = nowTruncatedLastHour;
 
         // Find the max endDateTime with available resource usage history
         String lastResourceUsageHistory = null;
@@ -184,17 +186,27 @@ public class AzureBillingResourceUsage {
 
             } else if (jsonObject.has("error")) { // HISTORY NOT RETRIEVED BUT TRY AGAIN !!
 
-                String queryErrorCodeMessage = jsonObject.get("error").getAsJsonObject().get("code").getAsString();
+                JsonObject queryErrorObject = jsonObject.get("error").getAsJsonObject();
+                String queryErrorCode = queryErrorObject.get("code").getAsString();
+                String queryErrorMessage = queryErrorObject.get("message").getAsString();
 
-                if (queryErrorCodeMessage.equals("ExpiredAuthenticationToken")) {
-                    LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory ExpiredAuthenticationToken");
+                if (queryErrorCode.equals("ExpiredAuthenticationToken")) {
+                    LOGGER.debug("AzureBillingResourceUsage " + queryErrorCode + ":" + queryErrorMessage +
+                                 "(renewing token)");
                     azureBillingCredentials.renewOrOnlyGetAccessToken(true);
                     continue;
-                } else if (queryErrorCodeMessage.equals("ProcessingNotCompleted")) {
+                } else if (queryErrorCode.equals("ProcessingNotCompleted") ||
+                           (queryErrorCode.equals("InvalidInput") &&
+                            queryErrorMessage.equals("reportedendtime cannot be in the future."))) {
                     endDateTime = endDateTime.minusHours(1);
-                    LOGGER.debug("AzureBillingResourceUsage getLastResourceUsageHistory ProcessingNotCompleted new endDateTime " +
-                                 endDateTime);
+                    LOGGER.debug("AzureBillingResourceUsage " + queryErrorCode + ":" + queryErrorMessage +
+                                 "(new endDateTime=" + endDateTime + ")");
                     continue;
+                } else if (queryErrorCode.equals("InvalidInput") &&
+                           queryErrorMessage.equals("reportedstarttime cannot be in the future.")) {
+                    LOGGER.debug("AzureBillingResourceUsage " + queryErrorCode + ":" + queryErrorMessage +
+                                 "(let's try next time with the same reportedstarttime)");
+                    return null;
                 }
             }
 
