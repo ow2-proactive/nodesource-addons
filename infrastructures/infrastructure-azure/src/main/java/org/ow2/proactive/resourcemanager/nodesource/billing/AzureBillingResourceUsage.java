@@ -138,6 +138,8 @@ public class AzureBillingResourceUsage {
         return builder.toString();
     }
 
+    // This method triggers cost getter threads shutdowns by throwing AzureBillingException, only if Azure billing server returns an unknown error response when querying it.
+    // In cases where cost information are not available, we do nothing by returning null.
     String getLastResourceUsageHistory(AzureBillingCredentials azureBillingCredentials)
             throws IOException, AzureBillingException {
 
