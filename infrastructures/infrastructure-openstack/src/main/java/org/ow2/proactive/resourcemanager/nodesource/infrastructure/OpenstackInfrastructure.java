@@ -188,7 +188,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public void configure(Object... parameters) {
 
-        logger.info("Validating parameters : " + java.util.Arrays.toString(parameters));
+        logger.info("Validating parameters");
         if (parameters == null || parameters.length < NUMBER_OF_PARAMETERS) {
             throw new IllegalArgumentException("Invalid parameters for Openstack Infrastructure creation");
         }

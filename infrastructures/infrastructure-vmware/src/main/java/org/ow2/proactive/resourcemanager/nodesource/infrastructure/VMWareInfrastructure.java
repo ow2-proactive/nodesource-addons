@@ -96,7 +96,7 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public void configure(Object... parameters) {
 
-        logger.info("Validating parameters : " + Arrays.toString(parameters));
+        logger.info("Validating parameters");
         validate(parameters);
 
         this.username = parameters[0].toString().trim();
