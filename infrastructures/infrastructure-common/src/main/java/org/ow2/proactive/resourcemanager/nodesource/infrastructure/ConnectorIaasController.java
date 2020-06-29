@@ -69,7 +69,7 @@ public class ConnectorIaasController {
 
         logger.info("Creating infrastructure : " + infrastructureJson);
 
-        connectorIaasClient.createInfrastructure(infrastructureId,infrastructureJson);
+        connectorIaasClient.createInfrastructure(infrastructureId, infrastructureJson);
 
         logger.info("Infrastructure created");
 
