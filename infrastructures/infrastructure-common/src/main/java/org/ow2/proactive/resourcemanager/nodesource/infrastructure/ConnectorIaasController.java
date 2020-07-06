@@ -112,7 +112,18 @@ public class ConnectorIaasController {
                                                                                                             endPoint,
                                                                                                             destroyOnShutdown);
 
-        logger.info("Creating infrastructure : " + infrastructureJson);
+        logger.info("Creating infrastructure : " +
+                    String.format("{infrastructureId=%s,infrastructureType=%s,username=%s,domain=%s,scopePrefix=%s,scopeValue=%s,region=%s,identityVersion=%s,endpoint=%s,destroyOnShutdown=%s}",
+                                  infrastructureId,
+                                  infrastructureType,
+                                  username,
+                                  domain,
+                                  scopePrefix,
+                                  scopeValue,
+                                  region,
+                                  identityVersion,
+                                  endPoint,
+                                  destroyOnShutdown));
 
         connectorIaasClient.createInfrastructure(infrastructureId, infrastructureJson);
 
@@ -137,7 +148,17 @@ public class ConnectorIaasController {
                                                                                             graphEndpoint,
                                                                                             destroyOnShutdown);
 
-        logger.info("Creating Azure infrastructure : " + infrastructureJson);
+        logger.info("Creating Azure infrastructure : " +
+                    String.format("{infrastructureId=%s,infrastructureType=%s,clientId=%s,domain=%s,subscriptionId=%s,authenticationEndpoint=%s,managementEndpoint=%s,resourceManagerEndpoint=%s,graphEndpoint=%s,destroyOnShutdown=%s}",
+                                  infrastructureId,
+                                  infrastructureType,
+                                  clientId,
+                                  domain,
+                                  subscriptionId,
+                                  authenticationEndpoint,
+                                  resourceManagerEndpoint,
+                                  graphEndpoint,
+                                  destroyOnShutdown));
 
         connectorIaasClient.createInfrastructure(infrastructureId, infrastructureJson);
 
@@ -327,8 +348,6 @@ public class ConnectorIaasController {
         Set<JSONObject> existingInstancesByInfrastructureId = connectorIaasClient.getAllJsonInstancesByInfrastructureId(infrastructureId);
 
         logger.info("Total existing Instances By Infrastructure Id : " + existingInstancesByInfrastructureId.size());
-
-        logger.info("InstanceJson : " + instanceJson);
 
         Set<String> instancesIds = connectorIaasClient.createInstancesIfNotExist(infrastructureId,
                                                                                  instanceTag,

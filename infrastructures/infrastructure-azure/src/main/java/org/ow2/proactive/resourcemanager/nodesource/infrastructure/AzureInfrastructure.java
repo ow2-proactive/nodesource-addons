@@ -261,7 +261,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public void configure(Object... parameters) {
 
-        LOGGER.info("Validating parameters : " + Arrays.toString(parameters));
+        LOGGER.info("Validating parameters");
         validate(parameters);
 
         this.clientId = getParameter(parameters, Indexes.CLIENT_ID.index);

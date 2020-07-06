@@ -187,7 +187,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     @Override
     public void configure(Object... parameters) {
 
-        logger.info("Validating parameters : " + Arrays.toString(parameters));
+        logger.info("Validating parameters");
         if (parameters == null || parameters.length < NUMBER_OF_PARAMETERS) {
             throw new IllegalArgumentException("Invalid parameters for EC2Infrastructure creation");
         }
