@@ -31,6 +31,7 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 
 public class ConnectorIaasController {
@@ -314,18 +315,22 @@ public class ConnectorIaasController {
     private void runScriptOnInstance(String infrastructureId, String instanceId, String instanceScriptJson)
             throws ScriptNotExecutedException {
         String scriptResult = null;
+        String scriptsInJson = null;
         try {
 
             logger.info("Trying to execute script for instance id:" + instanceId);
 
             scriptResult = connectorIaasClient.runScriptOnInstance(infrastructureId, instanceId, instanceScriptJson);
+            scriptsInJson = ((org.json.simple.JSONObject) new JSONParser().parse(instanceScriptJson)).getOrDefault("scripts",
+                                                                                                                   "")
+                                                                                                     .toString();
 
             logger.info("Executed successfully script for instance id:" + instanceId);
-            logger.info("InstanceScriptJson: " + instanceScriptJson);
+            logger.info("InstanceScriptJson: " + scriptsInJson);
             logger.info("Script result: " + scriptResult);
 
         } catch (Exception e) {
-            logger.error("Error while executing script:\n" + instanceScriptJson, e);
+            logger.error("Error while executing script:\n" + scriptsInJson, e);
             throw new ScriptNotExecutedException(e);
         }
     }
