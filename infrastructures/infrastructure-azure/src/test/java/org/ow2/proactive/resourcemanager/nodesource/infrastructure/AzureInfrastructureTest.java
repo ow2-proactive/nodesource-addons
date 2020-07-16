@@ -156,7 +156,9 @@ public class AzureInfrastructureTest {
                                           "",
                                           "",
                                           "",
-                                          -1);
+                                          -1,
+                                          "linux startup script",
+                                          "windows startup script");
             Assert.assertTrue(Boolean.TRUE);
         } catch (IllegalArgumentException e) {
             fail("NPE not thrown");
@@ -208,7 +210,9 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      -1);
+                                      -1,
+                                      "linux startup script",
+                                      "windows startup script");
     }
 
     @Test
@@ -248,7 +252,9 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      -1);
+                                      -1,
+                                      "linux startup script",
+                                      "windows startup script");
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -348,7 +354,9 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      -1);
+                                      -1,
+                                      "linux startup script",
+                                      "windows startup script");
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -407,7 +415,9 @@ public class AzureInfrastructureTest {
                                       "",
                                       "",
                                       "",
-                                      -1);
+                                      -1,
+                                      "linux startup script",
+                                      "windows startup script");
 
         azureInfrastructure.connectorIaasController = connectorIaasController;
 

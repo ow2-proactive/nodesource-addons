@@ -48,9 +48,7 @@ import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingExceptio
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingRateCard;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingResourceUsage;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
-import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
-
-import com.google.common.collect.Maps;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 
 import lombok.Getter;
 
@@ -118,7 +116,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                                    RM_URL_PATTERN + " -s " + NODESOURCE_NAME_PATTERN + " -w " +
                                                    NUMBER_OF_NODES_PATTERN;
 
-    private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+    private final transient InitScriptGenerator initScriptGenerator = new InitScriptGenerator();
 
     // The index of the infrastructure configurable parameters.
     private enum Indexes {
@@ -152,7 +150,9 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         BILLING_CURRENCY(27),
         BILLING_LOCALE(28),
         BILLING_REGION_INFO(29),
-        BILLING_BUDGET(30);
+        BILLING_BUDGET(30),
+        LINUX_STARTUP_SCRIPT(31),
+        WINDOWS_STARTUP_SCRIPT(32);
 
         protected int index;
 
@@ -189,7 +189,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
-    protected String connectorIaasURL = LinuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
+    protected String connectorIaasURL = InitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
     @Configurable(description = "Image (name or key)", sectionSelector = 6, important = true)
     protected String image = null;
@@ -221,12 +221,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Total nodes to create per instance", sectionSelector = 5, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    //    @Configurable(description = "Command used to download the worker jar (a default command will be generated for the specified image OS type)", sectionSelector = 7)
-    // The variable is not longer effectively used, but it's kept temporarily to facilitate future support of deploying nodes on windows os VM
-    protected String downloadCommand = null;
-
     @Configurable(description = "URL used to download the node jar on the VM", sectionSelector = 8)
-    protected String nodeJarURL = LinuxInitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
+    protected String nodeJarURL = InitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
     @Configurable(description = "Optional network CIDR to attach with new VM(s) (by default: '10.0.0.0/24')", sectionSelector = 7)
     protected String privateNetworkCIDR = null;
@@ -257,6 +253,12 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     @Configurable(description = "Your budget for this node source related Azure resources. Will be used to compute your global cost in % budget.", sectionSelector = 2)
     protected double maxBudget = 50;
+
+    @Configurable(textArea = true, description = "VM startup script (optional). Please refer to the documentation for full description. (optional)", sectionSelector = 9)
+    protected String linuxStartupScript = initScriptGenerator.getDefaultLinuxStartupScript();
+
+    @Configurable(textArea = true, description = "VM startup script (optional). Please refer to the documentation for full description. (optional)", sectionSelector = 9)
+    protected String windowsStartupScript = initScriptGenerator.getDefaultLinuxStartupScript();
 
     @Override
     public void configure(Object... parameters) {
@@ -298,6 +300,10 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         this.locale = getParameter(parameters, Indexes.BILLING_LOCALE.index);
         this.regionInfo = getParameter(parameters, Indexes.BILLING_REGION_INFO.index);
         this.maxBudget = Double.parseDouble(getParameter(parameters, Indexes.BILLING_BUDGET.index));
+        this.linuxStartupScript = parseOptionalParameter(parameters[Indexes.LINUX_STARTUP_SCRIPT.index],
+                                                         initScriptGenerator.getDefaultLinuxStartupScript());
+        this.windowsStartupScript = parseOptionalParameter(parameters[Indexes.WINDOWS_STARTUP_SCRIPT.index],
+                                                           initScriptGenerator.getDefaultLinuxStartupScript());
         this.connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
@@ -513,16 +519,19 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
             try {
-                List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
-                                                                            getRmUrl(),
-                                                                            rmHostname,
-                                                                            nodeJarURL,
-                                                                            instanceIdNodeProperty,
-                                                                            additionalProperties,
-                                                                            nodeSource.getName(),
-                                                                            currentInstanceId,
-                                                                            numberOfNodesPerInstance,
-                                                                            getCredentials());
+                String startupScriptTemplate = imageOSType.equalsIgnoreCase(WINDOWS) ? windowsStartupScript
+                                                                                     : linuxStartupScript;
+                List<String> scripts = initScriptGenerator.buildScript(startupScriptTemplate,
+                                                                       currentInstanceId,
+                                                                       getRmUrl(),
+                                                                       rmHostname,
+                                                                       nodeJarURL,
+                                                                       instanceIdNodeProperty,
+                                                                       additionalProperties,
+                                                                       nodeSource.getName(),
+                                                                       currentInstanceId,
+                                                                       numberOfNodesPerInstance,
+                                                                       getCredentials());
 
                 connectorIaasController.executeScript(getInfrastructureId(), currentInstanceId, scripts);
             } catch (KeyException e) {
@@ -615,8 +624,10 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         if (osType.equals(WINDOWS)) {
             String[] splittedStartNodeCommand = startNodeCommand.split(" ");
             StringBuilder windowsDownloadCommand = new StringBuilder("powershell -command \"" + uniqueCommandPart +
-                                                                     downloadCommand + "; Start-Process -NoNewWindow " +
-                                                                     "'" + startNodeCommand.split(" ")[0] + "'" +
+                                                                     generateDefaultDownloadCommand(osType,
+                                                                                                    rmHostname) +
+                                                                     "; Start-Process -NoNewWindow " + "'" +
+                                                                     startNodeCommand.split(" ")[0] + "'" +
                                                                      " -ArgumentList ");
             for (int i = 1; i < splittedStartNodeCommand.length; i++) {
                 windowsDownloadCommand.append("'").append(splittedStartNodeCommand[i]).append("'");
@@ -627,7 +638,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             windowsDownloadCommand.append("\"");
             return windowsDownloadCommand.toString();
         } else {
-            return "/bin/bash -c '" + uniqueCommandPart + downloadCommand + "; nohup " + startNodeCommand + " &'";
+            return "/bin/bash -c '" + uniqueCommandPart + generateDefaultDownloadCommand(osType, rmHostname) +
+                   "; nohup " + startNodeCommand + " &'";
         }
     }
 
@@ -668,6 +680,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         sectionDescriptions.put(6, "VM Configuration");
         sectionDescriptions.put(7, "Network Configuration");
         sectionDescriptions.put(8, "Node Configuration");
+        sectionDescriptions.put(9, "Startup Scripts");
         return sectionDescriptions;
     }
 
