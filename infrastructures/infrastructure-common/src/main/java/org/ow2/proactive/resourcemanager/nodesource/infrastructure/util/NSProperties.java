@@ -49,11 +49,9 @@ public class NSProperties {
 
     private static final ListDelimiterHandler DELIMITER = new DefaultListDelimiterHandler(',');
 
-    public static final String JRE_INSTALL = "ns.jre.install";
+    public static final String LINUX_STARTUP_SCRIPT = "ns.script.linux.startup.scripts";
 
-    public static final String JRE_INSTALL_COMMAND = "ns.script.linux.jre.install.command";
-
-    public static final String JAVA_COMMAND = "ns.script.linux.java.command";
+    public static final String WINDOWS_STARTUP_SCRIPT = "ns.script.windows.startup.scripts";
 
     public static final String DEFAULT_SUFFIX_RM_TO_NODEJAR_URL = "ns.default.suffix.rm.to.nodejar.url";
 
