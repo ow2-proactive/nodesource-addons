@@ -60,6 +60,8 @@ public class OpenstackInfrastructureTest {
 
     private static final String rmCreds = "UlNBCjEwMjQKUlNBL0VDQi9QS0NTMVBhZGRpbmcKdaUX3K5Cx1epYuylbM3ApIbM0C1gsIZWIX6MsFhzfUZxMnB7/BeUvAFQz3lYcTEqSl2E1LWlibBbxHMCxjUMzSoOZXFKsnTxMCieWetgUcP5sCTO/Kg1UukL4xDqOgpLp1iK0FK4dYDSBBkoUn4ePBLZWu2YOb1+mPFEE2G2hxSW0DUVMXginosmRNcG5P2n1GqrDgplizEjD7G6rN6UezDGXv6MthSjP9VbFAzOSY79UTELjOhb0Rz3qfBhl4DNvae2c3ZrHJkKHL3P6GC4Zz0BvY90VKOMQj8Y8LuwdxKthWDgcmFppfSldJ8vwsEIhbwHM9bzsRCBDelMRyDYOD9km24uOMYGAmv6/EqMHRsC2w7drAhByzU/xg4OGtYaDy4xBzlHGzpq2NBCwTdx+xLiSmTFNT7U/MZ1dTTFmCUfJ25fM5ncO1rPNvLqrzdrm2x2NEhnXCTGO1aFVTUhMyLmeNi/0KmXmE51WHPyeoWxZ5/GfQT9HxUMVBei3tE8gCM6f5W4iNTZKY6Et1nVKw==";
 
+    private static final String STARTUP_SCRIPT = "node download cmd\nnode start cmd";
+
     @Mock
     private ConnectorIaasController connectorIaasController;
 
@@ -130,7 +132,8 @@ public class OpenstackInfrastructureTest {
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
                                           "-Dnew=value",
-                                          240000);
+                                          240000,
+                                          STARTUP_SCRIPT);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -179,7 +182,8 @@ public class OpenstackInfrastructureTest {
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
                                           "-Dnew=value",
-                                          240000);
+                                          240000,
+                                          STARTUP_SCRIPT);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -258,7 +262,8 @@ public class OpenstackInfrastructureTest {
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
                                           "-Dnew=value",
-                                          240000);
+                                          240000,
+                                          STARTUP_SCRIPT);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -332,7 +337,8 @@ public class OpenstackInfrastructureTest {
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
                                           "-Dnew=value",
-                                          240000);
+                                          240000,
+                                          STARTUP_SCRIPT);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
@@ -378,7 +384,8 @@ public class OpenstackInfrastructureTest {
                                           "test.activeeon.com",
                                           "wget -nv test.activeeon.com/rest/node.jar",
                                           "-Dnew=value",
-                                          240000);
+                                          240000,
+                                          STARTUP_SCRIPT);
 
         openstackInfrastructure.connectorIaasController = connectorIaasController;
 
