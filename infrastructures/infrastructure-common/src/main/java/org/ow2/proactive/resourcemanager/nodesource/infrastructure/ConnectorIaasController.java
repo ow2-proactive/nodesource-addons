@@ -157,6 +157,7 @@ public class ConnectorIaasController {
                                   domain,
                                   subscriptionId,
                                   authenticationEndpoint,
+                                  managementEndpoint,
                                   resourceManagerEndpoint,
                                   graphEndpoint,
                                   destroyOnShutdown));
