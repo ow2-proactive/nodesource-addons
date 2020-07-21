@@ -626,6 +626,10 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
         }
     }
 
+    protected String parseOptionalParameter(Object parameterValue) {
+        return parseOptionalParameter(parameterValue, "");
+    }
+
     protected long parseLongParameter(String parameterName, Object parameterValue) {
         try {
             // When no default value specified, the parameter is mandatory and should has an Long value.
@@ -639,6 +643,31 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     protected long parseLongParameter(String parameterName, Object parameterValue, long defaultValue) {
         String parameterStringValue = parseOptionalParameter(parameterValue, String.valueOf(defaultValue));
         return parseLongParameter(parameterName, parameterStringValue);
+    }
+
+    protected double parseDoubleParameter(String parameterName, Object parameterValue) {
+        try {
+            // When no default value specified, the parameter is mandatory and should has an Double value.
+            return Double.parseDouble(parseMandatoryParameter(parameterName, parameterValue));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(String.format("ERROR: The parameter [%s] should be specified with a numeric value.",
+                                                             parameterName));
+        }
+    }
+
+    protected double parseDoubleParameter(String parameterName, Object parameterValue, long defaultValue) {
+        String parameterStringValue = parseOptionalParameter(parameterValue, String.valueOf(defaultValue));
+        return parseDoubleParameter(parameterName, parameterStringValue);
+    }
+
+    protected boolean parseBooleanParameter(String parameterName, Object parameterValue) {
+        try {
+            // When no default value specified, the parameter is mandatory and should has an Double value.
+            return Boolean.parseBoolean(parseMandatoryParameter(parameterName, parameterValue));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(String.format("ERROR: The parameter [%s] should be specified with a boolean value.",
+                                                             parameterName));
+        }
     }
 
     protected int parseIntParameter(String parameterName, Object parameterValue) {

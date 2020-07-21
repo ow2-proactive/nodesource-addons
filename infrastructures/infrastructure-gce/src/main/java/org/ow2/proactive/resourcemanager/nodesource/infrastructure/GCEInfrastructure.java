@@ -193,7 +193,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
                                                         parameters[Indexes.TOTAL_NUMBER_OF_INSTANCES.index]);
         this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
                                                           parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index]);
-        this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index], "");
+        this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index]);
         this.vmPublicKey = parseFileParameter("vmPublicKey", parameters[Indexes.VM_PUBLIC_KEY.index]);
         this.vmPrivateKey = parseFileParameter("vmPrivateKey", parameters[Indexes.VM_PRIVATE_KEY.index]);
         this.image = parseOptionalParameter(parameters[Indexes.IMAGE.index], DEFAULT_IMAGE);
@@ -204,7 +204,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         this.connectorIaasURL = parseMandatoryParameter("connectorIaasURL",
                                                         parameters[Indexes.CONNECTOR_IAAS_URL.index]);
         this.nodeJarURL = parseMandatoryParameter("nodeJarURL", parameters[Indexes.NODE_JAR_URL.index]);
-        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index], "");
+        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index]);
         this.nodeTimeout = parseIntParameter("nodeTimeout",
                                              parameters[Indexes.NODE_TIMEOUT.index],
                                              DEFAULT_NODE_TIMEOUT);

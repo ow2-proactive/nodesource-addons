@@ -205,19 +205,19 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                              image));
         }
         this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index], DEFAULT_VM_USERNAME);
-        this.vmKeyPairName = parseOptionalParameter(parameters[Indexes.VM_KEY_PAIR_NAME.index], "");
+        this.vmKeyPairName = parseOptionalParameter(parameters[Indexes.VM_KEY_PAIR_NAME.index]);
         this.vmPrivateKey = parseFileParameter("vmPrivateKey", parameters[Indexes.VM_PRIVATE_KEY.index]);
         this.ram = parseIntParameter("ram", parameters[Indexes.RAM.index], DEFAULT_RAM);
         this.cores = parseIntParameter("cores", parameters[Indexes.CORES.index], DEFAULT_CORES);
         //        TODO disable to configure the parameter spotPrice for the moment
         //        this.spotPrice = parameters[parameterIndex++].toString().trim();
-        this.securityGroupIds = parseOptionalParameter(parameters[Indexes.SECURITY_GROUP_IDS.index], "");
-        this.subnetId = parseOptionalParameter(parameters[Indexes.SUBNET_ID.index], "");
+        this.securityGroupIds = parseOptionalParameter(parameters[Indexes.SECURITY_GROUP_IDS.index]);
+        this.subnetId = parseOptionalParameter(parameters[Indexes.SUBNET_ID.index]);
         this.rmHostname = parseHostnameParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
         this.connectorIaasURL = parseMandatoryParameter("connectorIaasURL",
                                                         parameters[Indexes.CONNECTOR_IAAS_URL.index]);
         this.nodeJarURL = parseMandatoryParameter("nodeJarURL", parameters[Indexes.NODE_JAR_URL.index]);
-        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index], "");
+        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index]);
         this.nodeTimeout = parseIntParameter("nodeTimeout",
                                              parameters[Indexes.NODE_TIMEOUT.index],
                                              DEFAULT_NODE_TIMEOUT);

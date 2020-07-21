@@ -68,6 +68,8 @@ public class InitScriptGenerator {
 
     public static final String ADDITIONAL_PROPERTIES_PROPERTY = "%additionalProperties%";
 
+    public static final String WINDOWS_COMPLETE_ADDITIONAL_PROPERTIES_PROPERTY = ", '%additionalProperties%'";
+
     static {
         try {
             // load configuration manager with the NodeSource properties file
@@ -108,6 +110,10 @@ public class InitScriptGenerator {
         startupScriptTemplate = startupScriptTemplate.replace(CREDENTIALS_PROPERTY, credentials);
         startupScriptTemplate = startupScriptTemplate.replace(NUMBER_OF_NODES_PER_INSTANCE_PROPERTY,
                                                               String.valueOf(numberOfNodesPerInstance));
+        if (additionalProperties.isEmpty()) {
+            // the complete parameter part of additionalProperties needs to be removed in windows powershell script when it's empty
+            startupScriptTemplate = startupScriptTemplate.replace(WINDOWS_COMPLETE_ADDITIONAL_PROPERTIES_PROPERTY, "");
+        }
         startupScriptTemplate = startupScriptTemplate.replace(ADDITIONAL_PROPERTIES_PROPERTY, additionalProperties);
 
         // use the unified line breaker "\n"

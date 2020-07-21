@@ -205,7 +205,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.identityVersion = parseMandatoryParameter("identityVersion", parameters[Indexes.IDENTITY_VERSION.index]);
         this.image = parseMandatoryParameter("image", parameters[Indexes.IMAGE.index]);
         this.flavor = parseMandatoryParameter("flavor", parameters[Indexes.FLAVOR.index]);
-        this.publicKeyName = parseOptionalParameter(parameters[Indexes.PUBLIC_KEY_NAME.index], "");
+        this.publicKeyName = parseOptionalParameter(parameters[Indexes.PUBLIC_KEY_NAME.index]);
         this.numberOfInstances = parseIntParameter("numberOfInstances", parameters[Indexes.NUMBER_OF_INSTANCES.index]);
         this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
                                                           parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index]);
@@ -213,7 +213,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                                                         parameters[Indexes.CONNECTOR_IAAS_URL.index]);
         this.rmHostname = parseMandatoryParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
         this.nodeJarURL = parseMandatoryParameter("nodeJarURL", parameters[Indexes.NODE_JAR_URL.index]);
-        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index], "");
+        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index]);
         this.nodesInitDelay = parseLongParameter("nodesInitDelay",
                                                  parameters[Indexes.NODES_INIT_DELAY.index],
                                                  DEFAULT_NODES_INIT_DELAY);
