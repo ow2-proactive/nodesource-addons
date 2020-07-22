@@ -353,17 +353,17 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             String baseNodeName = getBaseNodeNameFromInstanceId(instanceId);
 
             try {
-                List<String> scripts = initScriptGenerator.buildScript(startupScript,
-                                                                       instanceId,
-                                                                       getRmUrl(),
-                                                                       rmHostname,
-                                                                       nodeJarURL,
-                                                                       instanceIdNodeProperty,
-                                                                       additionalProperties,
-                                                                       nodeSource.getName(),
-                                                                       baseNodeName,
-                                                                       numberOfNodesPerInstance,
-                                                                       getCredentials());
+                List<String> scripts = initScriptGenerator.buildLinuxScript(startupScript,
+                                                                            instanceId,
+                                                                            getRmUrl(),
+                                                                            rmHostname,
+                                                                            nodeJarURL,
+                                                                            instanceIdNodeProperty,
+                                                                            additionalProperties,
+                                                                            nodeSource.getName(),
+                                                                            baseNodeName,
+                                                                            numberOfNodesPerInstance,
+                                                                            getCredentials());
                 logger.info("start up script: " + scripts);
 
                 // declare nodes as "deploying" state to the RM

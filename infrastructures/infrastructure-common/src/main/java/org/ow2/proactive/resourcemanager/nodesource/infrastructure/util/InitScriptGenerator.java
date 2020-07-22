@@ -26,6 +26,7 @@
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure.util;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -70,6 +71,10 @@ public class InitScriptGenerator {
 
     public static final String WINDOWS_COMPLETE_ADDITIONAL_PROPERTIES_PROPERTY = ", '%additionalProperties%'";
 
+    public static final String POWERSHELL_COMMAND_PREFIX = "powershell -command \"";
+
+    public static final String POWERSHELL_COMMAND_SUFFIX = "\"";
+
     static {
         try {
             // load configuration manager with the NodeSource properties file
@@ -87,43 +92,88 @@ public class InitScriptGenerator {
     @Getter
     protected String defaultWindowsStartupScript = nsConfig.getString(NSProperties.WINDOWS_STARTUP_SCRIPT);
 
-    public List<String> buildScript(String startupScriptTemplate, String instanceId, String rmUrl, String rmHostname,
-            String nodeJarUrl, String instanceIdNodeProperty, String additionalProperties, String nodeSourceName,
-            String nodeBaseName, int numberOfNodesPerInstance, String credentials) {
-        startupScriptTemplate = startupScriptTemplate.replace(NODE_JAR_URL_PROPERTY, nodeJarUrl);
+    public List<String> buildLinuxScript(String startupScriptTemplate, String instanceId, String rmUrl,
+            String rmHostname, String nodeJarUrl, String instanceIdNodeProperty, String additionalProperties,
+            String nodeSourceName, String nodeBaseName, int numberOfNodesPerInstance, String credentials) {
+        String startupScript = fillInScriptProperties(startupScriptTemplate,
+                                                      instanceId,
+                                                      rmUrl,
+                                                      rmHostname,
+                                                      nodeJarUrl,
+                                                      instanceIdNodeProperty,
+                                                      additionalProperties,
+                                                      nodeSourceName,
+                                                      nodeBaseName,
+                                                      numberOfNodesPerInstance,
+                                                      credentials);
+        // use the unified line breaker "\n"
+        startupScript = startupScript.replace("\r\n", "\n");
+        List<String> startupScriptList = Arrays.stream(startupScript.split("\n"))
+                                               .filter(s -> !s.isEmpty())
+                                               .collect(Collectors.toList());
+
+        logger.info("Linux startup script generated: " + startupScriptList);
+        return startupScriptList;
+    }
+
+    public List<String> buildWindowsScript(String startupScriptTemplate, String instanceId, String rmUrl,
+            String rmHostname, String nodeJarUrl, String instanceIdNodeProperty, String additionalProperties,
+            String nodeSourceName, String nodeBaseName, int numberOfNodesPerInstance, String credentials) {
+        String startupScript = startupScriptTemplate;
+        // the complete parameter part of additionalProperties needs to be removed in windows powershell script when it's empty
+        if (additionalProperties.isEmpty()) {
+            startupScript = startupScript.replace(WINDOWS_COMPLETE_ADDITIONAL_PROPERTIES_PROPERTY, "");
+        }
+        startupScript = fillInScriptProperties(startupScript,
+                                               instanceId,
+                                               rmUrl,
+                                               rmHostname,
+                                               nodeJarUrl,
+                                               instanceIdNodeProperty,
+                                               additionalProperties,
+                                               nodeSourceName,
+                                               nodeBaseName,
+                                               numberOfNodesPerInstance,
+                                               credentials);
+        // use the unified line breaker "\n"
+        startupScript = startupScript.replace("\r\n", "\n");
+        startupScript = Arrays.stream(startupScript.split("\n"))
+                              .map(String::trim)
+                              .filter(s -> !s.isEmpty())
+                              .map(s -> s.endsWith(";") ? s : s + ";")
+                              .collect(Collectors.joining());
+        startupScript = POWERSHELL_COMMAND_PREFIX + startupScript + POWERSHELL_COMMAND_SUFFIX;
+        List<String> startupScriptList = Collections.singletonList(startupScript);
+        logger.info("Windows startup script generated: " + startupScriptList);
+        return startupScriptList;
+    }
+
+    protected String fillInScriptProperties(String startupScriptTemplate, String instanceId, String rmUrl,
+            String rmHostname, String nodeJarUrl, String instanceIdNodeProperty, String additionalProperties,
+            String nodeSourceName, String nodeBaseName, int numberOfNodesPerInstance, String credentials) {
+        String startupScript = startupScriptTemplate;
+
+        startupScript = startupScript.replace(NODE_JAR_URL_PROPERTY, nodeJarUrl);
 
         String protocol = rmUrl.substring(0, rmUrl.indexOf(':')).trim();
-        startupScriptTemplate = startupScriptTemplate.replace(PROTOCOL_PROPERTY, protocol);
+        startupScript = startupScript.replace(PROTOCOL_PROPERTY, protocol);
 
         String jythonPath = nsConfig.getString(NSProperties.DEFAULT_JYTHON_PATH);
-        startupScriptTemplate = startupScriptTemplate.replace(JYTHON_PATH_PROPERTY, jythonPath);
+        startupScript = startupScript.replace(JYTHON_PATH_PROPERTY, jythonPath);
 
-        startupScriptTemplate = startupScriptTemplate.replace(RM_HOSTNAME_PROPERTY, rmHostname);
-        startupScriptTemplate = startupScriptTemplate.replace(INSTANCE_ID_NODE_PROPERTY_PROPERTY,
-                                                              instanceIdNodeProperty);
-        startupScriptTemplate = startupScriptTemplate.replace(INSTANCE_ID_PROPERTY, instanceId);
-        startupScriptTemplate = startupScriptTemplate.replace(RM_URL_PROPERTY, rmUrl);
-        startupScriptTemplate = startupScriptTemplate.replace(NODE_SOURCE_NAME_PROPERTY, nodeSourceName);
+        startupScript = startupScript.replace(RM_HOSTNAME_PROPERTY, rmHostname);
+        startupScript = startupScript.replace(INSTANCE_ID_NODE_PROPERTY_PROPERTY, instanceIdNodeProperty);
+        startupScript = startupScript.replace(INSTANCE_ID_PROPERTY, instanceId);
+        startupScript = startupScript.replace(RM_URL_PROPERTY, rmUrl);
+        startupScript = startupScript.replace(NODE_SOURCE_NAME_PROPERTY, nodeSourceName);
 
         String nodeNamingOption = (nodeBaseName == null || nodeBaseName.isEmpty()) ? "" : " -n " + nodeBaseName;
-        startupScriptTemplate = startupScriptTemplate.replace(NODE_NAMING_OPTION_PROPERTY, nodeNamingOption);
-        startupScriptTemplate = startupScriptTemplate.replace(CREDENTIALS_PROPERTY, credentials);
-        startupScriptTemplate = startupScriptTemplate.replace(NUMBER_OF_NODES_PER_INSTANCE_PROPERTY,
-                                                              String.valueOf(numberOfNodesPerInstance));
-        if (additionalProperties.isEmpty()) {
-            // the complete parameter part of additionalProperties needs to be removed in windows powershell script when it's empty
-            startupScriptTemplate = startupScriptTemplate.replace(WINDOWS_COMPLETE_ADDITIONAL_PROPERTIES_PROPERTY, "");
-        }
-        startupScriptTemplate = startupScriptTemplate.replace(ADDITIONAL_PROPERTIES_PROPERTY, additionalProperties);
+        startupScript = startupScript.replace(NODE_NAMING_OPTION_PROPERTY, nodeNamingOption);
 
-        // use the unified line breaker "\n"
-        startupScriptTemplate = startupScriptTemplate.replace("\r\n", "\n");
-        List<String> startupScript = Arrays.asList(startupScriptTemplate.split("\n"))
-                                           .stream()
-                                           .filter(s -> !s.isEmpty())
-                                           .collect(Collectors.toList());
-
-        logger.info("Node initial script generated: " + startupScript);
+        startupScript = startupScript.replace(CREDENTIALS_PROPERTY, credentials);
+        startupScript = startupScript.replace(NUMBER_OF_NODES_PER_INSTANCE_PROPERTY,
+                                              String.valueOf(numberOfNodesPerInstance));
+        startupScript = startupScript.replace(ADDITIONAL_PROPERTIES_PROPERTY, additionalProperties);
 
         return startupScript;
     }

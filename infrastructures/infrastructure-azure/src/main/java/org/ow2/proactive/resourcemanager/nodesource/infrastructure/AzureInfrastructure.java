@@ -224,7 +224,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(textArea = true, description = "Linux VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description. (optional)", sectionSelector = 8)
     protected String linuxStartupScript = initScriptGenerator.getDefaultLinuxStartupScript();
 
-    @Configurable(textArea = true, description = "Windows VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description. (optional)", sectionSelector = 8)
+    @Configurable(textArea = true, description = "Powershell script to be run during Windows VM startup for launching the ProActive nodes (optional). Please refer to the documentation for full description. (optional)", sectionSelector = 8)
     protected String windowsStartupScript = initScriptGenerator.getDefaultWindowsStartupScript();
 
     @Override
@@ -277,7 +277,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         this.linuxStartupScript = parseOptionalParameter(parameters[Indexes.LINUX_STARTUP_SCRIPT.index],
                                                          initScriptGenerator.getDefaultLinuxStartupScript());
         this.windowsStartupScript = parseOptionalParameter(parameters[Indexes.WINDOWS_STARTUP_SCRIPT.index],
-                                                           initScriptGenerator.getDefaultLinuxStartupScript());
+                                                           initScriptGenerator.getDefaultWindowsStartupScript());
         this.connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
@@ -443,19 +443,28 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
             try {
-                String startupScriptTemplate = imageOSType.equalsIgnoreCase(WINDOWS) ? windowsStartupScript
-                                                                                     : linuxStartupScript;
-                List<String> scripts = initScriptGenerator.buildScript(startupScriptTemplate,
-                                                                       currentInstanceId,
-                                                                       getRmUrl(),
-                                                                       rmHostname,
-                                                                       nodeJarURL,
-                                                                       instanceIdNodeProperty,
-                                                                       additionalProperties,
-                                                                       nodeSource.getName(),
-                                                                       currentInstanceId,
-                                                                       numberOfNodesPerInstance,
-                                                                       getCredentials());
+                List<String> scripts = imageOSType.equalsIgnoreCase(WINDOWS) ? initScriptGenerator.buildWindowsScript(windowsStartupScript,
+                                                                                                                      currentInstanceId,
+                                                                                                                      getRmUrl(),
+                                                                                                                      rmHostname,
+                                                                                                                      nodeJarURL,
+                                                                                                                      instanceIdNodeProperty,
+                                                                                                                      additionalProperties,
+                                                                                                                      nodeSource.getName(),
+                                                                                                                      currentInstanceId,
+                                                                                                                      numberOfNodesPerInstance,
+                                                                                                                      getCredentials())
+                                                                             : initScriptGenerator.buildLinuxScript(linuxStartupScript,
+                                                                                                                    currentInstanceId,
+                                                                                                                    getRmUrl(),
+                                                                                                                    rmHostname,
+                                                                                                                    nodeJarURL,
+                                                                                                                    instanceIdNodeProperty,
+                                                                                                                    additionalProperties,
+                                                                                                                    nodeSource.getName(),
+                                                                                                                    currentInstanceId,
+                                                                                                                    numberOfNodesPerInstance,
+                                                                                                                    getCredentials());
 
                 connectorIaasController.executeScript(getInfrastructureId(), currentInstanceId, scripts);
             } catch (KeyException e) {

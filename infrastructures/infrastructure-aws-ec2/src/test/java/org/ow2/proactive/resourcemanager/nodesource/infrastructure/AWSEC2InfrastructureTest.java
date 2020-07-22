@@ -234,17 +234,17 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
 
-        when(initScriptGenerator.buildScript(anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyInt(),
-                                             anyString())).thenReturn(INIT_SCRIPTS);
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         doAnswer((Answer<Object>) invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
@@ -337,17 +337,17 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
 
-        when(initScriptGenerator.buildScript(anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyInt(),
-                                             anyString())).thenReturn(INIT_SCRIPTS);
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
         doAnswer((Answer<Object>) invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;

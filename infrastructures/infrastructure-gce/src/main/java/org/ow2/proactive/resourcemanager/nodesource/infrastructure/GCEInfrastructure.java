@@ -307,17 +307,17 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     private List<String> buildNodeStartScripts(int numberOfNodes) {
         try {
-            return initScriptGenerator.buildScript(startupScript,
-                                                   INSTANCE_TAG_ON_NODE,
-                                                   getRmUrl(),
-                                                   rmHostname,
-                                                   nodeJarURL,
-                                                   instanceIdNodeProperty,
-                                                   additionalProperties,
-                                                   nodeSource.getName(),
-                                                   NODE_NAME_ON_NODE,
-                                                   numberOfNodes,
-                                                   getCredentials());
+            return initScriptGenerator.buildLinuxScript(startupScript,
+                                                        INSTANCE_TAG_ON_NODE,
+                                                        getRmUrl(),
+                                                        rmHostname,
+                                                        nodeJarURL,
+                                                        instanceIdNodeProperty,
+                                                        additionalProperties,
+                                                        nodeSource.getName(),
+                                                        NODE_NAME_ON_NODE,
+                                                        numberOfNodes,
+                                                        getCredentials());
         } catch (KeyException a) {
             logger.error("A problem occurred while acquiring user credentials path. The node startup script will be empty.");
             return new ArrayList<>();

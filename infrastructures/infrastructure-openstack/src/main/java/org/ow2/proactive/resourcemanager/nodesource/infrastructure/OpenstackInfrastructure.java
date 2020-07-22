@@ -515,17 +515,17 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
         try {
 
-            return initScriptGenerator.buildScript(startupScript,
-                                                   instanceTag,
-                                                   getRmUrl(),
-                                                   rmHostname,
-                                                   nodeJarURL,
-                                                   instanceIdNodeProperty,
-                                                   additionalProperties,
-                                                   nodeSource.getName(),
-                                                   nodeName,
-                                                   nbNodes,
-                                                   getCredentials());
+            return initScriptGenerator.buildLinuxScript(startupScript,
+                                                        instanceTag,
+                                                        getRmUrl(),
+                                                        rmHostname,
+                                                        nodeJarURL,
+                                                        instanceIdNodeProperty,
+                                                        additionalProperties,
+                                                        nodeSource.getName(),
+                                                        nodeName,
+                                                        nbNodes,
+                                                        getCredentials());
         } catch (KeyException a) {
             logger.error("A problem occurred while acquiring user credentials path. The node startup script will be empty.");
             return new ArrayList<>();

@@ -260,17 +260,17 @@ public class GCEInfrastructureTest {
         when(nodeSource.getAdministrator()).thenReturn(client);
         when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
-        when(initScriptGenerator.buildScript(anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyInt(),
-                                             anyString())).thenReturn(INIT_SCRIPTS);
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireAllNodes();
 
@@ -331,17 +331,17 @@ public class GCEInfrastructureTest {
         when(nodeSource.getNodesCount()).thenReturn(existingNodes);
         gceInfrastructure.getNodesPerInstancesMap().put("existed-instance", Sets.newHashSet());
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
-        when(initScriptGenerator.buildScript(anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyInt(),
-                                             anyString())).thenReturn(INIT_SCRIPTS);
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireNodes(numberOfNodes, nodeConfiguration);
 
@@ -410,17 +410,17 @@ public class GCEInfrastructureTest {
         when(nodeSource.getNodesCount()).thenReturn(existingNodes);
         gceInfrastructure.getNodesPerInstancesMap().put("existed-instance", Sets.newHashSet());
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
-        when(initScriptGenerator.buildScript(anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyInt(),
-                                             anyString())).thenReturn(INIT_SCRIPTS);
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireNodes(numberOfNodes, nodeConfiguration);
 
@@ -489,17 +489,17 @@ public class GCEInfrastructureTest {
         when(nodeSource.getNodesCount()).thenReturn(existingNodes);
         gceInfrastructure.getNodesPerInstancesMap().put("existed-instance", Sets.newHashSet());
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
-        when(initScriptGenerator.buildScript(anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyString(),
-                                             anyInt(),
-                                             anyString())).thenReturn(INIT_SCRIPTS);
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyString(),
+                                                  anyInt(),
+                                                  anyString())).thenReturn(INIT_SCRIPTS);
 
         gceInfrastructure.acquireNodes(numberOfNodes, nodeConfiguration);
 
