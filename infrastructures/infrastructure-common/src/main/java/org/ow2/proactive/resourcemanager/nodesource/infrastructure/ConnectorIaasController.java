@@ -68,7 +68,13 @@ public class ConnectorIaasController {
                                                                                                    endPoint,
                                                                                                    destroyOnShutdown);
 
-        logger.info("Creating infrastructure : " + infrastructureJson);
+        logger.info("Creating infrastructure : " +
+                    String.format(" {infrastructureId=%s,infrastructureType=%s,username=%s,endPoint=%s,destroyOnShutdown=%s}",
+                                  infrastructureId,
+                                  infrastructureType,
+                                  username,
+                                  endPoint,
+                                  destroyOnShutdown));
 
         connectorIaasClient.createInfrastructure(infrastructureId, infrastructureJson);
 
@@ -88,7 +94,14 @@ public class ConnectorIaasController {
                                                                                                    region,
                                                                                                    destroyOnShutdown);
 
-        logger.info("Creating infrastructure : " + infrastructureJson);
+        logger.info("Creating infrastructure : " +
+                    String.format(" {infrastructureId=%s,infrastructureType=%s,username=%s,endPoint=%s,region=%s,destroyOnShutdown=%s}",
+                                  infrastructureId,
+                                  infrastructureType,
+                                  username,
+                                  endPoint,
+                                  region,
+                                  destroyOnShutdown));
 
         connectorIaasClient.createInfrastructure(infrastructureId, infrastructureJson);
 
