@@ -35,7 +35,7 @@ import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
-import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
 
@@ -50,8 +50,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     private final String instanceIdNodeProperty = "instanceId";
 
     public static final String INFRASTRUCTURE_TYPE = "aws-ec2";
-
-    private static final int NUMBER_OF_PARAMETERS = 17;
 
     private static final String DEFAULT_IMAGE = "eu-west-3/ami-03bca18cb3dc173c9";
 
@@ -76,7 +74,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     private static final Logger logger = Logger.getLogger(AWSEC2Infrastructure.class);
 
-    private transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+    private transient InitScriptGenerator initScriptGenerator = new InitScriptGenerator();
 
     // Lock for acquireNodes (dynamic policy)
     private final transient Lock dynamicAcquireLock = new ReentrantLock();
@@ -103,7 +101,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         CONNECTOR_IAAS_URL(13),
         NODE_JAR_URL(14),
         ADDITIONAL_PROPERTIES(15),
-        NODE_TIMEOUT(16);
+        NODE_TIMEOUT(16),
+        STARTUP_SCRIPT(17);
 
         protected int index;
 
@@ -160,10 +159,10 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
-    protected String connectorIaasURL = LinuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
+    protected String connectorIaasURL = InitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
     @Configurable(description = "URL used to download the node jar on the VM", sectionSelector = 4)
-    protected String nodeJarURL = LinuxInitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
+    protected String nodeJarURL = InitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\") (optional)", sectionSelector = 5)
     protected String additionalProperties = "";
@@ -171,6 +170,9 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "The timeout for nodes to connect to RM (in ms). After this timeout expired, the node is considered to be lost. (optional, default value: " +
                                 DEFAULT_NODE_TIMEOUT + ")", sectionSelector = 5)
     protected int nodeTimeout = DEFAULT_NODE_TIMEOUT;
+
+    @Configurable(textArea = true, description = "VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description.", sectionSelector = 5)
+    protected String startupScript = initScriptGenerator.getDefaultLinuxStartupScript();
 
     /**
      * Key to retrieve the key pair used to deploy the infrastructure
@@ -188,7 +190,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     public void configure(Object... parameters) {
 
         logger.info("Validating parameters");
-        if (parameters == null || parameters.length < NUMBER_OF_PARAMETERS) {
+        if (parameters == null || parameters.length < Indexes.values().length) {
             throw new IllegalArgumentException("Invalid parameters for EC2Infrastructure creation");
         }
 
@@ -203,23 +205,24 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                              image));
         }
         this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index], DEFAULT_VM_USERNAME);
-        this.vmKeyPairName = parseOptionalParameter(parameters[Indexes.VM_KEY_PAIR_NAME.index], "");
+        this.vmKeyPairName = parseOptionalParameter(parameters[Indexes.VM_KEY_PAIR_NAME.index]);
         this.vmPrivateKey = parseFileParameter("vmPrivateKey", parameters[Indexes.VM_PRIVATE_KEY.index]);
         this.ram = parseIntParameter("ram", parameters[Indexes.RAM.index], DEFAULT_RAM);
         this.cores = parseIntParameter("cores", parameters[Indexes.CORES.index], DEFAULT_CORES);
         //        TODO disable to configure the parameter spotPrice for the moment
         //        this.spotPrice = parameters[parameterIndex++].toString().trim();
-        this.securityGroupIds = parseOptionalParameter(parameters[Indexes.SECURITY_GROUP_IDS.index], "");
-        this.subnetId = parseOptionalParameter(parameters[Indexes.SUBNET_ID.index], "");
+        this.securityGroupIds = parseOptionalParameter(parameters[Indexes.SECURITY_GROUP_IDS.index]);
+        this.subnetId = parseOptionalParameter(parameters[Indexes.SUBNET_ID.index]);
         this.rmHostname = parseHostnameParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
         this.connectorIaasURL = parseMandatoryParameter("connectorIaasURL",
                                                         parameters[Indexes.CONNECTOR_IAAS_URL.index]);
         this.nodeJarURL = parseMandatoryParameter("nodeJarURL", parameters[Indexes.NODE_JAR_URL.index]);
-        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index], "");
+        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index]);
         this.nodeTimeout = parseIntParameter("nodeTimeout",
                                              parameters[Indexes.NODE_TIMEOUT.index],
                                              DEFAULT_NODE_TIMEOUT);
-
+        this.startupScript = parseOptionalParameter(parameters[Indexes.STARTUP_SCRIPT.index],
+                                                    initScriptGenerator.getDefaultLinuxStartupScript());
         connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
@@ -350,7 +353,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             String baseNodeName = getBaseNodeNameFromInstanceId(instanceId);
 
             try {
-                List<String> scripts = linuxInitScriptGenerator.buildScript(instanceId,
+                List<String> scripts = initScriptGenerator.buildLinuxScript(startupScript,
+                                                                            instanceId,
                                                                             getRmUrl(),
                                                                             rmHostname,
                                                                             nodeJarURL,
@@ -360,6 +364,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                                             baseNodeName,
                                                                             numberOfNodesPerInstance,
                                                                             getCredentials());
+                logger.info("start up script: " + scripts);
 
                 // declare nodes as "deploying" state to the RM
                 List<String> nodeNames = RMNodeStarter.getWorkersNodeNames(baseNodeName, numberOfNodesPerInstance);

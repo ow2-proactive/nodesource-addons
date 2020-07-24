@@ -37,7 +37,7 @@ import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
-import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
 
@@ -56,8 +56,6 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     @Getter
     private final String instanceIdNodeProperty = "instanceTag";
-
-    private static final int NUMBER_OF_PARAMETERS = 15;
 
     private static final Logger logger = Logger.getLogger(GCEInfrastructure.class);
 
@@ -79,7 +77,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     // use the instanceTag as the nodeName
     private static final String NODE_NAME_ON_NODE = "$HOSTNAME";
 
-    private transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+    private transient InitScriptGenerator initScriptGenerator = new InitScriptGenerator();
 
     // The lock is used to limit the impact of a jclouds bug (When the google-compute-engine account has any deleting instance,
     // any jclouds gce instances operations will fail).
@@ -112,7 +110,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         CONNECTOR_IAAS_URL(11),
         NODE_JAR_URL(12),
         ADDITIONAL_PROPERTIES(13),
-        NODE_TIMEOUT(14);
+        NODE_TIMEOUT(14),
+        STARTUP_SCRIPT(15);
 
         protected int index;
 
@@ -159,10 +158,10 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
-    protected String connectorIaasURL = LinuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
+    protected String connectorIaasURL = InitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
     @Configurable(description = "URL used to download the node jar on the virtual machine", sectionSelector = 4)
-    protected String nodeJarURL = LinuxInitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
+    protected String nodeJarURL = InitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
     @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\") (optional)", sectionSelector = 5)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
@@ -170,6 +169,9 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Node timeout in ms. After this timeout expired, the node is considered to be lost (optional, default value: " +
                                 DEFAULT_NODE_TIMEOUT + ")", sectionSelector = 5)
     protected int nodeTimeout = DEFAULT_NODE_TIMEOUT;
+
+    @Configurable(textArea = true, description = "VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description.", sectionSelector = 5)
+    protected String startupScript = initScriptGenerator.getDefaultLinuxStartupScript();
 
     private Map<String, String> meta = new HashMap<>();
 
@@ -181,7 +183,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public void configure(Object... parameters) {
         logger.info("Validating parameters : " + Arrays.toString(parameters));
-        if (parameters == null || parameters.length < NUMBER_OF_PARAMETERS) {
+        if (parameters == null || parameters.length < Indexes.values().length) {
             throw new IllegalArgumentException("Invalid parameters for GCEInfrastructure creation");
         }
 
@@ -191,7 +193,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
                                                         parameters[Indexes.TOTAL_NUMBER_OF_INSTANCES.index]);
         this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
                                                           parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index]);
-        this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index], "");
+        this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index]);
         this.vmPublicKey = parseFileParameter("vmPublicKey", parameters[Indexes.VM_PUBLIC_KEY.index]);
         this.vmPrivateKey = parseFileParameter("vmPrivateKey", parameters[Indexes.VM_PRIVATE_KEY.index]);
         this.image = parseOptionalParameter(parameters[Indexes.IMAGE.index], DEFAULT_IMAGE);
@@ -202,11 +204,12 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         this.connectorIaasURL = parseMandatoryParameter("connectorIaasURL",
                                                         parameters[Indexes.CONNECTOR_IAAS_URL.index]);
         this.nodeJarURL = parseMandatoryParameter("nodeJarURL", parameters[Indexes.NODE_JAR_URL.index]);
-        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index], "");
+        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index]);
         this.nodeTimeout = parseIntParameter("nodeTimeout",
                                              parameters[Indexes.NODE_TIMEOUT.index],
                                              DEFAULT_NODE_TIMEOUT);
-
+        this.startupScript = parseOptionalParameter(parameters[Indexes.STARTUP_SCRIPT.index],
+                                                    initScriptGenerator.getDefaultLinuxStartupScript());
         connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
@@ -274,6 +277,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
         List<String> nodeStartCmds = buildNodeStartScripts(numberOfNodesPerInstance);
 
+        logger.info("start up script: " + nodeStartCmds);
+
         Set<String> instancesIds;
 
         readDeletingLock.lock();
@@ -302,7 +307,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     private List<String> buildNodeStartScripts(int numberOfNodes) {
         try {
-            return linuxInitScriptGenerator.buildScript(INSTANCE_TAG_ON_NODE,
+            return initScriptGenerator.buildLinuxScript(startupScript,
+                                                        INSTANCE_TAG_ON_NODE,
                                                         getRmUrl(),
                                                         rmHostname,
                                                         nodeJarURL,
@@ -508,6 +514,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         sectionDescriptions.put(3, "VM Configuration");
         sectionDescriptions.put(4, "PA Server Configuration");
         sectionDescriptions.put(5, "Node Configuration");
+        sectionDescriptions.put(6, "Startup Scripts");
         return sectionDescriptions;
     }
 

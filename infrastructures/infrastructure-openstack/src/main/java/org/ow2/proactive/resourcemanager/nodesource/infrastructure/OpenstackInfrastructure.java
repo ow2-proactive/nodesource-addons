@@ -36,7 +36,7 @@ import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.util.ProActiveCounter;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
-import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 
 import com.google.common.collect.Maps;
 
@@ -54,8 +54,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
      **/
     private static final Logger logger = Logger.getLogger(OpenstackInfrastructure.class);
 
-    private static final int NUMBER_OF_PARAMETERS = 17;
-
     @Getter
     private final String instanceIdNodeProperty = "instanceTag";
 
@@ -67,7 +65,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     private boolean isInitializedAndCreated = false;
 
-    private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+    private final transient InitScriptGenerator initScriptGenerator = new InitScriptGenerator();
 
     /**
      *  Fields of the Openstack infrastructure form (in the RM portal)
@@ -112,13 +110,13 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     protected int numberOfNodesPerInstance = 1;
 
     @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
-    protected String connectorIaasURL = LinuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
+    protected String connectorIaasURL = InitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
     @Configurable(description = "Resource Manager hostname or ip address", sectionSelector = 4)
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "URL used to download the node jar on the instance", sectionSelector = 5)
-    protected String nodeJarURL = LinuxInitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
+    protected String nodeJarURL = InitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
     @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 5)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
@@ -126,6 +124,9 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "(optional, default value: " + DEFAULT_NODES_INIT_DELAY +
                                 ") Estimated startup time of the nodes (including the startup time of VMs)", sectionSelector = 5)
     protected long nodesInitDelay = DEFAULT_NODES_INIT_DELAY;
+
+    @Configurable(textArea = true, description = "VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description.", sectionSelector = 5)
+    protected String startupScript = initScriptGenerator.getDefaultLinuxStartupScript();
 
     // The index of the infrastructure configurable parameters.
     protected enum Indexes {
@@ -146,7 +147,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         RM_HOSTNAME(14),
         NODE_JAR_URL(15),
         ADDITIONAL_PROPERTIES(16),
-        NODES_INIT_DELAY(17);
+        NODES_INIT_DELAY(17),
+        STARTUP_SCRIPT(18);
 
         protected int index;
 
@@ -189,7 +191,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     public void configure(Object... parameters) {
 
         logger.info("Validating parameters");
-        if (parameters == null || parameters.length < NUMBER_OF_PARAMETERS) {
+        if (parameters == null || parameters.length < Indexes.values().length) {
             throw new IllegalArgumentException("Invalid parameters for Openstack Infrastructure creation");
         }
 
@@ -203,7 +205,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.identityVersion = parseMandatoryParameter("identityVersion", parameters[Indexes.IDENTITY_VERSION.index]);
         this.image = parseMandatoryParameter("image", parameters[Indexes.IMAGE.index]);
         this.flavor = parseMandatoryParameter("flavor", parameters[Indexes.FLAVOR.index]);
-        this.publicKeyName = parseOptionalParameter(parameters[Indexes.PUBLIC_KEY_NAME.index], "");
+        this.publicKeyName = parseOptionalParameter(parameters[Indexes.PUBLIC_KEY_NAME.index]);
         this.numberOfInstances = parseIntParameter("numberOfInstances", parameters[Indexes.NUMBER_OF_INSTANCES.index]);
         this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
                                                           parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index]);
@@ -211,11 +213,12 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                                                         parameters[Indexes.CONNECTOR_IAAS_URL.index]);
         this.rmHostname = parseMandatoryParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
         this.nodeJarURL = parseMandatoryParameter("nodeJarURL", parameters[Indexes.NODE_JAR_URL.index]);
-        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index], "");
+        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index]);
         this.nodesInitDelay = parseLongParameter("nodesInitDelay",
                                                  parameters[Indexes.NODES_INIT_DELAY.index],
                                                  DEFAULT_NODES_INIT_DELAY);
-
+        this.startupScript = parseOptionalParameter(parameters[Indexes.STARTUP_SCRIPT.index],
+                                                    initScriptGenerator.getDefaultLinuxStartupScript());
         connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
@@ -229,6 +232,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         for (int i = 1; i <= numberOfInstances; i++) {
             String instanceTag = getInfrastructureId() + "_" + ProActiveCounter.getUniqID();
             List<String> scripts = createScripts(instanceTag, instanceTag, numberOfNodesPerInstance);
+            logger.info("start up script: " + scripts);
             createOpenstackInstance(instanceTag, scripts);
 
             // Declare nodes are deploying
@@ -366,6 +370,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
                 // Build nodes'start scripts and deploy instance
                 List<String> scripts = createScripts(instanceTag, instanceTag, nodesInCurrentInstance);
+                logger.info("start up script: " + scripts);
                 createOpenstackInstance(instanceTag, scripts);
 
                 // Declare deploying nodes
@@ -510,7 +515,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
         try {
 
-            return linuxInitScriptGenerator.buildScript(instanceTag,
+            return initScriptGenerator.buildLinuxScript(startupScript,
+                                                        instanceTag,
                                                         getRmUrl(),
                                                         rmHostname,
                                                         nodeJarURL,

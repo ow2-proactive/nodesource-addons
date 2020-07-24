@@ -33,6 +33,7 @@ import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.apache.commons.configuration2.builder.fluent.PropertiesBuilderParameters;
 import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.convert.ListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.log4j.Logger;
@@ -47,13 +48,11 @@ public class NSProperties {
 
     public static final String PROPERTIES_FILE = "NodeSource.properties";
 
-    private static final ListDelimiterHandler DELIMITER = new DefaultListDelimiterHandler(',');
+    private static final ListDelimiterHandler DELIMITER = new DisabledListDelimiterHandler();
 
-    public static final String JRE_INSTALL = "ns.jre.install";
+    public static final String LINUX_STARTUP_SCRIPT = "ns.script.linux.startup.scripts";
 
-    public static final String JRE_INSTALL_COMMAND = "ns.script.linux.jre.install.command";
-
-    public static final String JAVA_COMMAND = "ns.script.linux.java.command";
+    public static final String WINDOWS_STARTUP_SCRIPT = "ns.script.windows.startup.scripts";
 
     public static final String DEFAULT_SUFFIX_RM_TO_NODEJAR_URL = "ns.default.suffix.rm.to.nodejar.url";
 

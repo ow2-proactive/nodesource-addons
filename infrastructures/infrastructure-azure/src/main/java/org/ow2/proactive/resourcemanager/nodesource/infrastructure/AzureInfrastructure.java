@@ -29,8 +29,6 @@ import static org.ow2.proactive.resourcemanager.core.properties.PAResourceManage
 import static org.ow2.proactive.resourcemanager.nodesource.infrastructure.AdditionalInformationKeys.*;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.KeyException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -48,9 +46,7 @@ import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingExceptio
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingRateCard;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingResourceUsage;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
-import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
-
-import com.google.common.collect.Maps;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 
 import lombok.Getter;
 
@@ -73,9 +69,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "azure";
 
-    private static final String DEFAULT_HTTP_RM_URL = "http://localhost:8080";
-
-    private static final String DEFAULT_ADDITIONAL_PROPERTIES = "-Dproactive.useIPaddress=true -Dproactive.net.public_address=$(wget -qO- ipinfo.io/ip) -Dproactive.pnp.port=64738";
+    private static final String DEFAULT_ADDITIONAL_PROPERTIES = "-Dproactive.useIPaddress=true -Dproactive.pnp.port=64738";
 
     private ScheduledExecutorService periodicallyResourceUsageGetter = null;
 
@@ -89,36 +83,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     private boolean initBillingIsDone = false;
 
-    // Command lines patterns
-    private static final CharSequence RM_HTTP_URL_PATTERN = "<RM_HTTP_URL>";
-
-    private static final CharSequence RM_URL_PATTERN = "<RM_URL>";
-
-    private static final CharSequence INSTANCE_ID_PATTERN = "<INSTANCE_ID>";
-
-    private static final CharSequence ADDITIONAL_PROPERTIES_PATTERN = "<ADDITIONAL_PROPERTIES>";
-
-    private static final CharSequence NODESOURCE_NAME_PATTERN = "<NODESOURCE_NAME>";
-
-    private static final CharSequence NUMBER_OF_NODES_PATTERN = "<NUMBER_OF_NODES>";
-
-    // Command lines definition
-    private static final String POWERSHELL_DOWNLOAD_CMD = "$wc = New-Object System.Net.WebClient; $wc.DownloadFile('" +
-                                                          RM_HTTP_URL_PATTERN + "/rest/node.jar'" + ", 'node.jar')";
-
-    private static final String WGET_DOWNLOAD_CMD = "wget -nv " + RM_HTTP_URL_PATTERN + "/rest/node.jar";
-
-    private final String START_NODE_CMD = "java -jar node.jar -Dproactive.pamr.router.address=" + RM_HTTP_URL_PATTERN +
-                                          " -D" + instanceIdNodeProperty + "=" + INSTANCE_ID_PATTERN + " " +
-                                          ADDITIONAL_PROPERTIES_PATTERN + " -r " + RM_URL_PATTERN + " -s " +
-                                          NODESOURCE_NAME_PATTERN + " -w " + NUMBER_OF_NODES_PATTERN;
-
-    private final String START_NODE_FALLBACK_CMD = "java -jar node.jar -D" + instanceIdNodeProperty + "=" +
-                                                   INSTANCE_ID_PATTERN + " " + ADDITIONAL_PROPERTIES_PATTERN + " -r " +
-                                                   RM_URL_PATTERN + " -s " + NODESOURCE_NAME_PATTERN + " -w " +
-                                                   NUMBER_OF_NODES_PATTERN;
-
-    private final transient LinuxInitScriptGenerator linuxInitScriptGenerator = new LinuxInitScriptGenerator();
+    private final transient InitScriptGenerator initScriptGenerator = new InitScriptGenerator();
 
     // The index of the infrastructure configurable parameters.
     private enum Indexes {
@@ -152,7 +117,9 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         BILLING_CURRENCY(27),
         BILLING_LOCALE(28),
         BILLING_REGION_INFO(29),
-        BILLING_BUDGET(30);
+        BILLING_BUDGET(30),
+        LINUX_STARTUP_SCRIPT(31),
+        WINDOWS_STARTUP_SCRIPT(32);
 
         protected int index;
 
@@ -189,7 +156,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     protected String rmHostname = generateDefaultRMHostname();
 
     @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
-    protected String connectorIaasURL = LinuxInitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
+    protected String connectorIaasURL = InitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
     @Configurable(description = "Image (name or key)", sectionSelector = 6, important = true)
     protected String image = null;
@@ -221,12 +188,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Total nodes to create per instance", sectionSelector = 5, important = true)
     protected int numberOfNodesPerInstance = 1;
 
-    //    @Configurable(description = "Command used to download the worker jar (a default command will be generated for the specified image OS type)", sectionSelector = 7)
-    // The variable is not longer effectively used, but it's kept temporarily to facilitate future support of deploying nodes on windows os VM
-    protected String downloadCommand = null;
-
     @Configurable(description = "URL used to download the node jar on the VM", sectionSelector = 8)
-    protected String nodeJarURL = LinuxInitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
+    protected String nodeJarURL = InitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
     @Configurable(description = "Optional network CIDR to attach with new VM(s) (by default: '10.0.0.0/24')", sectionSelector = 7)
     protected String privateNetworkCIDR = null;
@@ -258,97 +221,64 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Your budget for this node source related Azure resources. Will be used to compute your global cost in % budget.", sectionSelector = 2)
     protected double maxBudget = 50;
 
+    @Configurable(textArea = true, description = "Linux VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description. (optional)", sectionSelector = 8)
+    protected String linuxStartupScript = initScriptGenerator.getDefaultLinuxStartupScript();
+
+    @Configurable(textArea = true, description = "Powershell script to be run during Windows VM startup for launching the ProActive nodes (optional). Please refer to the documentation for full description. (optional)", sectionSelector = 8)
+    protected String windowsStartupScript = initScriptGenerator.getDefaultWindowsStartupScript();
+
     @Override
     public void configure(Object... parameters) {
 
         LOGGER.info("Validating parameters");
-        validate(parameters);
-
-        this.clientId = getParameter(parameters, Indexes.CLIENT_ID.index);
-        this.secret = getParameter(parameters, Indexes.SECRET.index);
-        this.domain = getParameter(parameters, Indexes.DOMAIN.index);
-        this.subscriptionId = getParameter(parameters, Indexes.SUBSCRIPTION_ID.index);
-        this.authenticationEndpoint = getParameter(parameters, Indexes.AUTHENTICATION_ENDPOINT.index);
-        this.managementEndpoint = getParameter(parameters, Indexes.MANAGEMENT_ENDPOINT.index);
-        this.resourceManagerEndpoint = getParameter(parameters, Indexes.RESOURCE_MANAGER_ENDPOINT.index);
-        this.graphEndpoint = getParameter(parameters, Indexes.GRAPH_ENDPOINT.index);
-        this.rmHostname = getParameter(parameters, Indexes.RM_HOSTNAME.index);
-        this.connectorIaasURL = getParameter(parameters, Indexes.CONNECTOR_IAAS_URL.index);
-        this.image = getParameter(parameters, Indexes.IMAGE.index);
-        this.imageOSType = getParameter(parameters, Indexes.IMAGE_OS_TYPE.index).toLowerCase();
-        this.vmSizeType = getParameter(parameters, Indexes.VM_SIZE_TYPE.index);
-        this.vmUsername = getParameter(parameters, Indexes.VM_USERNAME.index);
-        this.vmPassword = getParameter(parameters, Indexes.VM_PASSWORD.index);
-        this.vmPublicKey = getParameter(parameters, Indexes.VM_PUBLIC_KEY.index);
-        this.resourceGroup = getParameter(parameters, Indexes.RESOURCE_GROUP.index);
-        this.region = getParameter(parameters, Indexes.REGION.index);
-        this.numberOfInstances = Integer.parseInt(getParameter(parameters, Indexes.NUMBER_OF_INSTANCES.index));
-        this.numberOfNodesPerInstance = Integer.parseInt(getParameter(parameters,
-                                                                      Indexes.NUMBER_OF_NODES_PER_INSTANCE.index));
-        this.nodeJarURL = getParameter(parameters, Indexes.NODE_JAR_URL.index);
-        this.privateNetworkCIDR = getParameter(parameters, Indexes.PRIVATE_NETWORK_CIDR.index);
-        this.staticPublicIP = Boolean.parseBoolean(getParameter(parameters, Indexes.STATIC_PUBLIC_IP.index));
-        this.additionalProperties = getParameter(parameters, Indexes.ADDITIONAL_PROPERTIES.index);
-        this.resourceUsageRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
-                                                                           Indexes.BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN.index));
-        this.rateCardRefreshFreqInMin = Integer.parseInt(getParameter(parameters,
-                                                                      Indexes.BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN.index));
-        this.offerId = getParameter(parameters, Indexes.BILLING_OFFER_ID.index);
-        this.currency = getParameter(parameters, Indexes.BILLING_CURRENCY.index);
-        this.locale = getParameter(parameters, Indexes.BILLING_LOCALE.index);
-        this.regionInfo = getParameter(parameters, Indexes.BILLING_REGION_INFO.index);
-        this.maxBudget = Double.parseDouble(getParameter(parameters, Indexes.BILLING_BUDGET.index));
-        this.connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
-    }
-
-    private String getParameter(Object[] parameters, int index) {
-        return parameters[index].toString().trim();
-    }
-
-    private void validate(Object[] parameters) {
         if (parameters == null || parameters.length < Indexes.values().length) {
             throw new IllegalArgumentException("Invalid parameters for AzureInfrastructure creation");
         }
 
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.CLIENT_ID.index], "Azure clientId must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.SECRET.index], "Azure secret key must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.DOMAIN.index],
-                                            "Azure domain or tenantId must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.RM_HOSTNAME.index],
-                                            "The Resource manager hostname must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.CONNECTOR_IAAS_URL.index],
-                                            "The connector-iaas URL must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.IMAGE.index], "The image id must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.IMAGE_OS_TYPE.index],
-                                            "The image OS type must be specified");
-        if (!getParameter(parameters, Indexes.IMAGE_OS_TYPE.index).equalsIgnoreCase(WINDOWS) &&
-            !getParameter(parameters, Indexes.IMAGE_OS_TYPE.index).equalsIgnoreCase(LINUX)) {
+        this.clientId = parseMandatoryParameter("clientId", parameters[Indexes.CLIENT_ID.index]);
+        this.secret = parseMandatoryParameter("secret", parameters[Indexes.SECRET.index]);
+        this.domain = parseMandatoryParameter("domain", parameters[Indexes.DOMAIN.index]);
+        this.subscriptionId = parseOptionalParameter(parameters[Indexes.SUBSCRIPTION_ID.index]);
+        this.authenticationEndpoint = parseOptionalParameter(parameters[Indexes.AUTHENTICATION_ENDPOINT.index]);
+        this.managementEndpoint = parseOptionalParameter(parameters[Indexes.MANAGEMENT_ENDPOINT.index]);
+        this.resourceManagerEndpoint = parseOptionalParameter(parameters[Indexes.RESOURCE_MANAGER_ENDPOINT.index]);
+        this.graphEndpoint = parseOptionalParameter(parameters[Indexes.GRAPH_ENDPOINT.index]);
+        this.rmHostname = parseMandatoryParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
+        this.connectorIaasURL = parseMandatoryParameter("connectorIaasURL",
+                                                        parameters[Indexes.CONNECTOR_IAAS_URL.index]);
+        this.image = parseMandatoryParameter("image", parameters[Indexes.IMAGE.index]);
+        this.imageOSType = parseMandatoryParameter("imageOSType",
+                                                   parameters[Indexes.IMAGE_OS_TYPE.index]).toLowerCase();
+        if (!imageOSType.equalsIgnoreCase(WINDOWS) && !imageOSType.equalsIgnoreCase(LINUX)) {
             throw new IllegalArgumentException("The image OS type is not recognized, it must be 'windows' or 'linux'");
         }
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.VM_USERNAME.index],
-                                            "The virtual machine username must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.VM_PASSWORD.index],
-                                            "The virtual machine password must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.NUMBER_OF_INSTANCES.index],
-                                            "The number of instances to create must be specified");
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index],
-                                            "The number of nodes per instance to deploy must be specified");
-        // The variable downloadCommand is not longer effectively used, but it's kept temporarily to facilitate future support of deploying nodes on windows os VM
-        //        if (parameters[Indexes.DOWNLOAD_COMMAND.index] == null || getParameter(parameters, Indexes.DOWNLOAD_COMMAND.index).isEmpty()) {
-        //            parameters[Indexes.DOWNLOAD_COMMAND.index] = generateDefaultDownloadCommand((String) parameters[Indexes.IMAGE_OS_TYPE.index],
-        //                                                                                (String) parameters[Indexes.RM_HTTP_URL.index]);
-        //        }
-        throwIllegalArgumentExceptionIfNull(parameters[Indexes.NODE_JAR_URL.index],
-                                            "URL used to download the node jar must be specified");
-        if (parameters[Indexes.ADDITIONAL_PROPERTIES.index] == null) {
-            parameters[Indexes.ADDITIONAL_PROPERTIES.index] = "";
-        }
-    }
-
-    private void throwIllegalArgumentExceptionIfNull(Object parameter, String error) {
-        if (parameter == null) {
-            throw new IllegalArgumentException(error);
-        }
+        this.vmSizeType = parseOptionalParameter(parameters[Indexes.VM_SIZE_TYPE.index]);
+        this.vmUsername = parseMandatoryParameter("vmUsername", parameters[Indexes.VM_USERNAME.index]);
+        this.vmPassword = parseMandatoryParameter("vmPassword", parameters[Indexes.VM_PASSWORD.index]);
+        this.vmPublicKey = parseOptionalParameter(parameters[Indexes.VM_PUBLIC_KEY.index]);
+        this.resourceGroup = parseOptionalParameter(parameters[Indexes.RESOURCE_GROUP.index]);
+        this.region = parseOptionalParameter(parameters[Indexes.REGION.index]);
+        this.numberOfInstances = parseIntParameter("numberOfInstances", parameters[Indexes.NUMBER_OF_INSTANCES.index]);
+        this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
+                                                          parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index]);
+        this.nodeJarURL = parseMandatoryParameter("nodeJarURL", parameters[Indexes.NODE_JAR_URL.index]);
+        this.privateNetworkCIDR = parseOptionalParameter(parameters[Indexes.PRIVATE_NETWORK_CIDR.index]);
+        this.staticPublicIP = parseBooleanParameter("staticPublicIP", parameters[Indexes.STATIC_PUBLIC_IP.index]);
+        this.additionalProperties = parseOptionalParameter(parameters[Indexes.ADDITIONAL_PROPERTIES.index]);
+        this.resourceUsageRefreshFreqInMin = parseIntParameter("resourceUsageRefreshFreqInMin",
+                                                               parameters[Indexes.BILLING_RESOURCE_USAGE_REFRESH_FREQ_IN_MIN.index]);
+        this.rateCardRefreshFreqInMin = parseIntParameter("rateCardRefreshFreqInMin",
+                                                          parameters[Indexes.BILLING_RATE_CARD_REFRESH_FREQ_IN_MIN.index]);
+        this.offerId = parseOptionalParameter(parameters[Indexes.BILLING_OFFER_ID.index]);
+        this.currency = parseOptionalParameter(parameters[Indexes.BILLING_CURRENCY.index]);
+        this.locale = parseOptionalParameter(parameters[Indexes.BILLING_LOCALE.index]);
+        this.regionInfo = parseOptionalParameter(parameters[Indexes.BILLING_REGION_INFO.index]);
+        this.maxBudget = parseDoubleParameter("maxBudget", parameters[Indexes.BILLING_BUDGET.index]);
+        this.linuxStartupScript = parseOptionalParameter(parameters[Indexes.LINUX_STARTUP_SCRIPT.index],
+                                                         initScriptGenerator.getDefaultLinuxStartupScript());
+        this.windowsStartupScript = parseOptionalParameter(parameters[Indexes.WINDOWS_STARTUP_SCRIPT.index],
+                                                           initScriptGenerator.getDefaultWindowsStartupScript());
+        this.connectorIaasController = new ConnectorIaasController(connectorIaasURL, INFRASTRUCTURE_TYPE);
     }
 
     private void restoreBillingInformation() {
@@ -513,16 +443,28 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
             try {
-                List<String> scripts = linuxInitScriptGenerator.buildScript(currentInstanceId,
-                                                                            getRmUrl(),
-                                                                            rmHostname,
-                                                                            nodeJarURL,
-                                                                            instanceIdNodeProperty,
-                                                                            additionalProperties,
-                                                                            nodeSource.getName(),
-                                                                            currentInstanceId,
-                                                                            numberOfNodesPerInstance,
-                                                                            getCredentials());
+                List<String> scripts = imageOSType.equalsIgnoreCase(WINDOWS) ? initScriptGenerator.buildWindowsScript(windowsStartupScript,
+                                                                                                                      currentInstanceId,
+                                                                                                                      getRmUrl(),
+                                                                                                                      rmHostname,
+                                                                                                                      nodeJarURL,
+                                                                                                                      instanceIdNodeProperty,
+                                                                                                                      additionalProperties,
+                                                                                                                      nodeSource.getName(),
+                                                                                                                      currentInstanceId,
+                                                                                                                      numberOfNodesPerInstance,
+                                                                                                                      getCredentials())
+                                                                             : initScriptGenerator.buildLinuxScript(linuxStartupScript,
+                                                                                                                    currentInstanceId,
+                                                                                                                    getRmUrl(),
+                                                                                                                    rmHostname,
+                                                                                                                    nodeJarURL,
+                                                                                                                    instanceIdNodeProperty,
+                                                                                                                    additionalProperties,
+                                                                                                                    nodeSource.getName(),
+                                                                                                                    currentInstanceId,
+                                                                                                                    numberOfNodesPerInstance,
+                                                                                                                    getCredentials());
 
                 connectorIaasController.executeScript(getInfrastructureId(), currentInstanceId, scripts);
             } catch (KeyException e) {
@@ -587,74 +529,6 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public String toString() {
         return getDescription();
-    }
-
-    private String generateDefaultHttpRMUrl() {
-        try {
-            // best effort, may not work for all machines
-            return "http://" + InetAddress.getLocalHost().getCanonicalHostName() + ":8080";
-        } catch (UnknownHostException e) {
-            LOGGER.warn("Unable to retrieve local canonical hostname with error: " + e);
-            return DEFAULT_HTTP_RM_URL;
-        }
-    }
-
-    private String generateScriptFromInstanceId(String instanceId, String osType) {
-        // if the script didn't change compared to the previous update,
-        // then the script will not be run by the Azure provider.
-        // Moreover, the 'forceUpdateTag' is not available in the Azure
-        // Java SDK. So in order to make sure that the script slightly
-        // changes, we make the scripts begin with a command that prints
-        // a new ID each time a script needs to be run after the first
-        // executed script.
-
-        UUID scriptExecutionId = UUID.randomUUID();
-        String uniqueCommandPart = "echo script-ID" + "; " + "echo " + scriptExecutionId + "; ";
-
-        String startNodeCommand = generateStartNodeCommand(instanceId);
-        if (osType.equals(WINDOWS)) {
-            String[] splittedStartNodeCommand = startNodeCommand.split(" ");
-            StringBuilder windowsDownloadCommand = new StringBuilder("powershell -command \"" + uniqueCommandPart +
-                                                                     downloadCommand + "; Start-Process -NoNewWindow " +
-                                                                     "'" + startNodeCommand.split(" ")[0] + "'" +
-                                                                     " -ArgumentList ");
-            for (int i = 1; i < splittedStartNodeCommand.length; i++) {
-                windowsDownloadCommand.append("'").append(splittedStartNodeCommand[i]).append("'");
-                if (i < (splittedStartNodeCommand.length - 1)) {
-                    windowsDownloadCommand.append(", ");
-                }
-            }
-            windowsDownloadCommand.append("\"");
-            return windowsDownloadCommand.toString();
-        } else {
-            return "/bin/bash -c '" + uniqueCommandPart + downloadCommand + "; nohup " + startNodeCommand + " &'";
-        }
-    }
-
-    private String generateDefaultDownloadCommand(String osType, String rmHostname) {
-        if (osType.equals(WINDOWS)) {
-            return POWERSHELL_DOWNLOAD_CMD.replace(RM_HTTP_URL_PATTERN, rmHostname);
-        } else {
-            return WGET_DOWNLOAD_CMD.replace(RM_HTTP_URL_PATTERN, rmHostname);
-        }
-    }
-
-    private String generateStartNodeCommand(String instanceId) {
-        try {
-            return START_NODE_CMD.replace(RM_HTTP_URL_PATTERN, rmHostname)
-                                 .replace(INSTANCE_ID_PATTERN, instanceId)
-                                 .replace(ADDITIONAL_PROPERTIES_PATTERN, additionalProperties)
-                                 .replace(RM_URL_PATTERN, getRmUrl())
-                                 .replace(NODESOURCE_NAME_PATTERN, nodeSource.getName())
-                                 .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
-        } catch (Exception e) {
-            LOGGER.error("Exception when generating the command, fallback on default value", e);
-            return START_NODE_FALLBACK_CMD.replace(INSTANCE_ID_PATTERN, instanceId)
-                                          .replace(ADDITIONAL_PROPERTIES_PATTERN, additionalProperties)
-                                          .replace(RM_URL_PATTERN, getRmUrl())
-                                          .replace(NODESOURCE_NAME_PATTERN, nodeSource.getName())
-                                          .replace(NUMBER_OF_NODES_PATTERN, String.valueOf(numberOfNodesPerInstance));
-        }
     }
 
     @Override

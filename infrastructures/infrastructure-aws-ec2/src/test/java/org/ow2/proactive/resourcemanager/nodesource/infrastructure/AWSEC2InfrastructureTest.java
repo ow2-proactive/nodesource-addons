@@ -54,7 +54,7 @@ import org.ow2.proactive.authentication.crypto.Credentials;
 import org.ow2.proactive.resourcemanager.authentication.Client;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
-import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.LinuxInitScriptGenerator;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.python.google.common.collect.Sets;
 
@@ -93,11 +93,13 @@ public class AWSEC2InfrastructureTest {
 
     private static final String CONNECTOR_IAAS_URL = "http://localhost:8088/connector-iaas";
 
-    private static final String NODE_JAR_URL = "wget -nv test.activeeon.com/rest/node.jar";
+    private static final String NODE_JAR_URL = "test.activeeon.com/rest/node.jar";
 
     private static final String ADDITIONAL_PROPERTIES = "-Dnew=value";
 
     private static final int NODE_TIMEOUT = 300000;
+
+    private static final String STARTUP_SCRIPT = "node download cmd\nnode start cmd";
 
     private static final boolean DESTROY_INSTANCES_ON_SHUTDOWN = true;
 
@@ -127,7 +129,7 @@ public class AWSEC2InfrastructureTest {
     private NodeInformation nodeInformation;
 
     @Mock
-    private LinuxInitScriptGenerator linuxInitScriptGenerator;
+    private InitScriptGenerator initScriptGenerator;
 
     @Mock
     private Client client = new Client();
@@ -177,7 +179,8 @@ public class AWSEC2InfrastructureTest {
                                        CONNECTOR_IAAS_URL,
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
-                                       NODE_TIMEOUT);
+                                       NODE_TIMEOUT,
+                                       STARTUP_SCRIPT);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -197,7 +200,8 @@ public class AWSEC2InfrastructureTest {
                                        CONNECTOR_IAAS_URL,
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
-                                       NODE_TIMEOUT);
+                                       NODE_TIMEOUT,
+                                       STARTUP_SCRIPT);
     }
 
     @Test
@@ -219,7 +223,8 @@ public class AWSEC2InfrastructureTest {
                                        CONNECTOR_IAAS_URL,
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
-                                       NODE_TIMEOUT);
+                                       NODE_TIMEOUT,
+                                       STARTUP_SCRIPT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
@@ -229,7 +234,8 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
 
-        when(linuxInitScriptGenerator.buildScript(anyString(),
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
                                                   anyString(),
                                                   anyString(),
                                                   anyString(),
@@ -320,7 +326,8 @@ public class AWSEC2InfrastructureTest {
                                        CONNECTOR_IAAS_URL,
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
-                                       NODE_TIMEOUT);
+                                       NODE_TIMEOUT,
+                                       STARTUP_SCRIPT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
@@ -330,7 +337,8 @@ public class AWSEC2InfrastructureTest {
 
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
 
-        when(linuxInitScriptGenerator.buildScript(anyString(),
+        when(initScriptGenerator.buildLinuxScript(anyString(),
+                                                  anyString(),
                                                   anyString(),
                                                   anyString(),
                                                   anyString(),
@@ -424,7 +432,8 @@ public class AWSEC2InfrastructureTest {
                                        CONNECTOR_IAAS_URL,
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
-                                       NODE_TIMEOUT);
+                                       NODE_TIMEOUT,
+                                       STARTUP_SCRIPT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
@@ -468,7 +477,8 @@ public class AWSEC2InfrastructureTest {
                                        CONNECTOR_IAAS_URL,
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
-                                       NODE_TIMEOUT);
+                                       NODE_TIMEOUT,
+                                       STARTUP_SCRIPT);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
