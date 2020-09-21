@@ -26,15 +26,24 @@
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import java.net.HttpURLConnection;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLContext;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
+import org.apache.http.ssl.SSLContexts;
 import org.jboss.resteasy.client.jaxrs.ClientHttpEngine;
 import org.jboss.resteasy.client.jaxrs.ResteasyClient;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
@@ -44,20 +53,23 @@ import org.jboss.resteasy.plugins.interceptors.encoding.AcceptEncodingGZIPFilter
 import org.jboss.resteasy.plugins.interceptors.encoding.GZIPDecodingInterceptor;
 import org.jboss.resteasy.plugins.interceptors.encoding.GZIPEncodingInterceptor;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
+import org.ow2.proactive.web.WebProperties;
 
 
 public class RestClient {
 
     private final ResteasyClient restEasyClient;
 
+    private static SSLContext sslContext;
+
     private final String connectorIaasURL;
 
     public RestClient(String connectorIaasURL) {
-
-        ClientHttpEngine engine = new ApacheHttpClient4Engine(HttpClientBuilder.create()
-                                                                               .useSystemProperties()
-                                                                               .setRetryHandler(new StandardHttpRequestRetryHandler())
-                                                                               .build());
+        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create()
+                                                               .useSystemProperties()
+                                                               .setRetryHandler(new StandardHttpRequestRetryHandler());
+        setSSLContext(httpClientBuilder);
+        ClientHttpEngine engine = new ApacheHttpClient4Engine(httpClientBuilder.build());
 
         ResteasyProviderFactory providerFactory = ResteasyProviderFactory.getInstance();
         registerGzipEncoding(providerFactory);
@@ -161,6 +173,28 @@ public class RestClient {
 
     private ResteasyWebTarget initWebTarget(String url) {
         return restEasyClient.target(url);
+    }
+
+    private void setSSLContext(HttpClientBuilder httpClientBuilder) {
+        if (WebProperties.WEB_HTTPS_ALLOW_ANY_CERTIFICATE.getValueAsBoolean()) {
+            TrustStrategy acceptingTrustStrategy = (cert, authType) -> true;
+            try {
+                sslContext = SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
+            } catch (NoSuchAlgorithmException | KeyManagementException | KeyStoreException e) {
+                throw new RuntimeException(e.getMessage(), e);
+            }
+        } else {
+            sslContext = SSLContexts.createSystemDefault();
+        }
+        HostnameVerifier hostnameVerifier;
+        if (WebProperties.WEB_HTTPS_ALLOW_ANY_HOSTNAME.getValueAsBoolean()) {
+            hostnameVerifier = NoopHostnameVerifier.INSTANCE;
+        } else {
+            hostnameVerifier = SSLConnectionSocketFactory.getDefaultHostnameVerifier();
+        }
+        SSLConnectionSocketFactory sslConnectionSocketFactory = new SSLConnectionSocketFactory(sslContext,
+                                                                                               hostnameVerifier);
+        httpClientBuilder.setSSLSocketFactory(sslConnectionSocketFactory);
     }
 
     private String checkAndGetResponse(Response response) {
