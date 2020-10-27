@@ -125,6 +125,7 @@ public class OpenstackInfrastructureTest {
                                           "identityVersion",
                                           "openstack-image",
                                           "3",
+                                          "network0",
                                           "publicKeyName",
                                           "1",
                                           "1",
@@ -147,6 +148,7 @@ public class OpenstackInfrastructureTest {
                                           "endpoint",
                                           "test.activeeon.com",
                                           "http://localhost:8088/connector-iaas",
+                                          "network0",
                                           "publicKeyName",
                                           "2",
                                           "3",
@@ -175,6 +177,7 @@ public class OpenstackInfrastructureTest {
                                           "identityVersion",
                                           "openstack-image",
                                           "3",
+                                          "",
                                           "publicKeyName",
                                           "2",
                                           "1",
@@ -206,6 +209,7 @@ public class OpenstackInfrastructureTest {
                                                              anyInt(),
                                                              anyString(),
                                                              anyString(),
+                                                             anyString(),
                                                              anyList())).thenReturn(Sets.newHashSet("123", "456"));
 
         openstackInfrastructure.acquireNode();
@@ -227,6 +231,7 @@ public class OpenstackInfrastructureTest {
                                                                           anyString(),
                                                                           anyString(),
                                                                           anyInt(),
+                                                                          anyString(),
                                                                           anyString(),
                                                                           anyString(),
                                                                           anyList());
@@ -255,6 +260,7 @@ public class OpenstackInfrastructureTest {
                                           "identityVersion",
                                           "openstack-image",
                                           "3",
+                                          "",
                                           "publicKeyName",
                                           "2",
                                           "1",
@@ -286,6 +292,7 @@ public class OpenstackInfrastructureTest {
                                                              anyInt(),
                                                              anyString(),
                                                              anyString(),
+                                                             anyString(),
                                                              anyList())).thenReturn(Sets.newHashSet("123", "456"));
 
         openstackInfrastructure.acquireAllNodes();
@@ -309,6 +316,7 @@ public class OpenstackInfrastructureTest {
                                                                           anyInt(),
                                                                           anyString(),
                                                                           anyString(),
+                                                                          anyString(),
                                                                           anyList());
 
         verify(connectorIaasController, times(0)).executeScript(anyString(), anyString(), anyList());
@@ -330,6 +338,7 @@ public class OpenstackInfrastructureTest {
                                           "identityVersion",
                                           "openstack-image",
                                           "3",
+                                          "",
                                           "publicKeyName",
                                           "1",
                                           "1",
@@ -377,6 +386,7 @@ public class OpenstackInfrastructureTest {
                                           "identityVersion",
                                           "openstack-image",
                                           "3",
+                                          "",
                                           "publicKeyName",
                                           "1",
                                           "1",

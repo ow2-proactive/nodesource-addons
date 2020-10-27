@@ -288,13 +288,14 @@ public class ConnectorIaasController {
     }
 
     public Set<String> createOpenstackInstance(String infrastructureId, String instanceTag, String image,
-            int numberOfInstances, String hardwareType, String publicKeyName, List<String> scripts) {
+            int numberOfInstances, String hardwareType, String publicKeyName, String network, List<String> scripts) {
 
         String instanceJson = ConnectorIaasJSONTransformer.getOpenstackInstanceJSON(instanceTag,
                                                                                     image,
                                                                                     String.valueOf(numberOfInstances),
                                                                                     publicKeyName,
                                                                                     hardwareType,
+                                                                                    network,
                                                                                     scripts);
 
         return createInstance(infrastructureId, instanceTag, instanceJson);
