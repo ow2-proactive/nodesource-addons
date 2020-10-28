@@ -168,6 +168,7 @@ public class ConnectorIaasControllerTest {
                                                                                     "1",
                                                                                     "publicKeyName",
                                                                                     "3",
+                                                                                    "",
                                                                                     scripts);
 
         Set<String> instanceIds = Sets.newHashSet("123", "456");
@@ -187,6 +188,7 @@ public class ConnectorIaasControllerTest {
                                                                                    1,
                                                                                    "3",
                                                                                    "publicKeyName",
+                                                                                   "",
                                                                                    scripts);
 
         assertThat(instancesIds.size(), is(2));

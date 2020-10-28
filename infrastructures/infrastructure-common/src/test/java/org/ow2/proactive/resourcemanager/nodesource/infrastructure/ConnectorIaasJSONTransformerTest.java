@@ -131,6 +131,7 @@ public class ConnectorIaasJSONTransformerTest {
                                                                                                  "number",
                                                                                                  "publicKeyName",
                                                                                                  "type",
+                                                                                                 "",
                                                                                                  scripts));
 
         assertThat(actual.getString("tag"), is("tag"));

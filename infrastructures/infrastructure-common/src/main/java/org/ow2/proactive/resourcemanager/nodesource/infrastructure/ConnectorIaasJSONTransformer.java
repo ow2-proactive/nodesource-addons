@@ -271,23 +271,30 @@ public class ConnectorIaasJSONTransformer {
     }
 
     public static String getOpenstackInstanceJSON(String tag, String image, String number, String publicKeyName,
-            String type, List<String> scripts) {
+            String type, String networkId, List<String> scripts) {
 
+        JSONObject result = new JSONObject();
         JSONObject credentials = new JSONObject();
         if (publicKeyName != null && !publicKeyName.equals("")) {
             credentials.put("publicKeyName", publicKeyName);
+        }
+        if (networkId != "") {
+            JSONObject network = new JSONObject();
+            JSONArray networkIds = new JSONArray().put(networkId);
+            network.put("networkIds", networkIds);
+            result.put("network", network);
         }
         JSONObject hardware = new JSONObject();
         hardware.put("type", type);
         JSONObject script = new JSONObject();
         script.put("scripts", new JSONArray(scripts));
-        return new JSONObject().put("tag", tag)
-                               .put("image", image)
-                               .put("number", number)
-                               .put("credentials", credentials)
-                               .put("hardware", hardware)
-                               .put("initScript", script)
-                               .toString();
+        return result.put("tag", tag)
+                     .put("image", image)
+                     .put("number", number)
+                     .put("credentials", credentials)
+                     .put("hardware", hardware)
+                     .put("initScript", script)
+                     .toString();
     }
 
     public static String getScriptInstanceJSONWithCredentials(List<String> scripts, String username, String password) {

@@ -100,6 +100,9 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Flavor type of OpenStack", sectionSelector = 3, important = true)
     protected String flavor = null;
 
+    @Configurable(description = "(optional) Network id for the openstack instance", sectionSelector = 3)
+    protected String networkId = null;
+
     @Configurable(description = "(optional) Public key name for Openstack instance", sectionSelector = 3)
     protected String publicKeyName = null;
 
@@ -140,15 +143,16 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         IDENTITY_VERSION(7),
         IMAGE(8),
         FLAVOR(9),
-        PUBLIC_KEY_NAME(10),
-        NUMBER_OF_INSTANCES(11),
-        NUMBER_OF_NODES_PER_INSTANCE(12),
-        CONNECTOR_IAAS_URL(13),
-        RM_HOSTNAME(14),
-        NODE_JAR_URL(15),
-        ADDITIONAL_PROPERTIES(16),
-        NODES_INIT_DELAY(17),
-        STARTUP_SCRIPT(18);
+        NETWORK(10),
+        PUBLIC_KEY_NAME(11),
+        NUMBER_OF_INSTANCES(12),
+        NUMBER_OF_NODES_PER_INSTANCE(13),
+        CONNECTOR_IAAS_URL(14),
+        RM_HOSTNAME(15),
+        NODE_JAR_URL(16),
+        ADDITIONAL_PROPERTIES(17),
+        NODES_INIT_DELAY(18),
+        STARTUP_SCRIPT(19);
 
         protected int index;
 
@@ -205,6 +209,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.identityVersion = parseMandatoryParameter("identityVersion", parameters[Indexes.IDENTITY_VERSION.index]);
         this.image = parseMandatoryParameter("image", parameters[Indexes.IMAGE.index]);
         this.flavor = parseMandatoryParameter("flavor", parameters[Indexes.FLAVOR.index]);
+        this.networkId = parseOptionalParameter(Indexes.NETWORK.index);
         this.publicKeyName = parseOptionalParameter(parameters[Indexes.PUBLIC_KEY_NAME.index]);
         this.numberOfInstances = parseIntParameter("numberOfInstances", parameters[Indexes.NUMBER_OF_INSTANCES.index]);
         this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
@@ -539,6 +544,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                                                         1,
                                                         flavor,
                                                         publicKeyName,
+                                                        networkId,
                                                         scripts);
     }
 
