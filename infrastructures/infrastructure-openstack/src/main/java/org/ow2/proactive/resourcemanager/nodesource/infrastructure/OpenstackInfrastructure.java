@@ -209,7 +209,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         this.identityVersion = parseMandatoryParameter("identityVersion", parameters[Indexes.IDENTITY_VERSION.index]);
         this.image = parseMandatoryParameter("image", parameters[Indexes.IMAGE.index]);
         this.flavor = parseMandatoryParameter("flavor", parameters[Indexes.FLAVOR.index]);
-        this.networkId = parseOptionalParameter(Indexes.NETWORK.index);
+        this.networkId = parseOptionalParameter(parameters[Indexes.NETWORK.index]);
         this.publicKeyName = parseOptionalParameter(parameters[Indexes.PUBLIC_KEY_NAME.index]);
         this.numberOfInstances = parseIntParameter("numberOfInstances", parameters[Indexes.NUMBER_OF_INSTANCES.index]);
         this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
