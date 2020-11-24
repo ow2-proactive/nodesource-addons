@@ -25,9 +25,12 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
+import static org.ow2.proactive.resourcemanager.utils.RMNodeStarter.NODE_TAGS_PROP_NAME;
+
 import java.security.KeyException;
 import java.util.*;
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -35,10 +38,13 @@ import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.NodeConfiguration;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.VmCredentials;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 
 import lombok.Getter;
@@ -237,33 +243,45 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     }
 
     @Override
-    public synchronized void acquireNodes(final int numberOfNodes, final Map<String, ?> nodeConfiguration) {
-        logger.info(String.format("Acquiring %d nodes with the configuration: %s.", numberOfNodes, nodeConfiguration));
-
+    public synchronized void acquireNodes(final int numberOfNodes, final long startTimeout,
+            final Map<String, ?> nodeConfiguration) {
         nodeSource.executeInParallel(() -> {
-            if (dynamicAcquireLock.tryLock()) {
-                try {
-                    int nbInstancesToDeploy = calNumberOfInstancesToDeploy(numberOfNodes,
-                                                                           nodeConfiguration,
-                                                                           numberOfInstances,
-                                                                           numberOfNodesPerInstance);
-                    if (nbInstancesToDeploy <= 0) {
-                        logger.info("No need to deploy new instances, acquireNodes skipped.");
-                        return;
+            try {
+                if (dynamicAcquireLock.tryLock(startTimeout, TimeUnit.MILLISECONDS)) {
+                    logger.info(String.format("Acquiring %d nodes with the configuration: %s.",
+                                              numberOfNodes,
+                                              nodeConfiguration));
+                    try {
+                        AWSEC2CustomizableParameter deployParams = getNodeSpecificParameters(nodeConfiguration);
+                        int nbInstancesToDeploy = calNumberOfInstancesToDeploy(numberOfNodes,
+                                                                               nodeConfiguration,
+                                                                               numberOfInstances,
+                                                                               numberOfNodesPerInstance);
+                        if (nbInstancesToDeploy <= 0) {
+                            logger.info("No need to deploy new instances, acquireNodes skipped.");
+                            return;
+                        }
+                        deployInstancesWithNodes(nbInstancesToDeploy, false, deployParams);
+                    } catch (Exception e) {
+                        logger.error("Error during node acquisition", e);
+                    } finally {
+                        dynamicAcquireLock.unlock();
                     }
-                    deployInstancesWithNodes(nbInstancesToDeploy, false);
-                } catch (Exception e) {
-                    logger.error("Error during node acquisition", e);
-                } finally {
-                    dynamicAcquireLock.unlock();
+                } else {
+                    logger.info("Infrastructure is busy, acquireNodes skipped.");
                 }
-            } else {
-                logger.info("Infrastructure is busy, acquireNodes skipped.");
+            } catch (InterruptedException e) {
+                logger.info("acquireNodes skipped because of InterruptedException:", e);
             }
         });
     }
 
     private void deployInstancesWithNodes(int nbInstancesToDeploy, boolean reuseCreatedInstances) {
+        deployInstancesWithNodes(nbInstancesToDeploy, reuseCreatedInstances, getDefaultNodeParameters());
+    }
+
+    private void deployInstancesWithNodes(int nbInstancesToDeploy, boolean reuseCreatedInstances,
+            AWSEC2CustomizableParameter params) {
         connectorIaasController.waitForConnectorIaasToBeUP();
 
         createAwsInfrastructureIfNeeded();
@@ -280,9 +298,9 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
             // by default, the key pair that is used to deploy the instances has
             // the name of the node source
-            String keyPairName = createOrUseKeyPair(infrastructureId, nbInstancesToDeploy);
+            String keyPairName = createOrUseKeyPair(infrastructureId, nbInstancesToDeploy, params);
 
-            instancesIds = createInstances(infrastructureId, keyPairName, nbInstancesToDeploy);
+            instancesIds = createInstances(infrastructureId, keyPairName, nbInstancesToDeploy, params);
 
         } else {
 
@@ -299,7 +317,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
         // execute script on instances to deploy or redeploy nodes on them
         for (String currentInstanceId : instancesIds) {
-            deployNodesOnInstance(currentInstanceId, existPersistedInstanceIds);
+            deployNodesOnInstance(currentInstanceId, existPersistedInstanceIds, params);
 
             // in all cases, we must remove the instance from the free
             // instance map as we tried everything to deploy nodes on it
@@ -320,34 +338,36 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    private Set<String> createInstances(String infrastructureId, String keyPairName, int nbInstances) {
+    private Set<String> createInstances(String infrastructureId, String keyPairName, int nbInstances,
+            AWSEC2CustomizableParameter params) {
         // create instances
         if (spotPrice.isEmpty() && securityGroupIds.isEmpty() && subnetId.isEmpty()) {
             return connectorIaasController.createAwsEc2Instances(infrastructureId,
                                                                  infrastructureId,
-                                                                 image,
+                                                                 params.getImage(),
                                                                  nbInstances,
-                                                                 cores,
-                                                                 ram,
-                                                                 vmUsername,
+                                                                 params.getCores(),
+                                                                 params.getRam(),
+                                                                 params.getVmUsername(),
                                                                  keyPairName);
         } else {
             return connectorIaasController.createAwsEc2InstancesWithOptions(infrastructureId,
                                                                             infrastructureId,
-                                                                            image,
+                                                                            params.getImage(),
                                                                             nbInstances,
-                                                                            cores,
-                                                                            ram,
+                                                                            params.getCores(),
+                                                                            params.getRam(),
                                                                             spotPrice,
                                                                             securityGroupIds,
                                                                             subnetId,
                                                                             null,
-                                                                            vmUsername,
+                                                                            params.getVmUsername(),
                                                                             keyPairName);
         }
     }
 
-    private void deployNodesOnInstance(final String instanceId, final boolean existPersistedInstanceIds) {
+    private void deployNodesOnInstance(final String instanceId, final boolean existPersistedInstanceIds,
+            AWSEC2CustomizableParameter params) {
         nodeSource.executeInParallel(() -> {
             //change the delimiter between the instanceId and region to make a valid nodeName
             String baseNodeName = getBaseNodeNameFromInstanceId(instanceId);
@@ -359,7 +379,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                                             rmHostname,
                                                                             nodeJarURL,
                                                                             instanceIdNodeProperty,
-                                                                            additionalProperties,
+                                                                            params.getAdditionalProperties(),
                                                                             nodeSource.getName(),
                                                                             baseNodeName,
                                                                             numberOfNodesPerInstance,
@@ -378,7 +398,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                 connectorIaasController.executeScriptWithKeyAuthentication(getInfrastructureId(),
                                                                            instanceId,
                                                                            scripts,
-                                                                           vmUsername,
+                                                                           params.getVmUsername(),
                                                                            getPersistedKeyPairInfo().getValue());
             } catch (KeyException e) {
                 logger.error("A problem occurred while acquiring user credentials path. The node startup script will be not executed.");
@@ -388,18 +408,18 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         });
     }
 
-    private String createOrUseKeyPair(String infrastructureId, int nbInstances) {
+    private String createOrUseKeyPair(String infrastructureId, int nbInstances, AWSEC2CustomizableParameter params) {
         SimpleImmutableEntry<String, String> keyPairInfo;
-        if (vmPrivateKey.isEmpty() || vmKeyPairName.isEmpty()) {
+        if (params.getVmPrivateKey().isEmpty() || params.getVmKeyPairName().isEmpty()) {
             // create a key pair in AWS
             try {
                 logger.info("Creating an AWS key pair");
                 keyPairInfo = connectorIaasController.createAwsEc2KeyPair(infrastructureId,
                                                                           infrastructureId,
-                                                                          image,
+                                                                          params.getImage(),
                                                                           nbInstances,
-                                                                          cores,
-                                                                          ram);
+                                                                          params.getCores(),
+                                                                          params.getRam());
                 isUsingAutoGeneratedKeyPair = true;
             } catch (Exception e) {
                 logger.warn("Key pair creation in AWS failed. Trying to use persisted key pair.");
@@ -408,7 +428,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         } else {
             // or use the private key provided by the user
             logger.info("Using AWS key pair provided by the user");
-            keyPairInfo = new SimpleImmutableEntry<>(vmKeyPairName, vmPrivateKey);
+            keyPairInfo = new SimpleImmutableEntry<>(params.getVmKeyPairName(), params.getVmPrivateKey());
             isUsingAutoGeneratedKeyPair = false;
         }
         persistKeyPairInfo(keyPairInfo);
@@ -592,5 +612,60 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     @Override
     public Map<String, String> getMeta() {
         return meta;
+    }
+
+    // get the node deployment parameters based on the value specified in the infrastructure configuration
+    private AWSEC2CustomizableParameter getDefaultNodeParameters() {
+        return new AWSEC2CustomizableParameter(image,
+                                               vmUsername,
+                                               vmKeyPairName,
+                                               vmPrivateKey,
+                                               ram,
+                                               cores,
+                                               additionalProperties);
+
+    }
+
+    // get the node deployment parameters based on the specific node configurations which can
+    // overrides the values specified in the infrastructure configuration
+    private AWSEC2CustomizableParameter getNodeSpecificParameters(Map<String, ?> nodeConfiguration) {
+        AWSEC2CustomizableParameter params = getDefaultNodeParameters();
+        NodeConfiguration nodeConfig = new ObjectMapper().convertValue(nodeConfiguration, NodeConfiguration.class);
+
+        if (nodeConfig.getNodeTags() != null) {
+            String propertiesWithTags = params.getAdditionalProperties();
+            String tags = nodeConfig.getNodeTags();
+            if (propertiesWithTags.contains(NODE_TAGS_PROP_NAME)) {
+                propertiesWithTags = propertiesWithTags.replace(String.format("%s=", NODE_TAGS_PROP_NAME),
+                                                                String.format("%s=%s,", NODE_TAGS_PROP_NAME, tags));
+            } else {
+                propertiesWithTags += String.format(" -D%s=%s", NODE_TAGS_PROP_NAME, tags);
+            }
+            params.setAdditionalProperties(propertiesWithTags);
+        }
+
+        if (nodeConfig.getImage() != null) {
+            params.setImage(nodeConfig.getImage());
+        }
+        if (nodeConfig.getNumberOfCores() != null) {
+            params.setCores(nodeConfig.getNumberOfCores());
+        }
+        if (nodeConfig.getAmountOfMemory() != null) {
+            params.setRam(nodeConfig.getAmountOfMemory());
+        }
+        if (nodeConfig.getCredentials() != null) {
+            VmCredentials vmCred = nodeConfig.getCredentials();
+            if (vmCred.getVmUserName() != null) {
+                params.setVmUsername(vmCred.getVmUserName());
+            }
+            if (vmCred.getVmKeyPairName() != null) {
+                params.setVmKeyPairName(vmCred.getVmKeyPairName());
+            }
+            if (vmCred.getVmPrivateKey() != null) {
+                params.setVmPrivateKey(vmCred.getVmPrivateKey());
+            }
+        }
+
+        return params;
     }
 }

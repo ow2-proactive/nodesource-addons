@@ -425,20 +425,24 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
      * while conforming to the constraint of max instances number and max nodes number.
      * Note we may deploy more nodes then required as long as it not exceeds max nodes number.
      * @param numberOfNodesRequested number of nodes requested to add
-     * @param dynamicPolicyParameters parameters of dynamic policy, should contain MAX_NODES and TOTAL_NUMBER_OF_NODES
+     * @param nodeParameters node parameters, when it contains TOTAL_NUMBER_OF_NODES key, the number of nodes to deploy will be calculated to satisfy the requirement of MAX_NODES
      * @return the number of instance to deploy
      */
-    protected int calNumberOfInstancesToDeploy(final int numberOfNodesRequested, Map<String, ?> dynamicPolicyParameters,
+    protected int calNumberOfInstancesToDeploy(final int numberOfNodesRequested, Map<String, ?> nodeParameters,
             int maxNumberOfInstances, int numberOfNodesPerInstance) {
-
-        if (!dynamicPolicyParameters.containsKey(MAX_NODES_KEY)) {
+        // when the node parameters don't specify the TOTAL_NUMBER_OF_NODES, we just directly deploy the number of nodes specified in numberOfNodesRequested
+        if (!nodeParameters.containsKey(TOTAL_NUMBER_OF_NODES_KEY)) {
+            int numInstance = numberOfNodesRequested / numberOfNodesPerInstance;
+            if (numberOfNodesRequested % numberOfNodesPerInstance != 0)
+                numInstance++;
+            return numInstance;
+        }
+        // when the node parameters specify the TOTAL_NUMBER_OF_NODES, it is request by a dynamic policy, the number of nodes to deploy should satisfy MAX_NODES requirement
+        else if (!nodeParameters.containsKey(MAX_NODES_KEY)) {
             throw new IllegalArgumentException("The dynamic policy parameters should include the maximal number of nodes");
         }
-        if (!dynamicPolicyParameters.containsKey(TOTAL_NUMBER_OF_NODES_KEY)) {
-            throw new IllegalArgumentException("The dynamic policy parameters should include the total number of nodes");
-        }
-        final int nbMaxNodes = (Integer) dynamicPolicyParameters.get(MAX_NODES_KEY);
-        final int nbTotalNodes = (Integer) dynamicPolicyParameters.get(TOTAL_NUMBER_OF_NODES_KEY);
+        final int nbMaxNodes = (Integer) nodeParameters.get(MAX_NODES_KEY);
+        final int nbTotalNodes = (Integer) nodeParameters.get(TOTAL_NUMBER_OF_NODES_KEY);
 
         final int nbExistingNodes = nodeSource.getNodesCount();
         if ((nbExistingNodes + numberOfNodesRequested) > nbMaxNodes) {
