@@ -33,12 +33,14 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.NodeConfiguration;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.Port;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.VmCredentials;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
@@ -77,6 +79,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     private static final String INSTANCE_ID_REGION_DELIMITER_IN_NODENAME = "__";
 
     private static final char NODE_INDEX_DELIMITER = '_';
+
+    private static final int ALWAYS_OPEN_PORT = 22; // The instance should always open the port 22 to be able to execute initial script.
 
     private static final Logger logger = Logger.getLogger(AWSEC2Infrastructure.class);
 
@@ -341,29 +345,26 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     private Set<String> createInstances(String infrastructureId, String keyPairName, int nbInstances,
             AWSEC2CustomizableParameter params) {
         // create instances
-        if (spotPrice.isEmpty() && securityGroupIds.isEmpty() && subnetId.isEmpty()) {
-            return connectorIaasController.createAwsEc2Instances(infrastructureId,
-                                                                 infrastructureId,
-                                                                 params.getImage(),
-                                                                 nbInstances,
-                                                                 params.getCores(),
-                                                                 params.getRam(),
-                                                                 params.getVmUsername(),
-                                                                 keyPairName);
-        } else {
-            return connectorIaasController.createAwsEc2InstancesWithOptions(infrastructureId,
-                                                                            infrastructureId,
-                                                                            params.getImage(),
-                                                                            nbInstances,
-                                                                            params.getCores(),
-                                                                            params.getRam(),
-                                                                            spotPrice,
-                                                                            securityGroupIds,
-                                                                            subnetId,
-                                                                            null,
-                                                                            params.getVmUsername(),
-                                                                            keyPairName);
+        Set<Integer> ports = params.getPortsToOpen();
+        int[] portsToOpen = null;
+        if (ports != null) {
+            ports.add(ALWAYS_OPEN_PORT);
+            portsToOpen = ports.stream().mapToInt(Integer::intValue).toArray();
         }
+        return connectorIaasController.createAwsEc2InstancesWithOptions(infrastructureId,
+                                                                        infrastructureId,
+                                                                        params.getImage(),
+                                                                        nbInstances,
+                                                                        params.getCores(),
+                                                                        params.getRam(),
+                                                                        params.getVmType(),
+                                                                        spotPrice,
+                                                                        params.getSecurityGroupIds(),
+                                                                        subnetId,
+                                                                        null,
+                                                                        portsToOpen,
+                                                                        params.getVmUsername(),
+                                                                        keyPairName);
     }
 
     private void deployNodesOnInstance(final String instanceId, final boolean existPersistedInstanceIds,
@@ -622,6 +623,9 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                vmPrivateKey,
                                                ram,
                                                cores,
+                                               null,
+                                               securityGroupIds,
+                                               null,
                                                additionalProperties);
 
     }
@@ -664,6 +668,19 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             if (vmCred.getVmPrivateKey() != null) {
                 params.setVmPrivateKey(vmCred.getVmPrivateKey());
             }
+        }
+        if (nodeConfig.getVmType() != null) {
+            params.setVmType(nodeConfig.getVmType());
+        }
+        if (nodeConfig.getSecurityGroups() != null) {
+            String securityGroupIds = String.join(",", nodeConfig.getSecurityGroups());
+            params.setSecurityGroupIds(securityGroupIds);
+        }
+        if (nodeConfig.getPortsToOpen() != null) {
+            Set<Integer> portsToOpen = Arrays.stream(nodeConfig.getPortsToOpen())
+                                             .map(Port::getValue)
+                                             .collect(Collectors.toSet());
+            params.setPortsToOpen(portsToOpen);
         }
 
         return params;

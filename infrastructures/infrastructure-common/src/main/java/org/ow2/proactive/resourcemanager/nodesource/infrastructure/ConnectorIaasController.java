@@ -199,13 +199,15 @@ public class ConnectorIaasController {
     }
 
     public Set<String> createAwsEc2Instances(String infrastructureId, String instanceTag, String image,
-            int numberOfInstances, int cores, int ram, String username, String keyPairName) {
+            int numberOfInstances, int cores, int ram, String vmType, String username, String keyPairName) {
 
         String instanceJson = ConnectorIaasJSONTransformer.getAwsEc2InstanceJSON(instanceTag,
                                                                                  image,
                                                                                  "" + numberOfInstances,
                                                                                  "" + cores,
                                                                                  "" + ram,
+                                                                                 vmType,
+                                                                                 null,
                                                                                  null,
                                                                                  null,
                                                                                  null,
@@ -253,18 +255,20 @@ public class ConnectorIaasController {
     }
 
     public Set<String> createAwsEc2InstancesWithOptions(String infrastructureId, String instanceTag, String image,
-            int numberOfInstances, int cores, int ram, String spotPrice, String securityGroupNames, String subnetId,
-            String macAddresses, String username, String publicKeyName) {
+            int numberOfInstances, int cores, int ram, String vmType, String spotPrice, String securityGroupNames,
+            String subnetId, String macAddresses, int[] portsToOpen, String username, String publicKeyName) {
 
         String instanceJson = ConnectorIaasJSONTransformer.getAwsEc2InstanceJSON(instanceTag,
                                                                                  image,
                                                                                  "" + numberOfInstances,
                                                                                  "" + cores,
                                                                                  "" + ram,
+                                                                                 vmType,
                                                                                  spotPrice,
                                                                                  securityGroupNames,
                                                                                  subnetId,
                                                                                  macAddresses,
+                                                                                 portsToOpen,
                                                                                  username,
                                                                                  publicKeyName);
 

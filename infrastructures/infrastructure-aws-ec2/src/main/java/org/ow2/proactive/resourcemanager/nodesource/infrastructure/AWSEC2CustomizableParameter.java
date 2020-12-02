@@ -25,6 +25,10 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
+import java.util.Arrays;
+import java.util.Set;
+
+
 public class AWSEC2CustomizableParameter {
 
     private String image;
@@ -39,16 +43,26 @@ public class AWSEC2CustomizableParameter {
 
     private int cores;
 
+    private String vmType;
+
+    private String securityGroupIds;
+
+    private Set<Integer> portsToOpen;
+
     private String additionalProperties;
 
     public AWSEC2CustomizableParameter(String image, String vmUsername, String vmKeyPairName, String vmPrivateKey,
-            int ram, int cores, String additionalProperties) {
+            int ram, int cores, String vmType, String securityGroupIds, Set<Integer> portsToOpen,
+            String additionalProperties) {
         this.image = image;
         this.vmUsername = vmUsername;
         this.vmKeyPairName = vmKeyPairName;
         this.vmPrivateKey = vmPrivateKey;
         this.ram = ram;
         this.cores = cores;
+        this.vmType = vmType;
+        this.securityGroupIds = securityGroupIds;
+        this.portsToOpen = portsToOpen;
         this.additionalProperties = additionalProperties;
     }
 
@@ -100,6 +114,30 @@ public class AWSEC2CustomizableParameter {
         this.cores = cores;
     }
 
+    public String getVmType() {
+        return vmType;
+    }
+
+    public void setVmType(String vmType) {
+        this.vmType = vmType;
+    }
+
+    public String getSecurityGroupIds() {
+        return securityGroupIds;
+    }
+
+    public void setSecurityGroupIds(String securityGroupIds) {
+        this.securityGroupIds = securityGroupIds;
+    }
+
+    public Set<Integer> getPortsToOpen() {
+        return portsToOpen;
+    }
+
+    public void setPortsToOpen(Set<Integer> portsToOpen) {
+        this.portsToOpen = portsToOpen;
+    }
+
     public String getAdditionalProperties() {
         return additionalProperties;
     }
@@ -107,4 +145,5 @@ public class AWSEC2CustomizableParameter {
     public void setAdditionalProperties(String additionalProperties) {
         this.additionalProperties = additionalProperties;
     }
+
 }

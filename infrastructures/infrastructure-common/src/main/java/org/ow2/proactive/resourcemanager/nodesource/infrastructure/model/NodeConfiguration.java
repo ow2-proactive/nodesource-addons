@@ -43,7 +43,9 @@ public class NodeConfiguration implements Serializable {
 
     private VmCredentials credentials;
 
-    private Port[] portToOpens;
+    private String[] securityGroups;
+
+    private Port[] portsToOpen;
 
     private String nodeTags;
 
@@ -90,12 +92,20 @@ public class NodeConfiguration implements Serializable {
         this.credentials = credentials;
     }
 
-    public Port[] getPortToOpens() {
-        return portToOpens;
+    public String[] getSecurityGroups() {
+        return securityGroups;
     }
 
-    public void setPortToOpens(Port[] portToOpens) {
-        this.portToOpens = portToOpens;
+    public void setSecurityGroups(String[] securityGroups) {
+        this.securityGroups = securityGroups;
+    }
+
+    public Port[] getPortsToOpen() {
+        return portsToOpen;
+    }
+
+    public void setPortsToOpen(Port[] portsToOpen) {
+        this.portsToOpen = portsToOpen;
     }
 
     public String getNodeTags() {

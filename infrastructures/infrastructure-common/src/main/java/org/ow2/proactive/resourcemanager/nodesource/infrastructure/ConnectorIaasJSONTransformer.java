@@ -204,11 +204,14 @@ public class ConnectorIaasJSONTransformer {
     }
 
     public static String getAwsEc2InstanceJSON(String tag, String image, String number, String cpu, String ram,
-            String spotPrice, String securityGroupNames, String subnetId, String macAddresses, String username,
-            String keyPairName) {
+            String vmType, String spotPrice, String securityGroupNames, String subnetId, String macAddresses,
+            int[] portsToOpen, String username, String keyPairName) {
         JSONObject hardware = new JSONObject();
         hardware.put("minCores", cpu);
         hardware.put("minRam", ram);
+        if (vmType != null && !vmType.isEmpty()) {
+            hardware.put("type", vmType);
+        }
 
         JSONObject options = new JSONObject();
 
@@ -230,6 +233,10 @@ public class ConnectorIaasJSONTransformer {
             String[] addresses = macAddresses.split(",");
             List<String> addressesList = Arrays.asList(addresses);
             options.put("macAddresses", addressesList);
+        }
+
+        if (portsToOpen != null) {
+            options.put("portsToOpen", portsToOpen);
         }
 
         JSONObject instance = new JSONObject().put("tag", tag)
