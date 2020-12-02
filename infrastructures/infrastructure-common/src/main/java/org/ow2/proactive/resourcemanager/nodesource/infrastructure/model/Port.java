@@ -36,7 +36,7 @@ public class Port implements Serializable {
     }
 
     public Port(Integer value) {
-        if (value >= 0 && value < 65565) {
+        if ((value == -1) || (value >= 0 && value <= 65535)) {
             this.value = value;
         } else {
             throw new IllegalArgumentException(String.format("Invalid port value provided: %d", value));
