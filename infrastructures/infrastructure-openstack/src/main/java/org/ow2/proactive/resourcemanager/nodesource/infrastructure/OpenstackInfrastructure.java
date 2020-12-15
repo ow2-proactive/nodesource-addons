@@ -36,8 +36,10 @@ import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.util.ProActiveCounter;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.NodeConfiguration;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 
 import lombok.Getter;
@@ -161,29 +163,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    /**
-     * Dynamic policy parameters
-     **/
-    protected static final String TOTAL_NUMBER_OF_NODES_KEY = "TOTAL_NUMBER_OF_NODES";
-
-    private static final String INIT_DELAY_KEY = "INIT_DELAY";
-
-    private static final String REFRESH_TIME_KEY = "REFRESH_TIME";
-
-    private static final String MAX_NODES_KEY = "MAX_NODES";
-
-    int nbOfNodes;
-
-    int totalNodes;
-
-    int existingNodes;
-
-    int maxNodes;
-
-    long refreshTime;
-
-    int instancesToDeploy;
-
     private Map<String, String> meta = new HashMap<>();
 
     {
@@ -230,15 +209,17 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public void acquireNode() {
 
+        OpenstackCustomizableParameter params = getDefaultNodeParameters();
+
         connectorIaasController.waitForConnectorIaasToBeUP();
 
         createOpenstackInfrastructure();
 
         for (int i = 1; i <= numberOfInstances; i++) {
             String instanceTag = getInfrastructureId() + "_" + ProActiveCounter.getUniqID();
-            List<String> scripts = createScripts(instanceTag, instanceTag, numberOfNodesPerInstance);
+            List<String> scripts = createScripts(instanceTag, instanceTag, numberOfNodesPerInstance, params);
             logger.info("start up script: " + scripts);
-            createOpenstackInstance(instanceTag, scripts);
+            createOpenstackInstance(instanceTag, scripts, params);
 
             // Declare nodes are deploying
             Executors.newCachedThreadPool().submit(() -> {
@@ -253,18 +234,24 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     }
 
     @Override
-    public synchronized void acquireNodes(final int numberOfNodes, final Map<String, ?> nodeConfiguration) {
+    public synchronized void acquireNodes(final int numberOfNodes, final long startTimeout,
+            final Map<String, ?> nodeConfiguration) {
         this.nodeSource.executeInParallel(() -> {
-            if (acquireLock.tryLock()) {
-                try {
-                    internalAcquireNodes(numberOfNodes, nodeConfiguration);
-                } catch (Exception e) {
-                    logger.error("Error during node acquisition", e);
-                } finally {
-                    acquireLock.unlock();
+            try {
+                if (acquireLock.tryLock(startTimeout, TimeUnit.MILLISECONDS)) {
+                    try {
+                        OpenstackCustomizableParameter params = getNodeSpecificParameters(nodeConfiguration);
+                        internalAcquireNodes(numberOfNodes, nodeConfiguration, params);
+                    } catch (Exception e) {
+                        logger.error("Error during node acquisition", e);
+                    } finally {
+                        acquireLock.unlock();
+                    }
+                } else {
+                    logger.info("acquireNodes skipped because infrastructure is busy.");
                 }
-            } else {
-                logger.info("acquireNodes skipped because infrastructure is busy.");
+            } catch (InterruptedException e) {
+                logger.info("acquireNodes skipped because of InterruptedException:", e);
             }
         });
     }
@@ -344,19 +331,21 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         });
     }
 
-    private void internalAcquireNodes(int numberOfNodes, Map<String, ?> dynamicPolicyParameters) {
+    private void internalAcquireNodes(int numberOfNodes, Map<String, ?> nodeConfiguration,
+            OpenstackCustomizableParameter params) {
 
-        nbOfNodes = numberOfNodes;
+        // Determine the number of instances to deploy and check it
+        int instancesToDeploy = calNumberOfInstancesToDeploy(numberOfNodes,
+                                                             nodeConfiguration,
+                                                             numberOfInstances,
+                                                             numberOfNodesPerInstance);
 
-        if (nbOfNodes > 0 && checkDynamicPolicyParameters(nbOfNodes, dynamicPolicyParameters)) {
+        int existingNodes = getNumberOfAcquiredNodesWithLock();
+
+        if (instancesToDeploy > 0) {
 
             // Create Openstack infrastructure (if it does not exist) and initialize its persistent variables
             initializeOpenstackInfrastructure();
-
-            // Determine the number of instances to deploy and check it
-            if (!checkOpenstackInstancesToDeploy()) {
-                return;
-            }
 
             int nbOfDeployedNodes = 0;
 
@@ -364,29 +353,25 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
             for (int i = 0; i < instancesToDeploy; i++) {
 
-                // Determine the numbe rof nodes to start in the current instance
-                int nodesInCurrentInstance = (existingNodes + nbOfDeployedNodes +
-                                              numberOfNodesPerInstance <= maxNodes) ? numberOfNodesPerInstance
-                                                                                    : nbOfNodes - nbOfDeployedNodes;
                 // Determine the instance tag
                 String instanceTag = getInfrastructureId() + "_" + ProActiveCounter.getUniqID();
                 logger.info("Deploying Openstack instance with tag " + instanceTag + " and the number of nodes " +
-                            nodesInCurrentInstance);
+                            numberOfNodesPerInstance);
 
                 // Build nodes'start scripts and deploy instance
-                List<String> scripts = createScripts(instanceTag, instanceTag, nodesInCurrentInstance);
+                List<String> scripts = createScripts(instanceTag, instanceTag, numberOfNodesPerInstance, params);
                 logger.info("start up script: " + scripts);
-                createOpenstackInstance(instanceTag, scripts);
+                createOpenstackInstance(instanceTag, scripts, params);
 
                 // Declare deploying nodes
-                Set<String> deployedNodes = declareNodesAsDeploying(nodesInCurrentInstance, instanceTag);
+                Set<String> deployedNodes = declareNodesAsDeploying(numberOfNodesPerInstance, instanceTag);
 
                 // Update the number of deployed instances and nodes
-                nbOfDeployedNodes += nodesInCurrentInstance;
+                nbOfDeployedNodes += numberOfNodesPerInstance;
                 instancesAndNodesToDeploy.put(instanceTag, deployedNodes);
             }
 
-            if (!waitForNodesToBeUp(existingNodes + nbOfDeployedNodes, refreshTime)) {
+            if (!waitForNodesToBeUp(existingNodes + nbOfDeployedNodes)) {
                 logger.info("Deployed Openstack instances and nodes will be removed");
                 removeDeployedInstancesAndNodes(instancesAndNodesToDeploy);
             }
@@ -407,83 +392,6 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
             isInitializedAndCreated = true;
         }
-    }
-
-    // check that all the dynamic policy parameters exist and are correct
-    private boolean checkDynamicPolicyParameters(int numberOfNodes, Map<String, ?> dynamicPolicyParameters) {
-
-        if (!dynamicPolicyParameters.containsKey(TOTAL_NUMBER_OF_NODES_KEY)) {
-            logger.info("The dynamic policy parameters must include the total number of nodes");
-            return false;
-        } else if (!dynamicPolicyParameters.containsKey(MAX_NODES_KEY)) {
-            logger.info("The dynamic policy parameters must include the maximal number of nodes");
-            return false;
-        } else if (!dynamicPolicyParameters.containsKey(INIT_DELAY_KEY)) {
-            logger.info("The dynamic policy parameters must include the initialization delay of nodes");
-            return false;
-        } else if (!dynamicPolicyParameters.containsKey(REFRESH_TIME_KEY)) {
-            logger.info("The dynamic policy parameters must include the refresh time of the policy");
-            return false;
-        }
-
-        existingNodes = getNumberOfAcquiredNodesWithLock();
-
-        totalNodes = (Integer) dynamicPolicyParameters.get(TOTAL_NUMBER_OF_NODES_KEY);
-
-        maxNodes = (Integer) dynamicPolicyParameters.get(MAX_NODES_KEY);
-
-        refreshTime = (Long) dynamicPolicyParameters.get(REFRESH_TIME_KEY);
-
-        if (existingNodes == totalNodes) {
-            logger.info("The number of existing nodes (" + existingNodes +
-                        ") is equal to total number of nodes required by the dynamic policy (" + totalNodes +
-                        "), so node acquisition is skipped!");
-            return false;
-        }
-
-        if (existingNodes + numberOfNodes != totalNodes) {
-            logger.warn("Dynamic policy (of Openstack infrastructure) is misconfigured. The total number of nodes (" +
-                        totalNodes + ") does not correspond to the sum of existing nodes (" + existingNodes +
-                        ") and the new nodes to add (" + numberOfNodes + ").");
-            return false;
-        }
-
-        // check that the maximal number of nodes is not reached
-        if (maxNodes - (existingNodes + numberOfNodes) < 0) {
-
-            logger.warn("The sum of existing nodes (" + existingNodes + ") and the required nodes (" + numberOfNodes +
-                        ") is greater than the maximal number of nodes (" + maxNodes +
-                        ") allowed by the dynamic policy, so deploying only " + (maxNodes - existingNodes) + " nodes.");
-
-            nbOfNodes = maxNodes - existingNodes;
-        }
-
-        return true;
-    }
-
-    private boolean checkOpenstackInstancesToDeploy() {
-
-        int existingInstances = getNumberOfInstancesWithLock();
-        logger.info("number of existing instances: " + existingInstances);
-
-        int preliminarynNumberOfInstances = (int) Math.ceil((double) nbOfNodes / (double) numberOfNodesPerInstance);
-        instancesToDeploy = Math.min(preliminarynNumberOfInstances, numberOfInstances);
-
-        if (instancesToDeploy == 0) {
-            logger.info("No need to add new instances to the infrastructure: " + this.getInfrastructureId());
-            return false;
-        } else if (existingInstances + instancesToDeploy > numberOfInstances) {
-            logger.info("The sum of existing instances (" + existingInstances + ") and the instances to deploy (" +
-                        instancesToDeploy +
-                        ") exceeds to total number of instances allowed by Openstack infrastructure (" +
-                        numberOfInstances + "), so node acquisition is skipped!");
-            return false;
-        }
-
-        logger.info("Openstack instances to deploy: " + instancesToDeploy);
-        logger.info("Total nodes to start in Openstack instances: " + nbOfNodes);
-
-        return true;
     }
 
     protected Set<String> declareNodesAsDeploying(int nodesInCurrentInstance, String nodeBaseName) {
@@ -516,7 +424,8 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                                                               true);
     }
 
-    private List<String> createScripts(String instanceTag, String nodeName, int nbNodes) {
+    private List<String> createScripts(String instanceTag, String nodeName, int nbNodes,
+            OpenstackCustomizableParameter params) {
 
         try {
 
@@ -526,7 +435,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
                                                         rmHostname,
                                                         nodeJarURL,
                                                         instanceIdNodeProperty,
-                                                        additionalProperties,
+                                                        params.getAdditionalProperties(),
                                                         nodeSource.getName(),
                                                         nodeName,
                                                         nbNodes,
@@ -537,24 +446,27 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    private void createOpenstackInstance(String instanceTag, List<String> scripts) {
+    private void createOpenstackInstance(String instanceTag, List<String> scripts,
+            OpenstackCustomizableParameter params) {
         connectorIaasController.createOpenstackInstance(getInfrastructureId(),
                                                         instanceTag,
-                                                        image,
+                                                        params.getImage(),
                                                         1,
-                                                        flavor,
-                                                        publicKeyName,
+                                                        params.getFlavor(),
+                                                        params.getVmPublicKeyName(),
                                                         networkId,
+                                                        params.getSecurityGroupNames(),
+                                                        addDefaultPorts(params.getPortsToOpen()),
                                                         scripts);
     }
 
-    private boolean waitForNodesToBeUp(int totalNodes, long refreshTime) {
+    private boolean waitForNodesToBeUp(int totalNodes) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Callable<Object> task = () -> {
 
             while (getNumberOfAcquiredNodesWithLock() < totalNodes) {
                 logger.info("Waiting for " + (totalNodes - getNumberOfAcquiredNodesWithLock()) + " nodes to be up");
-                Thread.sleep(refreshTime);
+                TimeUnit.SECONDS.sleep(30);
             }
 
             return nodeSource.getNodesCount();
@@ -581,13 +493,41 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
         }
     }
 
-    private int getNumberOfInstancesWithLock() {
-        if (this.persistedInfraVariables.containsKey(NODES_PER_INSTANCES_KEY)) {
-            //noinspection unchecked
-            return ((Map<String, Set<String>>) persistedInfraVariables.get(NODES_PER_INSTANCES_KEY)).size();
-        } else {
-            return 0;
+    private OpenstackCustomizableParameter getDefaultNodeParameters() {
+        return new OpenstackCustomizableParameter(image, publicKeyName, flavor, null, null, additionalProperties);
+    }
+
+    // get the node deployment parameters based on the specific node configurations which can
+    // overrides the values specified in the infrastructure configuration
+    private OpenstackCustomizableParameter getNodeSpecificParameters(Map<String, ?> nodeConfiguration) {
+        OpenstackCustomizableParameter params = getDefaultNodeParameters();
+        NodeConfiguration nodeConfig = new ObjectMapper().convertValue(nodeConfiguration, NodeConfiguration.class);
+
+        if (nodeConfig.getNodeTags() != null) {
+            params.setAdditionalProperties(addTagsInJvmAdditionalProperties(params.getAdditionalProperties(),
+                                                                            nodeConfig.getNodeTags()));
         }
+        if (nodeConfig.getImage() != null) {
+            params.setImage(nodeConfig.getImage());
+        }
+        if (nodeConfig.getCredentials() != null) {
+            String keyPairName = nodeConfig.getCredentials().getVmKeyPairName();
+            if (keyPairName != null) {
+                params.setVmPublicKeyName(keyPairName);
+            }
+        }
+        if (nodeConfig.getVmType() != null) {
+            params.setFlavor(nodeConfig.getVmType());
+        }
+        if (nodeConfig.getSecurityGroups() != null) {
+            Set<String> securityGroups = new HashSet<>(Arrays.asList(nodeConfig.getSecurityGroups()));
+            params.setSecurityGroupNames(securityGroups);
+        }
+        if (nodeConfig.getPortsToOpen() != null) {
+            params.setPortsToOpen(convertPorts(nodeConfig.getPortsToOpen()));
+        }
+
+        return params;
     }
 
     @Override

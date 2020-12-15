@@ -29,9 +29,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyList;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -210,6 +208,8 @@ public class OpenstackInfrastructureTest {
                                                              anyString(),
                                                              anyString(),
                                                              anyString(),
+                                                             anySet(),
+                                                             any(int[].class),
                                                              anyList())).thenReturn(Sets.newHashSet("123", "456"));
 
         openstackInfrastructure.acquireNode();
@@ -234,6 +234,8 @@ public class OpenstackInfrastructureTest {
                                                                           anyString(),
                                                                           anyString(),
                                                                           anyString(),
+                                                                          anySet(),
+                                                                          any(int[].class),
                                                                           anyList());
 
         verify(connectorIaasController, times(0)).executeScript(anyString(), anyString(), anyList());
@@ -293,6 +295,8 @@ public class OpenstackInfrastructureTest {
                                                              anyString(),
                                                              anyString(),
                                                              anyString(),
+                                                             anySet(),
+                                                             any(int[].class),
                                                              anyList())).thenReturn(Sets.newHashSet("123", "456"));
 
         openstackInfrastructure.acquireAllNodes();
@@ -317,6 +321,8 @@ public class OpenstackInfrastructureTest {
                                                                           anyString(),
                                                                           anyString(),
                                                                           anyString(),
+                                                                          anySet(),
+                                                                          any(int[].class),
                                                                           anyList());
 
         verify(connectorIaasController, times(0)).executeScript(anyString(), anyString(), anyList());

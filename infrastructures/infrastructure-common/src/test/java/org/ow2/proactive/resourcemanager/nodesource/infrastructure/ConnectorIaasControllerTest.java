@@ -32,6 +32,7 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -169,6 +170,8 @@ public class ConnectorIaasControllerTest {
                                                                                     "publicKeyName",
                                                                                     "3",
                                                                                     "",
+                                                                                    null,
+                                                                                    null,
                                                                                     scripts);
 
         Set<String> instanceIds = Sets.newHashSet("123", "456");
@@ -189,6 +192,8 @@ public class ConnectorIaasControllerTest {
                                                                                    "3",
                                                                                    "publicKeyName",
                                                                                    "",
+                                                                                   null,
+                                                                                   null,
                                                                                    scripts);
 
         assertThat(instancesIds.size(), is(2));

@@ -25,8 +25,6 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
-import static org.ow2.proactive.resourcemanager.utils.RMNodeStarter.NODE_TAGS_PROP_NAME;
-
 import java.security.KeyException;
 import java.util.*;
 import java.util.AbstractMap.SimpleImmutableEntry;
@@ -79,8 +77,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     private static final String INSTANCE_ID_REGION_DELIMITER_IN_NODENAME = "__";
 
     private static final char NODE_INDEX_DELIMITER = '_';
-
-    private static final int ALWAYS_OPEN_PORT = 22; // The instance should always open the port 22 to be able to execute initial script.
 
     private static final Logger logger = Logger.getLogger(AWSEC2Infrastructure.class);
 
@@ -345,12 +341,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     private Set<String> createInstances(String infrastructureId, String keyPairName, int nbInstances,
             AWSEC2CustomizableParameter params) {
         // create instances
-        Set<Integer> ports = params.getPortsToOpen();
-        int[] portsToOpen = null;
-        if (ports != null) {
-            ports.add(ALWAYS_OPEN_PORT);
-            portsToOpen = ports.stream().mapToInt(Integer::intValue).toArray();
-        }
         return connectorIaasController.createAwsEc2InstancesWithOptions(infrastructureId,
                                                                         infrastructureId,
                                                                         params.getImage(),
@@ -362,7 +352,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                                         params.getSecurityGroupIds(),
                                                                         subnetId,
                                                                         null,
-                                                                        portsToOpen,
+                                                                        addDefaultPorts(params.getPortsToOpen()),
                                                                         params.getVmUsername(),
                                                                         keyPairName);
     }
@@ -637,15 +627,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         NodeConfiguration nodeConfig = new ObjectMapper().convertValue(nodeConfiguration, NodeConfiguration.class);
 
         if (nodeConfig.getNodeTags() != null) {
-            String propertiesWithTags = params.getAdditionalProperties();
-            String tags = nodeConfig.getNodeTags();
-            if (propertiesWithTags.contains(NODE_TAGS_PROP_NAME)) {
-                propertiesWithTags = propertiesWithTags.replace(String.format("%s=", NODE_TAGS_PROP_NAME),
-                                                                String.format("%s=%s,", NODE_TAGS_PROP_NAME, tags));
-            } else {
-                propertiesWithTags += String.format(" -D%s=%s", NODE_TAGS_PROP_NAME, tags);
-            }
-            params.setAdditionalProperties(propertiesWithTags);
+            params.setAdditionalProperties(addTagsInJvmAdditionalProperties(params.getAdditionalProperties(),
+                                                                            nodeConfig.getNodeTags()));
         }
 
         if (nodeConfig.getImage() != null) {
@@ -677,10 +660,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             params.setSecurityGroupIds(securityGroupIds);
         }
         if (nodeConfig.getPortsToOpen() != null) {
-            Set<Integer> portsToOpen = Arrays.stream(nodeConfig.getPortsToOpen())
-                                             .map(Port::getValue)
-                                             .collect(Collectors.toSet());
-            params.setPortsToOpen(portsToOpen);
+            params.setPortsToOpen(convertPorts(nodeConfig.getPortsToOpen()));
         }
 
         return params;

@@ -25,14 +25,14 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
+import static org.ow2.proactive.resourcemanager.utils.RMNodeStarter.NODE_TAGS_PROP_NAME;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.KeyException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -40,6 +40,7 @@ import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.authentication.crypto.Credentials;
 import org.ow2.proactive.resourcemanager.exception.RMException;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.Port;
 
 import com.google.common.collect.Maps;
 
@@ -91,9 +92,12 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
     /**
      * Dynamic policy parameters key
      **/
-    private static final String TOTAL_NUMBER_OF_NODES_KEY = "TOTAL_NUMBER_OF_NODES";
+    protected static final String TOTAL_NUMBER_OF_NODES_KEY = "TOTAL_NUMBER_OF_NODES";
 
-    private static final String MAX_NODES_KEY = "MAX_NODES";
+    protected static final String MAX_NODES_KEY = "MAX_NODES";
+
+    // The ports which should always be open on the instance. For example, the port 22 always needs to be open to be able to execute initial script.
+    protected static final List<Integer> ALWAYS_OPEN_PORTS = Arrays.asList(22);
 
     /**
      * The controller is transient as it is not supposed to be serialized or
@@ -438,13 +442,15 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
             return numInstance;
         }
         // when the node parameters specify the TOTAL_NUMBER_OF_NODES, it is request by a dynamic policy, the number of nodes to deploy should satisfy MAX_NODES requirement
-        else if (!nodeParameters.containsKey(MAX_NODES_KEY)) {
+        if (!nodeParameters.containsKey(MAX_NODES_KEY)) {
             throw new IllegalArgumentException("The dynamic policy parameters should include the maximal number of nodes");
         }
+
         final int nbMaxNodes = (Integer) nodeParameters.get(MAX_NODES_KEY);
         final int nbTotalNodes = (Integer) nodeParameters.get(TOTAL_NUMBER_OF_NODES_KEY);
 
         final int nbExistingNodes = nodeSource.getNodesCount();
+
         if ((nbExistingNodes + numberOfNodesRequested) > nbMaxNodes) {
             throw new IllegalArgumentException(String.format("The sum of existing nodes (%d) and required new nodes (%d) should not be greater than the maximal number of nodes (%d) allowed by the dynamic policy.",
                                                              nbExistingNodes,
@@ -716,5 +722,29 @@ public abstract class AbstractAddonInfrastructure extends InfrastructureManager 
                                                              parameterName));
         }
         return parameterValueString;
+    }
+
+    protected String addTagsInJvmAdditionalProperties(String additionalProperties, String tags) {
+        String propertiesWithTags = additionalProperties;
+        if (propertiesWithTags.contains(NODE_TAGS_PROP_NAME)) {
+            propertiesWithTags = propertiesWithTags.replace(String.format("%s=", NODE_TAGS_PROP_NAME),
+                                                            String.format("%s=%s,", NODE_TAGS_PROP_NAME, tags));
+        } else {
+            propertiesWithTags += String.format(" -D%s=%s", NODE_TAGS_PROP_NAME, tags);
+        }
+        return propertiesWithTags;
+    }
+
+    protected Set<Integer> convertPorts(Port[] ports) {
+        return Arrays.stream(ports).map(Port::getValue).collect(Collectors.toSet());
+    }
+
+    protected int[] addDefaultPorts(Set<Integer> ports) {
+        int[] portsToOpen = null;
+        if (ports != null) {
+            ports.addAll(ALWAYS_OPEN_PORTS);
+            portsToOpen = ports.stream().mapToInt(Integer::intValue).toArray();
+        }
+        return portsToOpen;
     }
 }

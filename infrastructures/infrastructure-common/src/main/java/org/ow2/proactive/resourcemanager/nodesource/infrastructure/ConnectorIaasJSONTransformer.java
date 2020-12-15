@@ -278,12 +278,19 @@ public class ConnectorIaasJSONTransformer {
     }
 
     public static String getOpenstackInstanceJSON(String tag, String image, String number, String publicKeyName,
-            String type, String networkId, List<String> scripts) {
+            String type, String networkId, Set<String> securityGroupNames, int[] portsToOpen, List<String> scripts) {
 
         JSONObject result = new JSONObject();
         JSONObject credentials = new JSONObject();
         if (publicKeyName != null && !publicKeyName.equals("")) {
             credentials.put("publicKeyName", publicKeyName);
+        }
+        JSONObject options = new JSONObject();
+        if (securityGroupNames != null && !securityGroupNames.isEmpty()) {
+            options.put("securityGroupNames", securityGroupNames);
+        }
+        if (portsToOpen != null) {
+            options.put("portsToOpen", portsToOpen);
         }
         if (networkId != "") {
             JSONObject network = new JSONObject();
@@ -300,6 +307,7 @@ public class ConnectorIaasJSONTransformer {
                      .put("number", number)
                      .put("credentials", credentials)
                      .put("hardware", hardware)
+                     .put("options", options)
                      .put("initScript", script)
                      .toString();
     }
