@@ -61,7 +61,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_VM_USERNAME = "ubuntu";
 
-    private static final int DEFAULT_RAM = 2048;
+    private static final int DEFAULT_RAM = 4096;
 
     private static final int DEFAULT_CORES = 2;
 
