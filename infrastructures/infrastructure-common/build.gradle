@@ -19,6 +19,11 @@ dependencies {
     compile 'org.jboss.resteasy:resteasy-multipart-provider:3.0.26.Final'
     compile 'org.json:json:20151123'
 
+    def jacksonVersion = "2.7.9"
+    compile "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    compile "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    compile "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+
     compile "org.ow2.proactive:rm-server:${rmVersion}"
     compile "org.ow2.proactive:common-http:${rmVersion}"
     compile "org.objectweb.proactive:programming-core:${programmingVersion}"
