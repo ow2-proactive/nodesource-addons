@@ -59,7 +59,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     private static final Logger logger = Logger.getLogger(GCEInfrastructure.class);
 
-    private static final String DEFAULT_IMAGE = "debian-9-stretch-v20190326";
+    private static final String DEFAULT_IMAGE = "debian-9-stretch-v20210122";
 
     private static final String DEFAULT_REGION = "europe-west2-c";
 
