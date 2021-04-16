@@ -27,7 +27,10 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure.model;
 
 import java.io.Serializable;
 
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Port implements Serializable {
 
     private Integer value;
