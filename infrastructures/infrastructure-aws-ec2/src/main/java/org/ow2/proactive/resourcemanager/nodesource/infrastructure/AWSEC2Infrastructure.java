@@ -106,7 +106,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         NODE_JAR_URL(14),
         ADDITIONAL_PROPERTIES(15),
         NODE_TIMEOUT(16),
-        STARTUP_SCRIPT(17);
+        STARTUP_SCRIPT(17),
+        SPOT_PRICE(18);
 
         protected int index;
 
@@ -149,10 +150,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                 DEFAULT_CORES + ")", sectionSelector = 3, important = true)
     protected int cores = DEFAULT_CORES;
 
-    // TODO disable to configure the parameter spotPrice for the moment, because we don't yet have a checking mechanism for it now, but it may cause the RM portal blocked (hanging in createInstance).
-    //    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price)")
-    protected String spotPrice = "";
-
     @Configurable(description = "The ids(s) of the security group(s) for VMs, spearated by comma in case of multiple ids. (optional)", sectionSelector = 3)
     protected String securityGroupIds = null;
 
@@ -177,6 +174,10 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     @Configurable(textArea = true, description = "VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description.", sectionSelector = 5)
     protected String startupScript = initScriptGenerator.getDefaultLinuxStartupScript();
+
+    // TODO disable to configure the parameter spotPrice for the moment, because we don't yet have a checking mechanism for it now, but it may cause the RM portal blocked (hanging in createInstance).
+    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price)", sectionSelector = 3)
+    protected String spotPrice = "";
 
     /**
      * Key to retrieve the key pair used to deploy the infrastructure
@@ -214,7 +215,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         this.ram = parseIntParameter("ram", parameters[Indexes.RAM.index], DEFAULT_RAM);
         this.cores = parseIntParameter("cores", parameters[Indexes.CORES.index], DEFAULT_CORES);
         //        TODO disable to configure the parameter spotPrice for the moment
-        //        this.spotPrice = parameters[parameterIndex++].toString().trim();
+        this.spotPrice = parameters[Indexes.SPOT_PRICE.index].toString().trim();
         this.securityGroupIds = parseOptionalParameter(parameters[Indexes.SECURITY_GROUP_IDS.index]);
         this.subnetId = parseOptionalParameter(parameters[Indexes.SUBNET_ID.index]);
         this.rmHostname = parseHostnameParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
