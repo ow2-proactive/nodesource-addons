@@ -172,7 +172,6 @@ public class AWSEC2InfrastructureTest {
                                        VM_PRIVATE_KEY,
                                        RAM,
                                        CORES,
-                                       //                                       SPOT_PRICE,
                                        SECURITY_GROUP_NAMES,
                                        SUBNET_ID,
                                        RM_HOSTNAME,
@@ -180,7 +179,8 @@ public class AWSEC2InfrastructureTest {
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
                                        NODE_TIMEOUT,
-                                       STARTUP_SCRIPT);
+                                       STARTUP_SCRIPT,
+                                       SPOT_PRICE);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -193,7 +193,6 @@ public class AWSEC2InfrastructureTest {
                                        VM_PRIVATE_KEY,
                                        RAM,
                                        CORES,
-                                       //                                       SPOT_PRICE,
                                        SECURITY_GROUP_NAMES,
                                        SUBNET_ID,
                                        RM_HOSTNAME,
@@ -201,7 +200,8 @@ public class AWSEC2InfrastructureTest {
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
                                        NODE_TIMEOUT,
-                                       STARTUP_SCRIPT);
+                                       STARTUP_SCRIPT,
+                                       SPOT_PRICE);
     }
 
     @Test
@@ -216,7 +216,6 @@ public class AWSEC2InfrastructureTest {
                                        VM_PRIVATE_KEY,
                                        RAM,
                                        CORES,
-                                       //                                       SPOT_PRICE,
                                        SECURITY_GROUP_NAMES,
                                        SUBNET_ID,
                                        RM_HOSTNAME,
@@ -224,7 +223,8 @@ public class AWSEC2InfrastructureTest {
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
                                        NODE_TIMEOUT,
-                                       STARTUP_SCRIPT);
+                                       STARTUP_SCRIPT,
+                                       SPOT_PRICE);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
@@ -323,7 +323,6 @@ public class AWSEC2InfrastructureTest {
                                        VM_PRIVATE_KEY,
                                        RAM,
                                        CORES,
-                                       //                                       SPOT_PRICE,
                                        SECURITY_GROUP_NAMES,
                                        SUBNET_ID,
                                        RM_HOSTNAME,
@@ -331,7 +330,8 @@ public class AWSEC2InfrastructureTest {
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
                                        NODE_TIMEOUT,
-                                       STARTUP_SCRIPT);
+                                       STARTUP_SCRIPT,
+                                       SPOT_PRICE);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
@@ -433,7 +433,6 @@ public class AWSEC2InfrastructureTest {
                                        VM_PRIVATE_KEY,
                                        RAM,
                                        CORES,
-                                       //                                       SPOT_PRICE,
                                        SECURITY_GROUP_NAMES,
                                        SUBNET_ID,
                                        RM_HOSTNAME,
@@ -441,7 +440,8 @@ public class AWSEC2InfrastructureTest {
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
                                        NODE_TIMEOUT,
-                                       STARTUP_SCRIPT);
+                                       STARTUP_SCRIPT,
+                                       SPOT_PRICE);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 
@@ -478,7 +478,6 @@ public class AWSEC2InfrastructureTest {
                                        VM_PRIVATE_KEY,
                                        RAM,
                                        CORES,
-                                       //                                       SPOT_PRICE,
                                        SECURITY_GROUP_NAMES,
                                        SUBNET_ID,
                                        RM_HOSTNAME,
@@ -486,7 +485,8 @@ public class AWSEC2InfrastructureTest {
                                        NODE_JAR_URL,
                                        ADDITIONAL_PROPERTIES,
                                        NODE_TIMEOUT,
-                                       STARTUP_SCRIPT);
+                                       STARTUP_SCRIPT,
+                                       SPOT_PRICE);
 
         awsec2Infrastructure.connectorIaasController = connectorIaasController;
 

@@ -233,12 +233,16 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public void acquireAllNodes() {
-        deployInstancesWithNodes(numberOfInstances, true);
+        nodeSource.executeInParallel(() -> {
+            deployInstancesWithNodes(numberOfInstances, true);
+        });
     }
 
     @Override
     public void acquireNode() {
-        deployInstancesWithNodes(1, true);
+        nodeSource.executeInParallel(() -> {
+            deployInstancesWithNodes(1, true);
+        });
     }
 
     @Override
@@ -298,8 +302,12 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             // by default, the key pair that is used to deploy the instances has
             // the name of the node source
             String keyPairName = createOrUseKeyPair(infrastructureId, nbInstancesToDeploy, params);
-
-            instancesIds = createInstances(infrastructureId, keyPairName, nbInstancesToDeploy, params);
+            try {
+                instancesIds = createInstances(infrastructureId, keyPairName, nbInstancesToDeploy, params);
+            } catch (InstanceNotCreatedException e) {
+                logger.error("Failed to create the instance with the error: ", e);
+                return;
+            }
 
         } else {
 
@@ -338,7 +346,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     }
 
     private Set<String> createInstances(String infrastructureId, String keyPairName, int nbInstances,
-            AWSEC2CustomizableParameter params) {
+            AWSEC2CustomizableParameter params) throws InstanceNotCreatedException {
         // create instances
         return connectorIaasController.createAwsEc2InstancesWithOptions(infrastructureId,
                                                                         infrastructureId,
