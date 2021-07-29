@@ -175,8 +175,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     @Configurable(textArea = true, description = "VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description.", sectionSelector = 5)
     protected String startupScript = initScriptGenerator.getDefaultLinuxStartupScript();
 
-    // TODO disable to configure the parameter spotPrice for the moment, because we don't yet have a checking mechanism for it now, but it may cause the RM portal blocked (hanging in createInstance).
-    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price)", sectionSelector = 3)
+    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price), when the spot price is too low to be satisfied within the node-running timeout, the node source deployment will be failed and the related spot requests will be cancelled.", sectionSelector = 3)
     protected String spotPrice = "";
 
     /**
