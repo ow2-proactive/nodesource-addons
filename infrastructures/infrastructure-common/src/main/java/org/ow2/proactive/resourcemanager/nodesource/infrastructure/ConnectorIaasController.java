@@ -183,7 +183,7 @@ public class ConnectorIaasController {
     }
 
     public Set<String> createInstances(String infrastructureId, String instanceTag, String image, int numberOfInstances,
-            int cores, int ram) {
+            int cores, int ram) throws InstanceNotCreatedException {
 
         String instanceJson = ConnectorIaasJSONTransformer.getInstanceJSON(instanceTag,
                                                                            image,
@@ -199,7 +199,8 @@ public class ConnectorIaasController {
     }
 
     public Set<String> createAwsEc2Instances(String infrastructureId, String instanceTag, String image,
-            int numberOfInstances, int cores, int ram, String vmType, String username, String keyPairName) {
+            int numberOfInstances, int cores, int ram, String vmType, String username, String keyPairName)
+            throws InstanceNotCreatedException {
 
         String instanceJson = ConnectorIaasJSONTransformer.getAwsEc2InstanceJSON(instanceTag,
                                                                                  image,
@@ -220,7 +221,8 @@ public class ConnectorIaasController {
 
     public Set<String> createAzureInstances(String infrastructureId, String instanceTag, String image,
             int numberOfInstances, String username, String password, String publicKey, String vmSizeType,
-            String resourceGroup, String region, String privateNetworkCIDR, boolean staticPublicIP) {
+            String resourceGroup, String region, String privateNetworkCIDR, boolean staticPublicIP)
+            throws InstanceNotCreatedException {
 
         String instanceJson = ConnectorIaasJSONTransformer.getAzureInstanceJSON(instanceTag,
                                                                                 image,
@@ -239,7 +241,7 @@ public class ConnectorIaasController {
 
     public Set<String> createInstancesWithOptions(String infrastructureId, String instanceTag, String image,
             int numberOfInstances, int cores, int ram, String spotPrice, String securityGroupNames, String subnetId,
-            String macAddresses) {
+            String macAddresses) throws InstanceNotCreatedException {
 
         String instanceJson = ConnectorIaasJSONTransformer.getInstanceJSON(instanceTag,
                                                                            image,
@@ -256,7 +258,8 @@ public class ConnectorIaasController {
 
     public Set<String> createAwsEc2InstancesWithOptions(String infrastructureId, String instanceTag, String image,
             int numberOfInstances, int cores, int ram, String vmType, String spotPrice, String securityGroupNames,
-            String subnetId, String macAddresses, int[] portsToOpen, String username, String publicKeyName) {
+            String subnetId, String macAddresses, int[] portsToOpen, String username, String publicKeyName)
+            throws InstanceNotCreatedException {
 
         String instanceJson = ConnectorIaasJSONTransformer.getAwsEc2InstanceJSON(instanceTag,
                                                                                  image,
@@ -277,7 +280,7 @@ public class ConnectorIaasController {
 
     public Set<String> createGCEInstances(String infrastructureId, String instanceTag, int numberOfInstances,
             String vmUsername, String vmPublicKey, String vmPrivateKey, List<String> initScripts, String image,
-            String region, int ram, int cores) {
+            String region, int ram, int cores) throws InstanceNotCreatedException {
         String instanceJson = ConnectorIaasJSONTransformer.getGceInstanceJSON(instanceTag,
                                                                               String.valueOf(numberOfInstances),
                                                                               vmUsername,
@@ -293,7 +296,8 @@ public class ConnectorIaasController {
 
     public Set<String> createOpenstackInstance(String infrastructureId, String instanceTag, String image,
             int numberOfInstances, String hardwareType, String publicKeyName, String network,
-            Set<String> securityGroupNames, int[] portsToOpen, List<String> scripts) {
+            Set<String> securityGroupNames, int[] portsToOpen, List<String> scripts)
+            throws InstanceNotCreatedException {
 
         String instanceJson = ConnectorIaasJSONTransformer.getOpenstackInstanceJSON(instanceTag,
                                                                                     image,
@@ -371,19 +375,26 @@ public class ConnectorIaasController {
         connectorIaasClient.terminateInstanceByTag(infrastructureId, instanceTag);
     }
 
-    private Set<String> createInstance(String infrastructureId, String instanceTag, String instanceJson) {
-        Set<JSONObject> existingInstancesByInfrastructureId = connectorIaasClient.getAllJsonInstancesByInfrastructureId(infrastructureId);
+    private Set<String> createInstance(String infrastructureId, String instanceTag, String instanceJson)
+            throws InstanceNotCreatedException {
+        try {
+            Set<JSONObject> existingInstancesByInfrastructureId = connectorIaasClient.getAllJsonInstancesByInfrastructureId(infrastructureId);
 
-        logger.info("Total existing Instances By Infrastructure Id : " + existingInstancesByInfrastructureId.size());
+            logger.info("Total existing Instances By Infrastructure Id : " +
+                        existingInstancesByInfrastructureId.size());
 
-        Set<String> instancesIds = connectorIaasClient.createInstancesIfNotExist(infrastructureId,
-                                                                                 instanceTag,
-                                                                                 instanceJson,
-                                                                                 existingInstancesByInfrastructureId);
+            Set<String> instancesIds = connectorIaasClient.createInstancesIfNotExist(infrastructureId,
+                                                                                     instanceTag,
+                                                                                     instanceJson,
+                                                                                     existingInstancesByInfrastructureId);
 
-        logger.info("Instances ids created : " + instancesIds);
+            logger.info("Instances ids created : " + instancesIds);
 
-        return instancesIds;
+            return instancesIds;
+        } catch (Exception e) {
+            logger.error("Error while creating the instance: " + instanceTag + "; " + instanceJson, e);
+            throw new InstanceNotCreatedException(e);
+        }
     }
 
     public SimpleImmutableEntry<String, String> createAwsEc2KeyPair(String infrastructureId, String instanceTag,

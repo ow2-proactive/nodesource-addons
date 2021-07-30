@@ -106,7 +106,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         NODE_JAR_URL(14),
         ADDITIONAL_PROPERTIES(15),
         NODE_TIMEOUT(16),
-        STARTUP_SCRIPT(17);
+        STARTUP_SCRIPT(17),
+        SPOT_PRICE(18);
 
         protected int index;
 
@@ -149,10 +150,6 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                 DEFAULT_CORES + ")", sectionSelector = 3, important = true)
     protected int cores = DEFAULT_CORES;
 
-    // TODO disable to configure the parameter spotPrice for the moment, because we don't yet have a checking mechanism for it now, but it may cause the RM portal blocked (hanging in createInstance).
-    //    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price)")
-    protected String spotPrice = "";
-
     @Configurable(description = "The ids(s) of the security group(s) for VMs, spearated by comma in case of multiple ids. (optional)", sectionSelector = 3)
     protected String securityGroupIds = null;
 
@@ -177,6 +174,9 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     @Configurable(textArea = true, description = "VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description.", sectionSelector = 5)
     protected String startupScript = initScriptGenerator.getDefaultLinuxStartupScript();
+
+    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price), when the spot price is too low to be satisfied within the node-running timeout, the node source deployment will be failed and the related spot requests will be cancelled.", sectionSelector = 3)
+    protected String spotPrice = "";
 
     /**
      * Key to retrieve the key pair used to deploy the infrastructure
@@ -214,7 +214,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         this.ram = parseIntParameter("ram", parameters[Indexes.RAM.index], DEFAULT_RAM);
         this.cores = parseIntParameter("cores", parameters[Indexes.CORES.index], DEFAULT_CORES);
         //        TODO disable to configure the parameter spotPrice for the moment
-        //        this.spotPrice = parameters[parameterIndex++].toString().trim();
+        this.spotPrice = parameters[Indexes.SPOT_PRICE.index].toString().trim();
         this.securityGroupIds = parseOptionalParameter(parameters[Indexes.SECURITY_GROUP_IDS.index]);
         this.subnetId = parseOptionalParameter(parameters[Indexes.SUBNET_ID.index]);
         this.rmHostname = parseHostnameParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
@@ -232,12 +232,16 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public void acquireAllNodes() {
-        deployInstancesWithNodes(numberOfInstances, true);
+        nodeSource.executeInParallel(() -> {
+            deployInstancesWithNodes(numberOfInstances, true);
+        });
     }
 
     @Override
     public void acquireNode() {
-        deployInstancesWithNodes(1, true);
+        nodeSource.executeInParallel(() -> {
+            deployInstancesWithNodes(1, true);
+        });
     }
 
     @Override
@@ -297,8 +301,12 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             // by default, the key pair that is used to deploy the instances has
             // the name of the node source
             String keyPairName = createOrUseKeyPair(infrastructureId, nbInstancesToDeploy, params);
-
-            instancesIds = createInstances(infrastructureId, keyPairName, nbInstancesToDeploy, params);
+            try {
+                instancesIds = createInstances(infrastructureId, keyPairName, nbInstancesToDeploy, params);
+            } catch (InstanceNotCreatedException e) {
+                logger.error("Failed to create the instance with the error: ", e);
+                return;
+            }
 
         } else {
 
@@ -337,7 +345,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     }
 
     private Set<String> createInstances(String infrastructureId, String keyPairName, int nbInstances,
-            AWSEC2CustomizableParameter params) {
+            AWSEC2CustomizableParameter params) throws InstanceNotCreatedException {
         // create instances
         return connectorIaasController.createAwsEc2InstancesWithOptions(infrastructureId,
                                                                         infrastructureId,
