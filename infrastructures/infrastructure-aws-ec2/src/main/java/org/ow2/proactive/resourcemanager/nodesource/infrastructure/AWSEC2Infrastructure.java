@@ -175,7 +175,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
     @Configurable(textArea = true, description = "VM startup script to launch the ProActive nodes (optional). Please refer to the documentation for full description.", sectionSelector = 5)
     protected String startupScript = initScriptGenerator.getDefaultLinuxStartupScript();
 
-    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price), when the spot price is too low to be satisfied within the node-running timeout, the node source deployment will be failed and the related spot requests will be cancelled.", sectionSelector = 3)
+    @Configurable(description = "(optional) The maximum price that you are willing to pay per hour per instance (your bid price), when the spot price is too low to be satisfied within the node-running timeout, the node source deployment will be failed and the related spot requests will be cancelled. The current Spot Instance prices can be found in https://aws.amazon.com/ec2/spot/pricing/", sectionSelector = 3)
     protected String spotPrice = "";
 
     /**
