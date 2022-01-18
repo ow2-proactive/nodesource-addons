@@ -10,7 +10,7 @@ buildscript {
     repositories {
         if (project.hasProperty('local')) mavenLocal()
 
-        jcenter()
+        mavenCentral()
 
         maven { url 'http://repository.activeeon.com/content/groups/proactive/' }
         maven { url "http://nexus.qmino.com/content/repositories/miredot" }
