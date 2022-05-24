@@ -147,6 +147,19 @@ public class ConnectorIaasClient {
         }
     }
 
+    public SimpleImmutableEntry<String, String> getAwsEc2KeyPairInfo(String infrastructureId, String keyPairName, String region) {
+        String response = restClient.getKeyPairs(infrastructureId, keyPairName, region);
+
+        JSONObject keyPairInfoJson = new JSONObject(response);
+
+        if (keyPairInfoJson.length() > 0) {
+            String keyPairPrivateKey = (String) keyPairInfoJson.get(keyPairName);
+            return new SimpleImmutableEntry<>(keyPairName, keyPairPrivateKey);
+        } else {
+            throw new IllegalStateException("The received key pair information is empty");
+        }
+    }
+
     public void deleteKeyPair(String infrastructureId, String keyPairName, String region) {
         restClient.deleteKeyPair(infrastructureId, keyPairName, region);
     }

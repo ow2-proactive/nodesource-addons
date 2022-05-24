@@ -411,6 +411,10 @@ public class ConnectorIaasController {
         return connectorIaasClient.createAwsEc2KeyPair(infrastructureId, instanceJson);
     }
 
+    public SimpleImmutableEntry<String, String> getAwsEc2KeyPairInfo(String infrastructureId, String keyPairName, String region) {
+        return connectorIaasClient.getAwsEc2KeyPairInfo(infrastructureId, keyPairName, region);
+    }
+
     public void deleteKeyPair(String infrastructureId, String keyPairName, String region) {
         connectorIaasClient.deleteKeyPair(infrastructureId, keyPairName, region);
     }

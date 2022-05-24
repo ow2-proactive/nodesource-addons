@@ -117,6 +117,15 @@ public class RestClient {
         return checkAndGetResponse(response);
     }
 
+    public String getKeyPairs(String infrastructureId, String keyPairName, String region) {
+        ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
+                                                         "/keypairs/" + keyPairName);
+        final MultivaluedMap<String, Object> queryParams = new MultivaluedHashMap<>();
+        queryParams.add("region", region);
+        Response response = target.queryParams(queryParams).request(MediaType.APPLICATION_JSON_TYPE).get();
+        return checkAndGetResponse(response);
+    }
+
     public String deleteKeyPair(String infrastructureId, String keyPairName, String region) {
         ResteasyWebTarget target = initWebTarget(connectorIaasURL + "/infrastructures/" + infrastructureId +
                                                  "/keypairs");
