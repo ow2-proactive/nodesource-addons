@@ -63,9 +63,9 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_REGION = "europe-west2-c";
 
-    private static final int DEFAULT_RAM = 1740;
+    private static final int DEFAULT_RAM = 2048;
 
-    private static final int DEFAULT_CORES = 1;
+    private static final int DEFAULT_CORES = 2;
 
     private static final int DEFAULT_NODE_TIMEOUT = 5 * 60 * 1000;// 5 min
 
