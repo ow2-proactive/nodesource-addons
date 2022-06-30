@@ -11,11 +11,11 @@ buildscript {
         if (project.hasProperty('local')) mavenLocal()
 
         mavenCentral()
-        maven { url 'https://repo.jenkins-ci.org/releases/' }
         maven { url 'http://repository.activeeon.com/content/groups/proactive/' }
         maven { url "http://nexus.qmino.com/content/repositories/miredot" }
         maven { url 'http://dl.bintray.com/content/abashev/vfs-s3'}
         maven { url "https://plugins.gradle.org/m2/" }
+        maven { url 'https://repo.jenkins-ci.org/releases/' }
     }
 
     dependencies {
