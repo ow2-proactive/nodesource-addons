@@ -97,9 +97,9 @@ public class GCEInfrastructureTest {
 
     private static final String REGION = "us-central1-a";
 
-    private static final int RAM = 1740;
+    private static final int RAM = 2048;
 
-    private static final int CORES = 1;
+    private static final int CORES = 2;
 
     private static final int NODE_TIMEOUT = 120000;
 
