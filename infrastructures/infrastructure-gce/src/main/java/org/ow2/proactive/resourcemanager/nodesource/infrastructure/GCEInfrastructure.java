@@ -54,6 +54,10 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "google-compute-engine";
 
+    public static final int DEFAULT_RAM = 2048;
+
+    public static final int DEFAULT_CORES = 2;
+
     @Getter
     private final String instanceIdNodeProperty = "instanceTag";
 
@@ -62,10 +66,6 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     private static final String DEFAULT_IMAGE = "debian-9-stretch-v20210916";
 
     private static final String DEFAULT_REGION = "europe-west2-c";
-
-    private static final int DEFAULT_RAM = 2048;
-
-    private static final int DEFAULT_CORES = 2;
 
     private static final int DEFAULT_NODE_TIMEOUT = 5 * 60 * 1000;// 5 min
 
