@@ -55,7 +55,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "aws-ec2";
 
-    private static final String DEFAULT_IMAGE = "eu-west-3/ami-03bca18cb3dc173c9";
+    private static final String DEFAULT_IMAGE = "eu-west-3/ami-0f7559f51d3a22167";
 
     private static final String DEFAULT_VM_USERNAME = "ubuntu";
 
