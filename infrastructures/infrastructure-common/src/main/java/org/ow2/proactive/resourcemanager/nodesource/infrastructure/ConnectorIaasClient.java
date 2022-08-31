@@ -87,7 +87,11 @@ public class ConnectorIaasClient {
     }
 
     public String createInfrastructure(String infrastructureId, String infrastructureJson) {
-        terminateInfrastructure(infrastructureId, false);
+        try {
+            terminateInfrastructure(infrastructureId, false);
+        } catch (RuntimeException re) {
+            logger.error("Infrastructure termination runtime exception: ", re);
+        }
         return restClient.postInfrastructures(infrastructureJson);
     }
 
