@@ -551,7 +551,7 @@ public class AWSEC2InfrastructureTest {
     @Test
     public void testGetDescription() {
         assertThat(awsec2Infrastructure.getDescription(),
-                   is("Handles nodes from the Amazon Elastic Compute Cloud Service."));
+                   is("AWSEC2 Infrastructure handles nodes from the Amazon Elastic Compute Cloud Service."));
     }
 
 }

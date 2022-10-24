@@ -436,7 +436,7 @@ public class VMWareInfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(vmwareInfrastructure.getDescription(), is("Handles nodes of VMware Cloud."));
+        assertThat(vmwareInfrastructure.getDescription(), is("VMWare Infrastructure handles nodes of VMware Cloud."));
     }
 
 }
