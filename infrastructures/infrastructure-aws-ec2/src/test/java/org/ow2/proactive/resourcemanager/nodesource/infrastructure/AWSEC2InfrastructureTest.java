@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -550,8 +551,7 @@ public class AWSEC2InfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(awsec2Infrastructure.getDescription(),
-                   is("Handles nodes from the Amazon Elastic Compute Cloud Service."));
+        assertThat(awsec2Infrastructure.getDescription(), Matchers.startsWith("AWSEC2Infrastructure"));
     }
 
 }

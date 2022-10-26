@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 
 import java.security.KeyException;
 
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -421,8 +422,7 @@ public class OpenstackInfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(openstackInfrastructure.getDescription(),
-                   is("Handles ProActive nodes using Nova compute service of Openstack Cloud."));
+        assertThat(openstackInfrastructure.getDescription(), Matchers.startsWith("OpenstackInfrastructure"));
     }
 
 }
