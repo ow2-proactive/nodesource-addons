@@ -520,7 +520,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "Azure Infrastructure handles nodes from Microsoft Azure.";
+        return this.getClass().getSimpleName() + " handles nodes from Microsoft Azure.";
     }
 
     /**

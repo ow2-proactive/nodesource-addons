@@ -35,6 +35,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -436,7 +437,7 @@ public class VMWareInfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(vmwareInfrastructure.getDescription(), is("VMWare Infrastructure handles nodes of VMware Cloud."));
+        assertThat(vmwareInfrastructure.getDescription(), Matchers.startsWith("VMWareInfrastructure"));
     }
 
 }

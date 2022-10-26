@@ -428,7 +428,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "GCE Infrastructure handles nodes from the Google Compute Engine.";
+        return this.getClass().getSimpleName() + " handles nodes from the Google Compute Engine.";
     }
 
     /**
