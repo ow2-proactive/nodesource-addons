@@ -559,7 +559,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return this.getClass().getSimpleName() + " handles nodes from the Amazon Elastic Compute Cloud Service.";
+        return "AWSEC2Infrastructure handles nodes from the Amazon Elastic Compute Cloud Service.";
     }
 
     @Override
