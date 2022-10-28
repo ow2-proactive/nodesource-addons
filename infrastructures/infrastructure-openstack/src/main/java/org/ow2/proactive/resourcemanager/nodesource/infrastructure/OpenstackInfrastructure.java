@@ -283,8 +283,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return this.getClass().getSimpleName() +
-               " handles ProActive nodes using Nova compute service of Openstack Cloud.";
+        return "OpenstackInfrastructure handles ProActive nodes using Nova compute service of Openstack Cloud.";
     }
 
     /**

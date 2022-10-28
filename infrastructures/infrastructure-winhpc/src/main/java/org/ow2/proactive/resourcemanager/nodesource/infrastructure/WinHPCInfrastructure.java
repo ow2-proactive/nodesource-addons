@@ -465,7 +465,7 @@ public class WinHPCInfrastructure extends DefaultInfrastructureManager {
 
     @Override
     public String getDescription() {
-        return this.getClass().getSimpleName();
+        return "WinHPCInfrastructure";
     }
 
     /**

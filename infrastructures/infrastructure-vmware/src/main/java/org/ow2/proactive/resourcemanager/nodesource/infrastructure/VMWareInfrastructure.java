@@ -268,7 +268,7 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return this.getClass().getSimpleName() + " handles nodes of VMware Cloud.";
+        return "VMWareInfrastructure handles nodes of VMware Cloud.";
     }
 
     /**
