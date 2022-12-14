@@ -90,7 +90,7 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Optional list of MAC addresses separated by comma ',' to assign on new cloned VMs", sectionSelector = 2)
     protected String macAddresses = null;
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 4)
+    @Configurable(textAreaOneLine = true, description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 4)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
     @Override

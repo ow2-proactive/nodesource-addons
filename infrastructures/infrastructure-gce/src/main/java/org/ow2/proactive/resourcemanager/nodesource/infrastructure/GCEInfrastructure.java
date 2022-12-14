@@ -163,7 +163,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "URL used to download the node jar on the virtual machine", sectionSelector = 4)
     protected String nodeJarURL = InitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\") (optional)", sectionSelector = 5)
+    @Configurable(textAreaOneLine = true, description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\") (optional)", sectionSelector = 5)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
     @Configurable(description = "Node timeout in ms. After this timeout expired, the node is considered to be lost (optional, default value: " +

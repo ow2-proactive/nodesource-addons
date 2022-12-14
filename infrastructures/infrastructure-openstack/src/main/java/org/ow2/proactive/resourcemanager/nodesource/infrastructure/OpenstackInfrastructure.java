@@ -123,7 +123,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "URL used to download the node jar on the instance", sectionSelector = 5)
     protected String nodeJarURL = InitScriptGenerator.generateDefaultNodeJarURL(generateDefaultRMHostname());
 
-    @Configurable(description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 5)
+    @Configurable(textAreaOneLine = true, description = "(optional) Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 5)
     protected String additionalProperties = "-Dproactive.useIPaddress=true";
 
     @Configurable(description = "(optional, default value: " + DEFAULT_NODES_INIT_DELAY +
