@@ -197,7 +197,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Optional flag to specify if the public IP(s) of the new VM(s) must be static ('true' by default)", checkbox = true, sectionSelector = 7)
     protected boolean staticPublicIP = true;
 
-    @Configurable(description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 8)
+    @Configurable(textAreaOneLine = true, description = "Additional Java command properties (e.g. \"-Dpropertyname=propertyvalue\")", sectionSelector = 8)
     protected String additionalProperties = DEFAULT_ADDITIONAL_PROPERTIES;
 
     @Configurable(description = "Periodical resource usage retrieving delay in min.", sectionSelector = 2)
