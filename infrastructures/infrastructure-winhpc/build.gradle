@@ -25,6 +25,8 @@ configurations {
     shadowJar
 
     runtime.extendsFrom = [compile]
+    // exclude modules to prevent class loader LinkageError issues
+    runtime.exclude module: 'common-api'
     runtime.exclude module: 'rm-server'
     runtime.exclude module: 'programming-core'
     runtime.exclude module: 'guava'
