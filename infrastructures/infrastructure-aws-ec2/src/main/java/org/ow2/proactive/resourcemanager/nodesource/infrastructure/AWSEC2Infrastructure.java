@@ -59,6 +59,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_VM_USERNAME = "ubuntu";
 
+    private static final String DEFAULT_VM_TYPE = "";
+
     private static final int DEFAULT_RAM = 4096;
 
     private static final int DEFAULT_CORES = 2;
@@ -97,17 +99,18 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         VM_USERNAME(5),
         VM_KEY_PAIR_NAME(6),
         VM_PRIVATE_KEY(7),
-        RAM(8),
-        CORES(9),
-        SECURITY_GROUP_IDS(10),
-        SUBNET_ID(11),
-        RM_HOSTNAME(12),
-        CONNECTOR_IAAS_URL(13),
-        NODE_JAR_URL(14),
-        ADDITIONAL_PROPERTIES(15),
-        NODE_TIMEOUT(16),
-        STARTUP_SCRIPT(17),
-        SPOT_PRICE(18);
+        VM_TYPE(8),
+        RAM(9),
+        CORES(10),
+        SECURITY_GROUP_IDS(11),
+        SUBNET_ID(12),
+        RM_HOSTNAME(13),
+        CONNECTOR_IAAS_URL(14),
+        NODE_JAR_URL(15),
+        ADDITIONAL_PROPERTIES(16),
+        NODE_TIMEOUT(17),
+        STARTUP_SCRIPT(18),
+        SPOT_PRICE(19);
 
         protected int index;
 
@@ -141,6 +144,9 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     @Configurable(fileBrowser = true, description = "Your AWS private key file corresponding to 'vmKeyPairName' for accessing VM (optional)", sectionSelector = 3)
     protected String vmPrivateKey;
+
+    @Configurable(description = "The AWS VM type required for each VM (optional, e.g. t3.medium). Once this parameter is set it will override the parameters set for ram and cores", sectionSelector = 3, important = true)
+    protected String vmType = DEFAULT_VM_TYPE;
 
     @Configurable(description = "The minimum RAM required (in Mega Bytes) for each VM (optional, default value: " +
                                 DEFAULT_RAM + ")", sectionSelector = 3, important = true)
@@ -211,6 +217,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
         this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index], DEFAULT_VM_USERNAME);
         this.vmKeyPairName = parseOptionalParameter(parameters[Indexes.VM_KEY_PAIR_NAME.index]);
         this.vmPrivateKey = parseFileParameter("vmPrivateKey", parameters[Indexes.VM_PRIVATE_KEY.index]);
+        this.vmType = parseOptionalParameter(parameters[Indexes.VM_TYPE.index], DEFAULT_VM_TYPE);
         this.ram = parseIntParameter("ram", parameters[Indexes.RAM.index], DEFAULT_RAM);
         this.cores = parseIntParameter("cores", parameters[Indexes.CORES.index], DEFAULT_CORES);
         //        TODO disable to configure the parameter spotPrice for the moment
@@ -313,7 +320,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
             // if the infrastructure was already created, then we need to
             // look at the free instances, if any (the ones on which no node
             // run. In the current implementation, this can only happen when
-            // nodes are down. Indeed if they are all removed on purpose, the
+            // nodes are down, indeed if they are all removed on purpose, the
             // instance should be shut down). Note that in this case, if the
             // free instances map is empty, no script will be run at all.
             instancesIds = getInstancesWithoutNodesMapCopy().keySet();
@@ -619,7 +626,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
                                                vmPrivateKey,
                                                ram,
                                                cores,
-                                               null,
+                                               vmType,
                                                securityGroupIds,
                                                null,
                                                additionalProperties);
