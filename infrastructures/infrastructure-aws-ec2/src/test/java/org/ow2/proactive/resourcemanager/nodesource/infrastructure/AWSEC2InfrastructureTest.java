@@ -80,6 +80,8 @@ public class AWSEC2InfrastructureTest {
 
     private static final byte[] VM_PRIVATE_KEY = new byte[] { 0, 1, 2, 3, 4 };
 
+    private static final String VM_TYPE = "";
+
     private static final int RAM = 512;
 
     private static final int CORES = 1;
@@ -151,6 +153,7 @@ public class AWSEC2InfrastructureTest {
         assertThat(awsec2Infrastructure.vmUsername, is(not(nullValue())));
         assertThat(awsec2Infrastructure.vmKeyPairName, is(nullValue()));
         assertThat(awsec2Infrastructure.vmPrivateKey, is(nullValue()));
+        assertThat(awsec2Infrastructure.vmType, is(not(nullValue())));
         assertThat(awsec2Infrastructure.ram, is(not(nullValue())));
         assertThat(awsec2Infrastructure.cores, is(not(nullValue())));
         assertThat(awsec2Infrastructure.rmHostname, is(not(nullValue())));
@@ -171,6 +174,7 @@ public class AWSEC2InfrastructureTest {
                                        VM_USERNAME,
                                        VM_KEY_PAIR_NAME,
                                        VM_PRIVATE_KEY,
+                                       VM_TYPE,
                                        RAM,
                                        CORES,
                                        SECURITY_GROUP_NAMES,
@@ -192,6 +196,7 @@ public class AWSEC2InfrastructureTest {
                                        VM_USERNAME,
                                        VM_KEY_PAIR_NAME,
                                        VM_PRIVATE_KEY,
+                                       VM_TYPE,
                                        RAM,
                                        CORES,
                                        SECURITY_GROUP_NAMES,
@@ -215,6 +220,7 @@ public class AWSEC2InfrastructureTest {
                                        VM_USERNAME,
                                        VM_KEY_PAIR_NAME,
                                        VM_PRIVATE_KEY,
+                                       VM_TYPE,
                                        RAM,
                                        CORES,
                                        SECURITY_GROUP_NAMES,
@@ -269,7 +275,7 @@ public class AWSEC2InfrastructureTest {
                                                                       1,
                                                                       CORES,
                                                                       RAM,
-                                                                      null,
+                                                                      VM_TYPE,
                                                                       SPOT_PRICE,
                                                                       SECURITY_GROUP_NAMES,
                                                                       SUBNET_ID,
@@ -295,7 +301,7 @@ public class AWSEC2InfrastructureTest {
                                                                          1,
                                                                          CORES,
                                                                          RAM,
-                                                                         null,
+                                                                         VM_TYPE,
                                                                          SPOT_PRICE,
                                                                          SECURITY_GROUP_NAMES,
                                                                          SUBNET_ID,
@@ -322,6 +328,7 @@ public class AWSEC2InfrastructureTest {
                                        VM_USERNAME,
                                        VM_KEY_PAIR_NAME,
                                        VM_PRIVATE_KEY,
+                                       VM_TYPE,
                                        RAM,
                                        CORES,
                                        SECURITY_GROUP_NAMES,
@@ -375,7 +382,7 @@ public class AWSEC2InfrastructureTest {
                                                                       NUMBER_OF_INSTANCES,
                                                                       CORES,
                                                                       RAM,
-                                                                      null,
+                                                                      VM_TYPE,
                                                                       SPOT_PRICE,
                                                                       SECURITY_GROUP_NAMES,
                                                                       SUBNET_ID,
@@ -402,7 +409,7 @@ public class AWSEC2InfrastructureTest {
                                                                          NUMBER_OF_INSTANCES,
                                                                          CORES,
                                                                          RAM,
-                                                                         null,
+                                                                         VM_TYPE,
                                                                          SPOT_PRICE,
                                                                          SECURITY_GROUP_NAMES,
                                                                          SUBNET_ID,
@@ -432,6 +439,7 @@ public class AWSEC2InfrastructureTest {
                                        VM_USERNAME,
                                        VM_KEY_PAIR_NAME,
                                        VM_PRIVATE_KEY,
+                                       VM_TYPE,
                                        RAM,
                                        CORES,
                                        SECURITY_GROUP_NAMES,
@@ -477,6 +485,7 @@ public class AWSEC2InfrastructureTest {
                                        VM_USERNAME,
                                        VM_KEY_PAIR_NAME,
                                        VM_PRIVATE_KEY,
+                                       VM_TYPE,
                                        RAM,
                                        CORES,
                                        SECURITY_GROUP_NAMES,
