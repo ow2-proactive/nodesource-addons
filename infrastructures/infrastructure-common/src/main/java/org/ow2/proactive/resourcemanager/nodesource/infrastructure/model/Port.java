@@ -27,7 +27,7 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure.model;
 
 import java.io.Serializable;
 
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 @JsonIgnoreProperties(ignoreUnknown = true)
