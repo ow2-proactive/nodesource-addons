@@ -2,7 +2,10 @@ apply plugin: 'java'
 apply plugin: 'com.github.johnrengelman.shadow'
 
 shadowJar {
-
+    zip64 true
+    // note: in order to see packaged libraries versions in META-INF/maven, uncomment the following two lines
+    exclude '**/pom.xml'
+    exclude '**/pom.properties'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
