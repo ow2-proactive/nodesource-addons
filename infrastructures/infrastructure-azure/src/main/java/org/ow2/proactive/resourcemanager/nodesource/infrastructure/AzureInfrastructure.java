@@ -158,7 +158,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "Connector-iaas URL", sectionSelector = 4)
     protected String connectorIaasURL = InitScriptGenerator.generateDefaultIaasConnectorURL(generateDefaultRMHostname());
 
-    @Configurable(description = "Image (name or key)", sectionSelector = 6, important = true)
+    @Configurable(description = "Image. Can either be a custom image (name or id), or a popular image (see documentation for the list of popular images)", sectionSelector = 6, important = true)
     protected String image = null;
 
     @Configurable(description = "Image OS type (choose between 'linux' and 'windows', default: 'linux')", sectionSelector = 6, important = true)
@@ -176,10 +176,10 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "A public key to allow SSH connection to the VM", sectionSelector = 6)
     protected String vmPublicKey = null;
 
-    @Configurable(description = "The Azure resourceGroup to use (if not specified, the one from the image will be used)", sectionSelector = 6, important = true)
+    @Configurable(description = "The Azure resource group to use. The resource group must be provided if a popular image is used. When a custom image is used, the resource group default value is the image resource group.", sectionSelector = 6, important = true)
     protected String resourceGroup = null;
 
-    @Configurable(description = "The Azure Region to use (if not specified, the one from the image will be used)", sectionSelector = 6)
+    @Configurable(description = "The Azure Region to use. The region must be provided if a popular image is used. When a custom image is used, the region default value is the image region.", sectionSelector = 6, important = true)
     protected String region = null;
 
     @Configurable(description = "Total instance to create", sectionSelector = 5, important = true)
