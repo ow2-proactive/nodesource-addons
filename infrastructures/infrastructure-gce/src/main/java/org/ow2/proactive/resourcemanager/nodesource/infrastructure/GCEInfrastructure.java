@@ -40,6 +40,7 @@ import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
+import org.scijava.util.StringUtils;
 
 import com.google.common.collect.Maps;
 import com.google.gson.JsonObject;
@@ -538,7 +539,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     private String createMachineTypeUrl() {
         String machineTypeUrl = "";
-        if (machineType != null && machineType != "") {
+        if (!StringUtils.isNullOrEmpty(machineType)) {
             machineTypeUrl = String.format("%s/%s/zones/%s/machineTypes/%s",
                                            GCE_API_DOMAIN,
                                            gceCredential.projectId,

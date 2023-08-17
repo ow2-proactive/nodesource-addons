@@ -384,8 +384,6 @@ public class ConnectorIaasController {
             logger.info("Total existing Instances By Infrastructure Id : " +
                         existingInstancesByInfrastructureId.size());
 
-            logger.info("Instance Json: " + instanceJson);
-
             Set<String> instancesIds = connectorIaasClient.createInstancesIfNotExist(infrastructureId,
                                                                                      instanceTag,
                                                                                      instanceJson,
