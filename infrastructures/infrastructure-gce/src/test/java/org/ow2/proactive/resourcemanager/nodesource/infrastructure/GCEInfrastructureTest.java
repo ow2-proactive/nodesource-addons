@@ -66,10 +66,13 @@ public class GCEInfrastructureTest {
 
     private static final String PRIVATE_KEY_RAW = "--BEGIN PRIVATE KEY--\\nPrivateKey\\n--END PRIVATE KEY--\\n";
 
+    private static final String PROJECT_ID = "test-project-id";
+
     private static final String PRIVATE_KEY = PRIVATE_KEY_RAW.replace("\\n", "\n");
 
     private static final byte[] CREDENTIAL_FILE = ("{\"private_key\": \"" + PRIVATE_KEY_RAW +
-                                                   "\", \"client_email\": \"" + CLIENT_EMAIL + "\"}").getBytes();
+                                                   "\", \"client_email\": \"" + CLIENT_EMAIL +
+                                                   "\", \"project_id\": \"" + PROJECT_ID + "\"}").getBytes();
 
     private static final int NUMBER_INSTANCES = 4;
 
@@ -96,6 +99,8 @@ public class GCEInfrastructureTest {
     private static final String IMAGE = "gce-debian-9";
 
     private static final String REGION = "us-central1-a";
+
+    private static final String MACHINE_TYPE = GCEInfrastructure.DEFAULT_MACHINE_TYPE;
 
     private static final int RAM = GCEInfrastructure.DEFAULT_RAM;
 
@@ -159,6 +164,7 @@ public class GCEInfrastructureTest {
         assertThat(gceInfrastructure.additionalProperties, is(not(nullValue())));
         assertThat(gceInfrastructure.image, is(not(nullValue())));
         assertThat(gceInfrastructure.region, is(not(nullValue())));
+        assertThat(gceInfrastructure.machineType, is(not(nullValue())));
         assertThat(gceInfrastructure.ram, is(greaterThanOrEqualTo(RAM)));
         assertThat(gceInfrastructure.cores, is(CORES));
         assertThat(gceInfrastructure.nodeTimeout, is(not(nullValue())));
@@ -174,6 +180,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -196,6 +203,7 @@ public class GCEInfrastructureTest {
         assertThat(gceInfrastructure.additionalProperties, is(ADDITIONAL_PROPERTIES));
         assertThat(gceInfrastructure.image, is(IMAGE));
         assertThat(gceInfrastructure.region, is(REGION));
+        assertThat(gceInfrastructure.machineType, is(MACHINE_TYPE));
         assertThat(gceInfrastructure.ram, is(RAM));
         assertThat(gceInfrastructure.cores, is(CORES));
         assertThat(gceInfrastructure.nodeTimeout, is(NODE_TIMEOUT));
@@ -247,6 +255,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -289,6 +298,7 @@ public class GCEInfrastructureTest {
                                                                      INIT_SCRIPTS,
                                                                      IMAGE,
                                                                      REGION,
+                                                                     MACHINE_TYPE,
                                                                      RAM,
                                                                      CORES);
     }
@@ -312,6 +322,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -360,6 +371,7 @@ public class GCEInfrastructureTest {
                                                                      INIT_SCRIPTS,
                                                                      IMAGE,
                                                                      REGION,
+                                                                     MACHINE_TYPE,
                                                                      RAM,
                                                                      CORES);
     }
@@ -391,6 +403,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -439,6 +452,7 @@ public class GCEInfrastructureTest {
                                                                      INIT_SCRIPTS,
                                                                      IMAGE,
                                                                      REGION,
+                                                                     MACHINE_TYPE,
                                                                      RAM,
                                                                      CORES);
     }
@@ -449,7 +463,7 @@ public class GCEInfrastructureTest {
      * - 3 required new nodes, with 2 nodes per instance (i.e., require 2 new instances -> 4 new nodes)
      * - 5 max number of nodes
      * - 1 existing instances, 2 existing nodes
-     * Then acquireNodes should only deploy 1 instances.
+     * Then acquireNodes should only deploy 1 instance.
      */
     @Test
     public void testAcquireNodesGivenMoreThanMaxNodes() throws KeyException {
@@ -470,6 +484,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -518,6 +533,7 @@ public class GCEInfrastructureTest {
                                                                      INIT_SCRIPTS,
                                                                      IMAGE,
                                                                      REGION,
+                                                                     MACHINE_TYPE,
                                                                      RAM,
                                                                      CORES);
     }
@@ -532,6 +548,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -565,6 +582,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -608,6 +626,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -646,6 +665,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -684,6 +704,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,
@@ -724,6 +745,7 @@ public class GCEInfrastructureTest {
                                     VM_PRIVATE_KEY_BYTES,
                                     IMAGE,
                                     REGION,
+                                    MACHINE_TYPE,
                                     RAM,
                                     CORES,
                                     RM_HOSTNAME,

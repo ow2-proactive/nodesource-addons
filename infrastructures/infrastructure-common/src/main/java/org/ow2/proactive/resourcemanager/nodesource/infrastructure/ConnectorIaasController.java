@@ -280,7 +280,7 @@ public class ConnectorIaasController {
 
     public Set<String> createGCEInstances(String infrastructureId, String instanceTag, int numberOfInstances,
             String vmUsername, String vmPublicKey, String vmPrivateKey, List<String> initScripts, String image,
-            String region, int ram, int cores) throws InstanceNotCreatedException {
+            String region, String machineType, int ram, int cores) throws InstanceNotCreatedException {
         String instanceJson = ConnectorIaasJSONTransformer.getGceInstanceJSON(instanceTag,
                                                                               String.valueOf(numberOfInstances),
                                                                               vmUsername,
@@ -289,6 +289,7 @@ public class ConnectorIaasController {
                                                                               initScripts,
                                                                               image,
                                                                               region,
+                                                                              machineType,
                                                                               String.valueOf(ram),
                                                                               String.valueOf(cores));
         return createInstance(infrastructureId, instanceTag, instanceJson);
@@ -382,6 +383,8 @@ public class ConnectorIaasController {
 
             logger.info("Total existing Instances By Infrastructure Id : " +
                         existingInstancesByInfrastructureId.size());
+
+            logger.info("Instance Json: " + instanceJson);
 
             Set<String> instancesIds = connectorIaasClient.createInstancesIfNotExist(infrastructureId,
                                                                                      instanceTag,

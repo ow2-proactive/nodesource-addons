@@ -54,7 +54,9 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "google-compute-engine";
 
-    public static final int DEFAULT_RAM = 2048;
+    public static final String DEFAULT_MACHINE_TYPE = "";
+
+    public static final int DEFAULT_RAM = 4096;
 
     public static final int DEFAULT_CORES = 2;
 
@@ -76,6 +78,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     // use the instanceTag as the nodeName
     private static final String NODE_NAME_ON_NODE = "$HOSTNAME";
+
+    private static final String GCE_API_DOMAIN = "https://www.googleapis.com/compute/v1/projects";
 
     private transient InitScriptGenerator initScriptGenerator = new InitScriptGenerator();
 
@@ -104,14 +108,15 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         VM_PRIVATE_KEY(5),
         IMAGE(6),
         REGION(7),
-        RAM(8),
-        CORES(9),
-        RM_HOSTNAME(10),
-        CONNECTOR_IAAS_URL(11),
-        NODE_JAR_URL(12),
-        ADDITIONAL_PROPERTIES(13),
-        NODE_TIMEOUT(14),
-        STARTUP_SCRIPT(15);
+        MACHINE_TYPE(8),
+        RAM(9),
+        CORES(10),
+        RM_HOSTNAME(11),
+        CONNECTOR_IAAS_URL(12),
+        NODE_JAR_URL(13),
+        ADDITIONAL_PROPERTIES(14),
+        NODE_TIMEOUT(15),
+        STARTUP_SCRIPT(16);
 
         protected int index;
 
@@ -145,6 +150,9 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Configurable(description = "The region of the virtual machine (optional, default value: " + DEFAULT_REGION +
                                 ")", sectionSelector = 3, important = true)
     protected String region = DEFAULT_REGION;
+
+    @Configurable(description = "The machine type required for each VM (optional, e.g. c2d-highcpu-2). Once this parameter is set it will override the parameters set for ram and cores", sectionSelector = 3, important = true)
+    protected String machineType = DEFAULT_MACHINE_TYPE;
 
     @Configurable(description = "The minimum RAM required (in Mega Bytes) for each virtual machine (optional, default value: " +
                                 DEFAULT_RAM + ")", sectionSelector = 3, important = true)
@@ -198,6 +206,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         this.vmPrivateKey = parseFileParameter("vmPrivateKey", parameters[Indexes.VM_PRIVATE_KEY.index]);
         this.image = parseOptionalParameter(parameters[Indexes.IMAGE.index], DEFAULT_IMAGE);
         this.region = parseOptionalParameter(parameters[Indexes.REGION.index], DEFAULT_REGION);
+        this.machineType = parseOptionalParameter(parameters[Indexes.MACHINE_TYPE.index], DEFAULT_MACHINE_TYPE);
         this.ram = parseIntParameter("ram", parameters[Indexes.RAM.index], DEFAULT_RAM);
         this.cores = parseIntParameter("cores", parameters[Indexes.CORES.index], DEFAULT_CORES);
         this.rmHostname = parseHostnameParameter("rmHostname", parameters[Indexes.RM_HOSTNAME.index]);
@@ -218,7 +227,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
             final JsonObject json = new JsonParser().parse(gceCreds).getAsJsonObject();
             String clientEmail = json.get("client_email").toString().trim().replace("\"", "");
             String privateKey = json.get("private_key").toString().replace("\"", "").replace("\\n", "\n");
-            return new GCECredential(clientEmail, privateKey);
+            String projectId = json.get("project_id").toString().trim().replace("\"", "");
+            return new GCECredential(clientEmail, privateKey, projectId);
         } catch (Exception e) {
             logger.error(e);
             throw new IllegalArgumentException("Can't parse the GCE service account JSON key file: " + gceCreds);
@@ -336,6 +346,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
                                                           initScripts,
                                                           image,
                                                           region,
+                                                          createMachineTypeUrl(),
                                                           ram,
                                                           cores);
     }
@@ -504,6 +515,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         String clientEmail;
 
         String privateKey;
+
+        String projectId;
     }
 
     @Override
@@ -521,5 +534,18 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public Map<String, String> getMeta() {
         return meta;
+    }
+
+    private String createMachineTypeUrl() {
+        String machineTypeUrl = "";
+        if (machineType != null && machineType != "") {
+            machineTypeUrl = String.format("%s/%s/zones/%s/machineTypes/%s",
+                                           GCE_API_DOMAIN,
+                                           gceCredential.projectId,
+                                           region,
+                                           machineType);
+            logger.info("The machineType selected based on the infrastructure definition is: " + machineTypeUrl);
+        }
+        return machineTypeUrl;
     }
 }

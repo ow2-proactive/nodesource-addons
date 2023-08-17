@@ -154,6 +154,7 @@ public class ConnectorIaasJSONTransformerTest {
         final List<String> initScripts = Arrays.asList("cmd 1", "cmd 2");
         final String image = "image";
         final String region = "region";
+        final String machineType = "";
         final String ram = "1024";
         final String cores = "2";
 
@@ -165,6 +166,7 @@ public class ConnectorIaasJSONTransformerTest {
                                                                                            initScripts,
                                                                                            image,
                                                                                            region,
+                                                                                           machineType,
                                                                                            ram,
                                                                                            cores));
 
