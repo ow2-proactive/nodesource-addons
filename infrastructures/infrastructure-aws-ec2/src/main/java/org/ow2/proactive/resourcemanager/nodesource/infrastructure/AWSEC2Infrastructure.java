@@ -590,8 +590,8 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return "AWSEC2Infrastructure, numberOfInstances: [" + numberOfInstances + "], "
-                + "numberOfNodesPerInstance: [" + numberOfNodesPerInstance + "]";
+        return "AWSEC2Infrastructure, numberOfInstances: [" + numberOfInstances + "], " +
+               "numberOfNodesPerInstance: [" + numberOfNodesPerInstance + "]";
     }
 
     private void persistKeyPairInfo(final SimpleImmutableEntry<String, String> keyPair) {

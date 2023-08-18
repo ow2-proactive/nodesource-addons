@@ -470,7 +470,7 @@ public class WinHPCInfrastructure extends DefaultInfrastructureManager {
 
     @Override
     public String toString() {
-        return "WinHPCInfrastructure, maxNodes: [" + maxNodes +"], timeout: [" + timeout + "]";
+        return "WinHPCInfrastructure, maxNodes: [" + maxNodes + "], timeout: [" + timeout + "]";
     }
 
     /**

@@ -448,8 +448,10 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return  "GCEInfrastructure, numberOfNodesPerInstance: [" + numberOfNodesPerInstance + "], "
-                + "totalNumberOfInstances: [" + totalNumberOfInstances + "], region: [" + region + "]";
+        return String.format("GCEInfrastructure numberOfNodesPerInstance: [%s], totalNumberOfInstances: [%s], region: [%s]",
+                             numberOfNodesPerInstance,
+                             totalNumberOfInstances,
+                             region);
     }
 
     @SuppressWarnings("unchecked")

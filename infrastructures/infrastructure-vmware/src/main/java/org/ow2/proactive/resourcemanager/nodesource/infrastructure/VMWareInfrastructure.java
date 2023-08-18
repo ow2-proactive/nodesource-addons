@@ -276,8 +276,10 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return  "VMWareInfrastructure, numberOfInstances: [" + numberOfInstances +"], "
-                + "numberOfNodesPerInstance: [" + numberOfNodesPerInstance + "], image: [" + image + "]";
+        return String.format("VMWareInfrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s], image: [%s]",
+                             numberOfInstances,
+                             numberOfNodesPerInstance,
+                             image);
     }
 
     private String generateDefaultDownloadCommand() {

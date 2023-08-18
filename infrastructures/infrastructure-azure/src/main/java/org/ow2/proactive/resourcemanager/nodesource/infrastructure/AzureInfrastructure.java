@@ -528,9 +528,13 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return  "AzureInfrastructure, numberOfInstances: [" + numberOfInstances + "], "
-                + "numberOfNodesPerInstance: [" + numberOfNodesPerInstance + "], imageOSType: [" + imageOSType + "], "
-                + "vmSizeType:[" + vmSizeType + "], region: [" + region + "], maxBudget: [" + maxBudget + "]";
+        return String.format("AzureInfrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s], imageOSType: [%s], vmSizeType: [%s], region: [%s], maxBudget: [%s]",
+                             numberOfInstances,
+                             numberOfNodesPerInstance,
+                             imageOSType,
+                             vmSizeType,
+                             region,
+                             maxBudget);
     }
 
     @Override
