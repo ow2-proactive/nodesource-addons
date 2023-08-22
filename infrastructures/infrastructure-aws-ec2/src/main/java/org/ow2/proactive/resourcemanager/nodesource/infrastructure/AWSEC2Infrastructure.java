@@ -590,7 +590,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return String.format("AWSEC2Infrastructure, numberOfInstances: [%s], numberOfNodesPerInstance: [%s]",
+        return String.format("AWSEC2Infrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s]",
                              numberOfInstances,
                              numberOfNodesPerInstance);
     }

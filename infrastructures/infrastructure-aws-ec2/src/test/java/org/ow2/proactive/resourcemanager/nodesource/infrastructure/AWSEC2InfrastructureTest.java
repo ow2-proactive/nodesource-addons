@@ -560,7 +560,7 @@ public class AWSEC2InfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(awsec2Infrastructure.getDescription(), Matchers.startsWith("AWSEC2Infrastructure"));
+        assertThat(awsec2Infrastructure.toString(), Matchers.startsWith("AWSEC2Infrastructure"));
     }
 
 }
