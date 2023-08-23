@@ -440,7 +440,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "GCEInfrastructure handles nodes from the Google Compute Engine.";
+        return "Handles nodes from the Google Compute Engine.";
     }
 
     /**
@@ -448,7 +448,10 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return getDescription();
+        return String.format("GCEInfrastructure numberOfNodesPerInstance: [%s], totalNumberOfInstances: [%s], region: [%s]",
+                             numberOfNodesPerInstance,
+                             totalNumberOfInstances,
+                             region);
     }
 
     @SuppressWarnings("unchecked")

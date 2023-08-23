@@ -465,7 +465,12 @@ public class WinHPCInfrastructure extends DefaultInfrastructureManager {
 
     @Override
     public String getDescription() {
-        return "WinHPCInfrastructure";
+        return "Handles nodes from a Windows HPC server.";
+    }
+
+    @Override
+    public String toString() {
+        return "WinHPCInfrastructure, maxNodes: [" + maxNodes + "], timeout: [" + timeout + "]";
     }
 
     /**

@@ -566,7 +566,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "AWSEC2Infrastructure handles nodes from the Amazon Elastic Compute Cloud Service.";
+        return "Handles nodes from the Amazon Elastic Compute Cloud Service.";
     }
 
     @Override
@@ -590,7 +590,9 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return getDescription();
+        return String.format("AWSEC2Infrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s]",
+                             numberOfInstances,
+                             numberOfNodesPerInstance);
     }
 
     private void persistKeyPairInfo(final SimpleImmutableEntry<String, String> keyPair) {

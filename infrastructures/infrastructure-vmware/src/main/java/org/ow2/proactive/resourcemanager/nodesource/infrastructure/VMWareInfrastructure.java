@@ -268,7 +268,7 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "VMWareInfrastructure handles nodes of VMware Cloud.";
+        return "Handles nodes of VMware Cloud.";
     }
 
     /**
@@ -276,7 +276,10 @@ public class VMWareInfrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return getDescription();
+        return String.format("VMWareInfrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s], image: [%s]",
+                             numberOfInstances,
+                             numberOfNodesPerInstance,
+                             image);
     }
 
     private String generateDefaultDownloadCommand() {

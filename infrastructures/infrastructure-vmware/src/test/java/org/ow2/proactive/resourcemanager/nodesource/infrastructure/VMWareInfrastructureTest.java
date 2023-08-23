@@ -437,7 +437,7 @@ public class VMWareInfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(vmwareInfrastructure.getDescription(), Matchers.startsWith("VMWareInfrastructure"));
+        assertThat(vmwareInfrastructure.toString().split(" ")[0], Matchers.startsWith("VMWareInfrastructure"));
     }
 
 }

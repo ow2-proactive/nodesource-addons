@@ -520,7 +520,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
 
     @Override
     public String getDescription() {
-        return "AzureInfrastructure handles nodes from Microsoft Azure.";
+        return "Handles nodes from Microsoft Azure.";
     }
 
     /**
@@ -528,7 +528,13 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return getDescription();
+        return String.format("AzureInfrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s], imageOSType: [%s], vmSizeType: [%s], region: [%s], maxBudget: [%s]",
+                             numberOfInstances,
+                             numberOfNodesPerInstance,
+                             imageOSType,
+                             vmSizeType,
+                             region,
+                             maxBudget);
     }
 
     @Override
