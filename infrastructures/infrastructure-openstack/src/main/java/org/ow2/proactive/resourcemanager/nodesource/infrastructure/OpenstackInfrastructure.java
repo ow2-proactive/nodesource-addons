@@ -291,7 +291,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
      */
     @Override
     public String toString() {
-        return String.format("OpenStackInfrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s], image: [%s], flavor: [%s], region: [%s]",
+        return String.format("OpenstackInfrastructure numberOfInstances: [%s], numberOfNodesPerInstance: [%s], image: [%s], flavor: [%s], region: [%s]",
                              numberOfInstances,
                              numberOfNodesPerInstance,
                              image,

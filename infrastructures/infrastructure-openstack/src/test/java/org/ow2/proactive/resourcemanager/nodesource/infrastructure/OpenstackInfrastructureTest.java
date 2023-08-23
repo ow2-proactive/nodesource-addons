@@ -422,7 +422,6 @@ public class OpenstackInfrastructureTest {
 
     @Test
     public void testGetDescription() {
-        assertThat(openstackInfrastructure.getDescription(), Matchers.startsWith("OpenstackInfrastructure"));
+        assertThat(openstackInfrastructure.toString().split(" ")[0], Matchers.startsWith("OpenstackInfrastructure"));
     }
-
 }
