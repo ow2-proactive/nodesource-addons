@@ -61,7 +61,7 @@ public class OpenstackInfrastructure extends AbstractAddonInfrastructure {
 
     public static final String INFRASTRUCTURE_TYPE = "openstack-nova";
 
-    private static final long DEFAULT_NODES_INIT_DELAY = 4 * 60 * 1000;// 4 min
+    private static final long DEFAULT_NODES_INIT_DELAY = 10 * 60 * 1000;// 10 min
 
     private final transient Lock acquireLock = new ReentrantLock();
 

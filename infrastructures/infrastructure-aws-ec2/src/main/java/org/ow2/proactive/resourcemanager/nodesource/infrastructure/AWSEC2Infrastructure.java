@@ -65,7 +65,7 @@ public class AWSEC2Infrastructure extends AbstractAddonInfrastructure {
 
     private static final int DEFAULT_CORES = 2;
 
-    private static final int DEFAULT_NODE_TIMEOUT = 5 * 60 * 1000;// 5 min
+    private static final int DEFAULT_NODE_TIMEOUT = 10 * 60 * 1000;// 10 min
 
     private static final boolean DESTROY_INSTANCES_ON_SHUTDOWN = true;
 
