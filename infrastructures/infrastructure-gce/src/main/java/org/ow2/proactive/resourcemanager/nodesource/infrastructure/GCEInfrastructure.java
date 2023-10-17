@@ -70,7 +70,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
     private static final String DEFAULT_REGION = "europe-west2-c";
 
-    private static final int DEFAULT_NODE_TIMEOUT = 5 * 60 * 1000;// 5 min
+    private static final int DEFAULT_NODE_TIMEOUT = 10 * 60 * 1000;// 10 min
 
     private static final boolean DESTROY_INSTANCES_ON_SHUTDOWN = true;
 
