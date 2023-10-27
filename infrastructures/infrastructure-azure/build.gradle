@@ -37,6 +37,7 @@ configurations {
     runtime.exclude module: 'slf4j-api'
     runtime.exclude module: 'slf4j-simple'
     runtime.exclude module: 'slf4j-log4j12'
+    runtime.exclude module: 'slf4j-reload4j'
 
     testRuntime.extendsFrom = [testCompile]
 }
