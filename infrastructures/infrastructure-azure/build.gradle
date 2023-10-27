@@ -34,6 +34,7 @@ configurations {
     runtime.exclude module: 'programming-core'
     runtime.exclude module: 'guava'
     runtime.exclude module: 'log4j'
+    runtime.exclude module: 'reload4j'
     runtime.exclude module: 'slf4j-api'
     runtime.exclude module: 'slf4j-simple'
     runtime.exclude module: 'slf4j-log4j12'
