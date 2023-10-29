@@ -106,12 +106,11 @@ configure(javaSubprojects) {
 
 
     dependencies {
-        compile 'log4j:log4j:1.2.17'
+        compile 'ch.qos.reload4j:reload4j:1.2.25'
         compile 'com.google.guava:guava:32.0.1-jre'
 
         compile "org.ow2.proactive:rm-server:${rmVersion}"
         compile "org.objectweb.proactive:programming-core:${programmingVersion}"
-        compile 'log4j:log4j:1.2.17'
 
         testCompile 'junit:junit:4.12'
         testCompile 'org.hamcrest:hamcrest-junit:2.0.0.0'
