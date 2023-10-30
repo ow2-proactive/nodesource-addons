@@ -36,15 +36,12 @@ import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
 import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.convert.ListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.log4j.Logger;
 
 
 public class NSProperties {
 
     private NSProperties() {
     }
-
-    private static final Logger LOGGER = Logger.getLogger(NSProperties.class);
 
     public static final String PROPERTIES_FILE = "NodeSource.properties";
 
@@ -83,8 +80,6 @@ public class NSProperties {
         builder.configure(propertyParameters);
 
         config = builder.getConfiguration();
-
-        LOGGER.debug("NodeSources configuration loaded");
 
         return config;
     }
