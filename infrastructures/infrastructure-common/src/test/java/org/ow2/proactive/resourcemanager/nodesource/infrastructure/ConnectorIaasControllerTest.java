@@ -45,9 +45,9 @@ import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
 import org.objectweb.proactive.core.runtime.ProActiveRuntime;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
-import org.python.google.common.collect.Sets;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 
 public class ConnectorIaasControllerTest {

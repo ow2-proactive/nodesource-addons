@@ -54,7 +54,8 @@ import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
-import org.python.google.common.collect.Sets;
+
+import com.google.common.collect.Sets;
 
 
 /**
