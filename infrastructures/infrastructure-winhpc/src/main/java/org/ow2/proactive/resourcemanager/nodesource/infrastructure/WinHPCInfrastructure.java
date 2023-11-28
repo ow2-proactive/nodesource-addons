@@ -46,9 +46,9 @@ import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
 import org.ow2.proactive.resourcemanager.utils.CommandLineBuilder;
 import org.ow2.proactive.resourcemanager.utils.OperatingSystem;
 import org.ow2.proactive.utils.FileToBytesConverter;
-import org.python.google.common.collect.Maps;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.Maps;
 
 
 public class WinHPCInfrastructure extends DefaultInfrastructureManager {

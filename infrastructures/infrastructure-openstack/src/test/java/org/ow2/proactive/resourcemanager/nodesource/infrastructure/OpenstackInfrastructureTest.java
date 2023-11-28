@@ -50,7 +50,8 @@ import org.ow2.proactive.resourcemanager.authentication.Client;
 import org.ow2.proactive.resourcemanager.db.RMDBManager;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.NodeSource;
-import org.python.google.common.collect.Sets;
+
+import com.google.common.collect.Sets;
 
 
 public class OpenstackInfrastructureTest {
