@@ -121,10 +121,18 @@ configure(javaSubprojects) {
         shadowJar
 
         runtime.extendsFrom = [compile]
-        runtime.exclude module: 'rm-server'
-        runtime.exclude module: 'programming-core'
-        runtime.exclude module: 'guava'
-        runtime.exclude module: 'log4j'
+        runtime.exclude group: 'org.ow2.proactive', module: 'common-api'
+        runtime.exclude group: 'org.ow2.proactive', module: 'rm-server'
+        runtime.exclude group: 'org.objectweb.proactive', module: 'programming-core'
+        runtime.exclude group: 'com.google.guava', module: 'guava'
+        runtime.exclude group: 'commons-logging', module: 'commons-logging'
+        runtime.exclude group: 'org.apache', module: 'log4j'
+        runtime.exclude group: 'log4j', module: 'apache-log4j-extras'
+        runtime.exclude group: 'ch.qos.reload4j', module: 'reload4j'
+        runtime.exclude group: 'org.slf4j', module: 'slf4j-api'
+        runtime.exclude group: 'org.slf4j', module: 'slf4j-simple'
+        runtime.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        runtime.exclude group: 'org.slf4j', module: 'slf4j-reload4j'
 
         testRuntime.extendsFrom = [testCompile]
     }
