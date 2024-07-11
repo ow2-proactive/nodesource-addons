@@ -34,6 +34,11 @@ dependencies {
 }
 
 configurations {
-    runtime.exclude module: "commons-logging"
-    runtime.exclude group: "log4j"
+    runtime.exclude group: 'commons-logging', module: 'commons-logging'
+    runtime.exclude group: 'org.apache', module: 'log4j'
+    runtime.exclude group: 'ch.qos.reload4j', module: 'reload4j'
+    runtime.exclude group: 'org.slf4j', module: 'slf4j-api'
+    runtime.exclude group: 'org.slf4j', module: 'slf4j-simple'
+    runtime.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    runtime.exclude group: 'org.slf4j', module: 'slf4j-reload4j'
 }
