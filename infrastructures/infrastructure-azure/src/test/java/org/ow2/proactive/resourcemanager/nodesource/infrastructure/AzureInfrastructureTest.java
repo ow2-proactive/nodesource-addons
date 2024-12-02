@@ -291,7 +291,7 @@ public class AzureInfrastructureTest {
 
         azureInfrastructure.acquireNode();
 
-        verify(connectorIaasController, times(1)).waitForConnectorIaasToBeUP();
+        verify(connectorIaasController, times(3)).waitForConnectorIaasToBeUP();
 
         verify(connectorIaasController).createAzureInfrastructure("node_source_name",
                                                                   "clientId",
