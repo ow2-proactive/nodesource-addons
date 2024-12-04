@@ -37,6 +37,8 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
@@ -46,7 +48,11 @@ import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingExceptio
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingRateCard;
 import org.ow2.proactive.resourcemanager.nodesource.billing.AzureBillingResourceUsage;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.NodeConfiguration;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.VmCredentials;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Getter;
 
@@ -63,6 +69,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     public static final String WINDOWS = "windows";
 
     public static final String LINUX = "linux";
+
+    private final transient Lock acquireLock = new ReentrantLock();
 
     @Getter
     private final String instanceIdNodeProperty = "instanceId";
@@ -385,8 +393,128 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     }
 
     @Override
-    public void acquireNode() {
+    public void acquireAllNodes() {
+        nodeSource.executeInParallel(() -> {
+            deployInstancesWithNodes(numberOfInstances);
+        });
+    }
 
+    @Override
+    public void acquireNode() {
+        nodeSource.executeInParallel(() -> {
+            deployInstancesWithNodes(1);
+        });
+    }
+
+    @Override
+    public synchronized void acquireNodes(final int numberOfNodes, final long startTimeout,
+            final Map<String, ?> nodeConfiguration) {
+        nodeSource.executeInParallel(() -> {
+            try {
+                if (acquireLock.tryLock(startTimeout, TimeUnit.MILLISECONDS)) {
+                    LOGGER.info(String.format("Acquiring %d nodes with the configuration: %s.",
+                                              numberOfNodes,
+                                              nodeConfiguration));
+                    try {
+                        AzureCustomizableParameter deployParams = getNodeSpecificParameters(nodeConfiguration);
+                        int nbInstancesToDeploy = calNumberOfInstancesToDeploy(numberOfNodes,
+                                                                               nodeConfiguration,
+                                                                               numberOfInstances,
+                                                                               numberOfNodesPerInstance);
+                        if (nbInstancesToDeploy <= 0) {
+                            LOGGER.info("No need to deploy new instances, acquireNodes skipped.");
+                            return;
+                        }
+                        deployInstancesWithNodes(nbInstancesToDeploy, deployParams);
+                    } catch (Exception e) {
+                        LOGGER.error("Error during node acquisition", e);
+                    } finally {
+                        acquireLock.unlock();
+                    }
+                } else {
+                    LOGGER.info("Infrastructure is busy, acquireNodes skipped.");
+                }
+            } catch (InterruptedException e) {
+                LOGGER.info("acquireNodes skipped because of InterruptedException:", e);
+            }
+        });
+    }
+
+    // get the node deployment parameters based on the specific node configurations which can
+    // overrides the values specified in the infrastructure configuration
+    private AzureCustomizableParameter getNodeSpecificParameters(Map<String, ?> nodeConfiguration) {
+        AzureCustomizableParameter params = getDefaultNodeParameters();
+        NodeConfiguration nodeConfig = new ObjectMapper().convertValue(nodeConfiguration, NodeConfiguration.class);
+
+        if (nodeConfig.getNodeTags() != null) {
+            params.setAdditionalProperties(addTagsInJvmAdditionalProperties(params.getAdditionalProperties(),
+                                                                            nodeConfig.getNodeTags()));
+        }
+
+        if (nodeConfig.getImage() != null) {
+            params.setImage(nodeConfig.getImage());
+        }
+
+        if (nodeConfig.getImageOSType() != null) {
+            params.setImageOSType(nodeConfig.getImageOSType());
+        }
+
+        if (nodeConfig.getVmSizeType() != null) {
+            params.setVmSizeType(nodeConfig.getVmSizeType());
+        }
+
+        if (nodeConfig.getCredentials() != null) {
+            VmCredentials vmCred = nodeConfig.getCredentials();
+            if (vmCred.getVmUserName() != null) {
+                params.setVmUsername(vmCred.getVmUserName());
+            }
+            if (vmCred.getVmPassword() != null) {
+                params.setVmPassword(vmCred.getVmPassword());
+            }
+            if (vmCred.getVmPublicKey() != null) {
+                params.setVmPublicKey(vmCred.getVmPublicKey());
+            }
+        }
+        if (nodeConfig.getResourceGroup() != null) {
+            params.setResourceGroup(nodeConfig.getResourceGroup());
+        }
+        if (nodeConfig.getRegion() != null) {
+            params.setRegion(nodeConfig.getRegion());
+        }
+        if (nodeConfig.getPrivateNetworkCIDR() != null) {
+            params.setPrivateNetworkCIDR(nodeConfig.getPrivateNetworkCIDR());
+        }
+        if (nodeConfig.getStaticPublicIP() != null) {
+            params.setStaticPublicIP(nodeConfig.getStaticPublicIP());
+        }
+        if (nodeConfig.getPortsToOpen() != null) {
+            params.setPortsToOpen(convertPorts(nodeConfig.getPortsToOpen()));
+        }
+
+        return params;
+    }
+
+    private void deployInstancesWithNodes(int nbInstancesToDeploy) {
+        deployInstancesWithNodes(nbInstancesToDeploy, getDefaultNodeParameters());
+    }
+
+    // get the node deployment parameters based on the value specified in the infrastructure configuration
+    private AzureCustomizableParameter getDefaultNodeParameters() {
+        return new AzureCustomizableParameter(image,
+                                              imageOSType,
+                                              vmSizeType,
+                                              vmUsername,
+                                              vmPassword,
+                                              vmPublicKey,
+                                              resourceGroup,
+                                              region,
+                                              privateNetworkCIDR,
+                                              staticPublicIP,
+                                              null,
+                                              additionalProperties);
+    }
+
+    private void deployInstancesWithNodes(int nbInstancesToDeploy, AzureCustomizableParameter params) {
         // Init billing objects
         initBilling();
 
@@ -416,16 +544,16 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
             // it is a fresh deployment: create or retrieve all instances
             instancesIds = connectorIaasController.createAzureInstances(getInfrastructureId(),
                                                                         instanceTag,
-                                                                        image,
-                                                                        numberOfInstances,
-                                                                        vmUsername,
-                                                                        vmPassword,
-                                                                        vmPublicKey,
-                                                                        vmSizeType,
-                                                                        resourceGroup,
-                                                                        region,
-                                                                        privateNetworkCIDR,
-                                                                        staticPublicIP);
+                                                                        params.getImage(),
+                                                                        nbInstancesToDeploy,
+                                                                        params.getVmUsername(),
+                                                                        params.getVmPassword(),
+                                                                        params.getVmPublicKey(),
+                                                                        params.getVmSizeType(),
+                                                                        params.getResourceGroup(),
+                                                                        params.getRegion(),
+                                                                        params.getPrivateNetworkCIDR(),
+                                                                        params.getStaticPublicIP());
             LOGGER.info("Instances ids created or retrieved : " + instancesIds);
         } else {
             // if the infrastructure was already created, then wee need to
@@ -449,7 +577,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                                                                                                       rmHostname,
                                                                                                                       nodeJarURL,
                                                                                                                       instanceIdNodeProperty,
-                                                                                                                      additionalProperties,
+                                                                                                                      params.getAdditionalProperties(),
                                                                                                                       nodeSource.getName(),
                                                                                                                       currentInstanceId,
                                                                                                                       numberOfNodesPerInstance,
@@ -460,7 +588,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                                                                                                     rmHostname,
                                                                                                                     nodeJarURL,
                                                                                                                     instanceIdNodeProperty,
-                                                                                                                    additionalProperties,
+                                                                                                                    params.getAdditionalProperties(),
                                                                                                                     nodeSource.getName(),
                                                                                                                     currentInstanceId,
                                                                                                                     numberOfNodesPerInstance,
@@ -484,12 +612,6 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                 removeFromInstancesWithoutNodesMap(currentInstanceId);
             }
         }
-
-    }
-
-    @Override
-    public void acquireAllNodes() {
-        acquireNode();
     }
 
     @Override
