@@ -23,11 +23,9 @@
  * If needed, contact us to obtain a release under GPL Version 2 or 3
  * or a different license than the AGPL.
  */
-package org.ow2.proactive.resourcemanager.nodesource.infrastructure.model;
+package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
-import java.io.Serializable;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -35,24 +33,19 @@ import lombok.Setter;
 
 @Setter
 @Getter
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class NodeConfiguration implements Serializable {
+public class AzureCustomizableParameter {
 
     private String image;
 
     private String imageOSType;
 
-    private String vmType;
-
     private String vmSizeType;
 
-    private Integer numberOfCores;
+    private String vmUsername;
 
-    private Integer amountOfMemory;
+    private String vmPassword;
 
-    private VmCredentials credentials;
-
-    private String[] securityGroups;
+    private String vmPublicKey;
 
     private String resourceGroup;
 
@@ -62,10 +55,24 @@ public class NodeConfiguration implements Serializable {
 
     private Boolean staticPublicIP;
 
-    private Port[] portsToOpen;
+    private Set<Integer> portsToOpen;
 
-    private String nodeTags;
+    private String additionalProperties;
 
-    public NodeConfiguration() {
+    public AzureCustomizableParameter(String image, String imageOSType, String vmSizeType, String vmUsername,
+            String vmPassword, String vmPublicKey, String resourceGroup, String region, String privateNetworkCIDR,
+            Boolean staticPublicIP, Set<Integer> portsToOpen, String additionalProperties) {
+        this.image = image;
+        this.imageOSType = imageOSType;
+        this.vmSizeType = vmSizeType;
+        this.vmUsername = vmUsername;
+        this.vmPassword = vmPassword;
+        this.vmPublicKey = vmPublicKey;
+        this.resourceGroup = resourceGroup;
+        this.region = region;
+        this.privateNetworkCIDR = privateNetworkCIDR;
+        this.staticPublicIP = staticPublicIP;
+        this.portsToOpen = portsToOpen;
+        this.additionalProperties = additionalProperties;
     }
 }
