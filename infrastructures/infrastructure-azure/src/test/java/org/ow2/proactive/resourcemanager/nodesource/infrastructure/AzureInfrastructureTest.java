@@ -28,14 +28,11 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.security.KeyException;
 
@@ -44,6 +41,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.stubbing.Answer;
 import org.objectweb.proactive.core.ProActiveException;
 import org.objectweb.proactive.core.node.Node;
 import org.objectweb.proactive.core.node.NodeInformation;
@@ -105,7 +103,7 @@ public class AzureInfrastructureTest {
         assertThat(azureInfrastructure.rmHostname, is(not(nullValue())));
         assertThat(azureInfrastructure.connectorIaasURL, is(not(nullValue())));
         assertThat(azureInfrastructure.image, is(nullValue()));
-        assertTrue(azureInfrastructure.imageOSType.equals("linux"));
+        assertEquals("linux", azureInfrastructure.imageOSType);
         assertThat(azureInfrastructure.vmSizeType, is(nullValue()));
         assertThat(azureInfrastructure.vmUsername, is(nullValue()));
         assertThat(azureInfrastructure.vmPassword, is(nullValue()));
@@ -289,9 +287,29 @@ public class AzureInfrastructureTest {
                                                           "192.168.1.0/24",
                                                           true)).thenReturn(Sets.newHashSet("123", "456"));
 
+        when(connectorIaasController.createAzureInstances(anyString(),
+                                                          anyString(),
+                                                          anyString(),
+                                                          anyInt(),
+                                                          anyString(),
+                                                          anyString(),
+                                                          anyString(),
+                                                          anyString(),
+                                                          anyString(),
+                                                          anyString(),
+                                                          anyString(),
+                                                          anyBoolean())).thenReturn(Sets.newHashSet("123",
+                                                                                                    "456",
+                                                                                                    "789"));
+
+        doAnswer((Answer<Object>) invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(nodeSource).executeInParallel(any(Runnable.class));
+
         azureInfrastructure.acquireNode();
 
-        verify(connectorIaasController, times(3)).waitForConnectorIaasToBeUP();
+        verify(connectorIaasController).waitForConnectorIaasToBeUP();
 
         verify(connectorIaasController).createAzureInfrastructure("node_source_name",
                                                                   "clientId",
@@ -307,7 +325,7 @@ public class AzureInfrastructureTest {
         verify(connectorIaasController).createAzureInstances("node_source_name",
                                                              "node_source_name",
                                                              "image",
-                                                             2,
+                                                             1,
                                                              "vmUsername",
                                                              "vmPassword",
                                                              "vmPublicKey",
@@ -317,7 +335,7 @@ public class AzureInfrastructureTest {
                                                              "192.168.1.0/24",
                                                              true);
 
-        verify(connectorIaasController, times(2)).executeScript(anyString(), anyString(), anyList());
+        verify(connectorIaasController, times(3)).executeScript(anyString(), anyString(), anyList());
     }
 
     @Test
