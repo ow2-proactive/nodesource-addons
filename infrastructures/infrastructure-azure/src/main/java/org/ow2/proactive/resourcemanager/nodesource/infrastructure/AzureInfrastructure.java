@@ -395,14 +395,14 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public void acquireAllNodes() {
         nodeSource.executeInParallel(() -> {
-            deployInstancesWithNodes(numberOfInstances);
+            deployInstancesWithNodes(numberOfInstances, true);
         });
     }
 
     @Override
     public void acquireNode() {
         nodeSource.executeInParallel(() -> {
-            deployInstancesWithNodes(1);
+            deployInstancesWithNodes(1, true);
         });
     }
 
@@ -425,7 +425,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                             LOGGER.info("No need to deploy new instances, acquireNodes skipped.");
                             return;
                         }
-                        deployInstancesWithNodes(nbInstancesToDeploy, deployParams);
+                        deployInstancesWithNodes(nbInstancesToDeploy, false, deployParams);
                     } catch (Exception e) {
                         LOGGER.error("Error during node acquisition", e);
                     } finally {
@@ -494,8 +494,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         return params;
     }
 
-    private void deployInstancesWithNodes(int nbInstancesToDeploy) {
-        deployInstancesWithNodes(nbInstancesToDeploy, getDefaultNodeParameters());
+    private void deployInstancesWithNodes(int nbInstancesToDeploy, boolean reuseCreatedInstances) {
+        deployInstancesWithNodes(nbInstancesToDeploy, reuseCreatedInstances, getDefaultNodeParameters());
     }
 
     // get the node deployment parameters based on the value specified in the infrastructure configuration
@@ -514,7 +514,8 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
                                               additionalProperties);
     }
 
-    private void deployInstancesWithNodes(int nbInstancesToDeploy, AzureCustomizableParameter params) {
+    private void deployInstancesWithNodes(int nbInstancesToDeploy, boolean reuseCreatedInstances,
+            AzureCustomizableParameter params) {
         // Init billing objects
         initBilling();
 
@@ -540,7 +541,7 @@ public class AzureInfrastructure extends AbstractAddonInfrastructure {
         Set<String> instancesIds;
         boolean existPersistedInstanceIds = false;
 
-        if (expectInstancesAlreadyCreated(false, true)) {
+        if (!reuseCreatedInstances || expectInstancesAlreadyCreated(false, true)) {
             // it is a fresh deployment: create or retrieve all instances
             instancesIds = connectorIaasController.createAzureInstances(getInfrastructureId(),
                                                                         instanceTag,
