@@ -153,7 +153,7 @@ public class GCEInfrastructureTest {
     @Test
     public void testInitialParameters() {
         assertThat(gceInfrastructure.gceCredential, is(nullValue()));
-        assertThat(gceInfrastructure.totalNumberOfInstances, is(1));
+        assertThat(gceInfrastructure.numberOfInstances, is(1));
         assertThat(gceInfrastructure.numberOfNodesPerInstance, is(1));
         assertThat(gceInfrastructure.vmUsername, is(nullValue()));
         assertThat(gceInfrastructure.vmPublicKey, is(nullValue()));
@@ -193,7 +193,7 @@ public class GCEInfrastructureTest {
 
         assertThat(gceInfrastructure.gceCredential.clientEmail, is(CLIENT_EMAIL));
         assertThat(gceInfrastructure.gceCredential.privateKey, is(PRIVATE_KEY));
-        assertThat(gceInfrastructure.totalNumberOfInstances, is(NUMBER_INSTANCES));
+        assertThat(gceInfrastructure.numberOfInstances, is(NUMBER_INSTANCES));
         assertThat(gceInfrastructure.numberOfNodesPerInstance, is(NUMBER_NODES_PER_INSTANCE));
         assertThat(gceInfrastructure.vmUsername, is(VM_USERNAME));
         assertThat(gceInfrastructure.vmPublicKey, is(VM_PUBLIC_KEY));

@@ -28,6 +28,7 @@ package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 import java.security.KeyException;
 import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -37,11 +38,14 @@ import org.apache.log4j.Logger;
 import org.objectweb.proactive.core.node.Node;
 import org.ow2.proactive.resourcemanager.exception.RMException;
 import org.ow2.proactive.resourcemanager.nodesource.common.Configurable;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.NodeConfiguration;
+import org.ow2.proactive.resourcemanager.nodesource.infrastructure.model.VmCredentials;
 import org.ow2.proactive.resourcemanager.nodesource.infrastructure.util.InitScriptGenerator;
 import org.ow2.proactive.resourcemanager.rmnode.RMDeployingNode;
 import org.ow2.proactive.resourcemanager.utils.RMNodeStarter;
 import org.scijava.util.StringUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -130,7 +134,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     protected GCECredential gceCredential = null;
 
     @Configurable(description = "Total instances to create (maximum number of instances in case of dynamic policy)", sectionSelector = 2, important = true)
-    protected int totalNumberOfInstances = 1;
+    protected int numberOfInstances = 1;
 
     @Configurable(description = "Total nodes to create per instance", sectionSelector = 2, important = true)
     protected int numberOfNodesPerInstance = 1;
@@ -198,8 +202,8 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
         this.gceCredential = getCredentialFromJsonKeyFile(parseMandatoryFileParameter("gceCredential",
                                                                                       parameters[Indexes.GCE_CREDENTIAL.index]));
-        this.totalNumberOfInstances = parseIntParameter("totalNumberOfInstances",
-                                                        parameters[Indexes.TOTAL_NUMBER_OF_INSTANCES.index]);
+        this.numberOfInstances = parseIntParameter("totalNumberOfInstances",
+                                                   parameters[Indexes.TOTAL_NUMBER_OF_INSTANCES.index]);
         this.numberOfNodesPerInstance = parseIntParameter("numberOfNodesPerInstance",
                                                           parameters[Indexes.NUMBER_OF_NODES_PER_INSTANCE.index]);
         this.vmUsername = parseOptionalParameter(parameters[Indexes.VM_USERNAME.index]);
@@ -237,47 +241,63 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     }
 
     @Override
-    public void acquireNode() {
-        deployInstancesWithFullNodes(1);
-    }
-
-    @Override
     public void acquireAllNodes() {
-        deployInstancesWithFullNodes(totalNumberOfInstances);
+        nodeSource.executeInParallel(() -> {
+            deployInstancesWithNodes(numberOfInstances, true);
+        });
     }
 
     @Override
-    public synchronized void acquireNodes(final int numberOfNodes, final Map<String, ?> nodeConfiguration) {
-        logger.info(String.format("Acquiring %d nodes with the configuration: %s.", numberOfNodes, nodeConfiguration));
-
+    public void acquireNode() {
         nodeSource.executeInParallel(() -> {
-            if (dynamicAcquireLock.tryLock()) {
-                try {
-                    int nbInstancesToDeploy = calNumberOfInstancesToDeploy(numberOfNodes,
-                                                                           nodeConfiguration,
-                                                                           totalNumberOfInstances,
-                                                                           numberOfNodesPerInstance);
-                    if (nbInstancesToDeploy <= 0) {
-                        logger.info("No need to deploy new instances, acquireNodes skipped.");
-                        return;
+            deployInstancesWithNodes(1, true);
+        });
+    }
+
+    @Override
+    public synchronized void acquireNodes(final int numberOfNodes, final long startTimeout,
+            final Map<String, ?> nodeConfiguration) {
+        nodeSource.executeInParallel(() -> {
+            try {
+                if (dynamicAcquireLock.tryLock(startTimeout, TimeUnit.MILLISECONDS)) {
+                    logger.info(String.format("Acquiring %d nodes with the configuration: %s.",
+                                              numberOfNodes,
+                                              nodeConfiguration));
+                    try {
+                        int nbInstancesToDeploy = calNumberOfInstancesToDeploy(numberOfNodes,
+                                                                               nodeConfiguration,
+                                                                               numberOfInstances,
+                                                                               numberOfNodesPerInstance);
+                        if (nbInstancesToDeploy <= 0) {
+                            logger.info("No need to deploy new instances, acquireNodes skipped.");
+                            return;
+                        }
+                        GCECustomizableParameter deployParams = getNodeSpecificParameters(nodeConfiguration);
+                        deployInstancesWithNodes(nbInstancesToDeploy, false, deployParams);
+                    } catch (Exception e) {
+                        logger.error("Error during node acquisition", e);
+                    } finally {
+                        dynamicAcquireLock.unlock();
                     }
-                    deployInstancesWithFullNodes(nbInstancesToDeploy);
-                } catch (Exception e) {
-                    logger.error("Error during node acquisition", e);
-                } finally {
-                    dynamicAcquireLock.unlock();
+                } else {
+                    logger.info("Infrastructure is busy, acquireNodes skipped.");
                 }
-            } else {
-                logger.info("Infrastructure is busy, acquireNodes skipped.");
+            } catch (InterruptedException e) {
+                logger.info("acquireNodes skipped because of InterruptedException:", e);
             }
         });
+    }
+
+    private void deployInstancesWithNodes(int nbInstancesToDeploy, boolean reuseCreatedInstances) {
+        deployInstancesWithNodes(nbInstancesToDeploy, reuseCreatedInstances, getDefaultNodeParameters());
     }
 
     /**
      * deploy {@code nbInstancesToDeploy} instances with  {@code numberOfNodesPerInstance} nodes on each instance
      * @param nbInstancesToDeploy number of instances to deploy
      */
-    private void deployInstancesWithFullNodes(int nbInstancesToDeploy) {
+    private void deployInstancesWithNodes(int nbInstancesToDeploy, boolean reuseCreatedInstances,
+            GCECustomizableParameter params) {
         logger.info(String.format("Deploying %d instances with %d nodes on each instance.",
                                   nbInstancesToDeploy,
                                   numberOfNodesPerInstance));
@@ -294,7 +314,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
 
         readDeletingLock.lock();
         try {
-            createInfrastructureIfNeeded(infrastructureId);
+            createGceInfrastructureIfNeeded(infrastructureId);
 
             instancesIds = createInstanceWithNodesStartCmd(infrastructureId, nbInstancesToDeploy, nodeStartCmds);
         } finally {
@@ -304,7 +324,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         declareDeployingNodes(instancesIds, numberOfNodesPerInstance, nodeStartCmds.toString());
     }
 
-    private void createInfrastructureIfNeeded(String infrastructureId) {
+    private void createGceInfrastructureIfNeeded(String infrastructureId) {
         // Create infrastructure if it does not exist
         if (!isCreatedInfrastructure) {
             connectorIaasController.createInfrastructure(infrastructureId,
@@ -450,7 +470,7 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     public String toString() {
         return String.format("GCEInfrastructure numberOfNodesPerInstance: [%s], totalNumberOfInstances: [%s], region: [%s]",
                              numberOfNodesPerInstance,
-                             totalNumberOfInstances,
+                             numberOfInstances,
                              region);
     }
 
@@ -538,6 +558,59 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
     @Override
     public Map<String, String> getMeta() {
         return meta;
+    }
+
+    private GCECustomizableParameter getDefaultNodeParameters() {
+        return new GCECustomizableParameter(image,
+                                            vmUsername,
+                                            vmPublicKey,
+                                            vmPrivateKey,
+                                            region,
+                                            machineType,
+                                            ram,
+                                            cores,
+                                            additionalProperties);
+    }
+
+    // get the node deployment parameters based on the specific node configurations which can
+    // overrides the values specified in the infrastructure configuration
+    private GCECustomizableParameter getNodeSpecificParameters(Map<String, ?> nodeConfiguration) {
+        GCECustomizableParameter params = getDefaultNodeParameters();
+        NodeConfiguration nodeConfig = new ObjectMapper().convertValue(nodeConfiguration, NodeConfiguration.class);
+
+        if (nodeConfig.getImage() != null) {
+            params.setImage(nodeConfig.getImage());
+        }
+        if (nodeConfig.getCredentials() != null) {
+            VmCredentials vmCred = nodeConfig.getCredentials();
+            if (vmCred.getVmUserName() != null) {
+                params.setVmUsername(vmCred.getVmUserName());
+            }
+            if (vmCred.getVmPublicKey() != null) {
+                params.setVmPublicKey(vmCred.getVmPublicKey());
+            }
+            if (vmCred.getVmPrivateKey() != null) {
+                params.setVmPrivateKey(vmCred.getVmPrivateKey());
+            }
+        }
+        if (nodeConfig.getRegion() != null) {
+            params.setRegion(nodeConfig.getRegion());
+        }
+        if (nodeConfig.getMachineType() != null) {
+            params.setMachineType(nodeConfig.getMachineType());
+        }
+        if (nodeConfig.getAmountOfMemory() != null) {
+            params.setRam(nodeConfig.getAmountOfMemory());
+        }
+        if (nodeConfig.getNumberOfCores() != null) {
+            params.setCores(nodeConfig.getNumberOfCores());
+        }
+        if (nodeConfig.getNodeTags() != null) {
+            params.setAdditionalProperties(addTagsInJvmAdditionalProperties(params.getAdditionalProperties(),
+                                                                            nodeConfig.getNodeTags()));
+        }
+
+        return params;
     }
 
     private String createMachineTypeUrl() {
