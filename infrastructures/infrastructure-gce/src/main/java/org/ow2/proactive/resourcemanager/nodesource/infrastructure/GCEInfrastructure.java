@@ -25,6 +25,9 @@
  */
 package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.KeyException;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -613,16 +616,30 @@ public class GCEInfrastructure extends AbstractAddonInfrastructure {
         return params;
     }
 
-    private String createMachineTypeUrl() {
-        String machineTypeUrl = "";
-        if (!StringUtils.isNullOrEmpty(machineType)) {
-            machineTypeUrl = String.format("%s/%s/zones/%s/machineTypes/%s",
-                                           GCE_API_DOMAIN,
-                                           gceCredential.projectId,
-                                           region,
-                                           machineType);
-            logger.info("The machineType selected based on the infrastructure definition is: " + machineTypeUrl);
+    private boolean isValidURL(String url) {
+        try {
+            new URL(url).toURI();
+            return true;
+        } catch (MalformedURLException | URISyntaxException e) {
+            return false;
         }
-        return machineTypeUrl;
+    }
+
+    private String createMachineTypeUrl() {
+        if (!StringUtils.isNullOrEmpty(machineType)) {
+            if (isValidURL(machineType)) {
+                logger.info("The machineType selected based on the infrastructure definition is: " + machineType);
+                return machineType;
+            } else {
+                String machineTypeUrl = String.format("%s/%s/zones/%s/machineTypes/%s",
+                                                      GCE_API_DOMAIN,
+                                                      gceCredential.projectId,
+                                                      region,
+                                                      machineType);
+                logger.info("The machineType selected based on the infrastructure definition is: " + machineTypeUrl);
+                return machineTypeUrl;
+            }
+        }
+        return "";
     }
 }
