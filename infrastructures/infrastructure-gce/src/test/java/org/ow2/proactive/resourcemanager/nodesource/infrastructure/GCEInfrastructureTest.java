@@ -267,6 +267,10 @@ public class GCEInfrastructureTest {
                                     STARTUP_SCRIPT);
         // re-assign needed because gceInfrastructure.configure new the object gceInfrastructure.connectorIaasController
         gceInfrastructure.connectorIaasController = connectorIaasController;
+        doAnswer((Answer<Object>) invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(nodeSource).executeInParallel(any(Runnable.class));
         when(nodeSource.getAdministrator()).thenReturn(client);
         when(client.getCredentials()).thenReturn(Credentials.getCredentialsBase64(rmCreds.getBytes()));
         when(nodeSource.getName()).thenReturn(INFRASTRUCTURE_ID);
