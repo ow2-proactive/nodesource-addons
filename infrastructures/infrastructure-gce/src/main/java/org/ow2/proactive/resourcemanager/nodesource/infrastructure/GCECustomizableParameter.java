@@ -23,11 +23,7 @@
  * If needed, contact us to obtain a release under GPL Version 2 or 3
  * or a different license than the AGPL.
  */
-package org.ow2.proactive.resourcemanager.nodesource.infrastructure.model;
-
-import java.io.Serializable;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+package org.ow2.proactive.resourcemanager.nodesource.infrastructure;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -35,39 +31,36 @@ import lombok.Setter;
 
 @Setter
 @Getter
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class NodeConfiguration implements Serializable {
+public class GCECustomizableParameter {
 
     private String image;
 
-    private String imageOSType;
+    private String vmUsername;
 
-    private String vmType;
+    private String vmPublicKey;
 
-    private String machineType;
-
-    private String vmSizeType;
-
-    private Integer numberOfCores;
-
-    private Integer amountOfMemory;
-
-    private VmCredentials credentials;
-
-    private String[] securityGroups;
-
-    private String resourceGroup;
+    private String vmPrivateKey;
 
     private String region;
 
-    private String privateNetworkCIDR;
+    private String machineType;
 
-    private Boolean staticPublicIP;
+    private int ram;
 
-    private Port[] portsToOpen;
+    private int cores;
 
-    private String nodeTags;
+    private String additionalProperties;
 
-    public NodeConfiguration() {
+    public GCECustomizableParameter(String image, String vmUsername, String vmPublicKey, String vmPrivateKey,
+            String region, String machineType, int ram, int cores, String additionalProperties) {
+        this.image = image;
+        this.vmUsername = vmUsername;
+        this.vmPublicKey = vmPublicKey;
+        this.vmPrivateKey = vmPrivateKey;
+        this.region = region;
+        this.machineType = machineType;
+        this.ram = ram;
+        this.cores = cores;
+        this.additionalProperties = additionalProperties;
     }
 }
